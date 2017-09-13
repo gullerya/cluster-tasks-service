@@ -1,0 +1,10 @@
+package com.microfocus.octane.cluster.tasks.api;
+
+public enum CTPPersistStatus {
+	SUCCESS,
+	NULL_TASK_FAILURE,
+	UNIQUENESS_KEY_TOO_LONG_FAILURE,
+	CONCURRENCY_KEY_TOO_LONG_FAILURE,
+	UNIQUE_CONSTRAINT_FAILURE,
+	UNEXPECTED_FAILURE
+}

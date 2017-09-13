@@ -1,0 +1,14 @@
+#IntelliJ project files
+*.iml
+.idea/
+
+.svn*/
+*.idl
+*.iws
+*.sdf
+*.opensdf
+*.class
+*.ipch
+*.orig
+midloutput*/
+target*/
