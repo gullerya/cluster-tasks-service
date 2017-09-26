@@ -15,6 +15,7 @@ import org.springframework.dao.DataAccessException;
 import org.springframework.dao.DuplicateKeyException;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.jdbc.core.support.SqlLobValue;
+import org.springframework.jdbc.datasource.DataSourceTransactionManager;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.support.TransactionTemplate;
 
@@ -34,6 +35,8 @@ import java.util.stream.Collectors;
 
 import com.microfocus.octane.cluster.tasks.api.ClusterTasksServiceConfigurerSPI.DBType;
 
+import javax.sql.DataSource;
+
 /**
  * Created by gullery on 08/05/2016.
  * <p>
@@ -47,6 +50,8 @@ class ClusterTasksDbDataProvider implements ClusterTasksDataProvider {
 	private static final int PARTITIONS_NUMBER = 4;
 	private static final long MAX_TIME_TO_RUN_DEFAULT = 1000 * 60;
 	private ZonedDateTime lastTruncateTime;
+	private JdbcTemplate jdbcTemplate;
+	private TransactionTemplate transactionTemplate;
 
 	@Autowired
 	private ClusterTasksServiceConfigurerSPI serviceConfigurer;
@@ -70,86 +75,93 @@ class ClusterTasksDbDataProvider implements ClusterTasksDataProvider {
 
 		List<ClusterTaskPersistenceResult> result = new ArrayList<>(tasks.length);
 
-		for (ClusterTask originalTask : tasks) {
-			CTPPersistStatus validationStatus = validateAndNormalizeTask(originalTask);
+		if (!serviceConfigurer.tasksCreationSupported()) {
+			logger.warn("tasks creation is not supported in the current hosting environment");
+			for (int i = 0; i < tasks.length; i++) {
+				result.set(i, new ClusterTaskPersistenceResult(CTPPersistStatus.TASKS_CREATION_NOT_SUPPORTED));
+			}
+		} else {
+			for (ClusterTask originalTask : tasks) {
+				CTPPersistStatus validationStatus = validateAndNormalizeTask(originalTask);
 
-			if (validationStatus == CTPPersistStatus.SUCCESS) {
-				getTransactionTemplate().execute(transactionStatus -> {
-					ClusterTask task = null;
-					try {
-						JdbcTemplate jdbcTemplate = getJdbcTemplate();
-						long taskId = serviceConfigurer.obtainAvailableTaskID();
+				if (validationStatus == CTPPersistStatus.SUCCESS) {
+					getTransactionTemplate().execute(transactionStatus -> {
+						ClusterTask task = null;
+						try {
+							JdbcTemplate jdbcTemplate = getJdbcTemplate();
+							long taskId = serviceConfigurer.obtainAvailableTaskID();
 
-						//  pre-process values
-						task = new ClusterTask(originalTask);
-						task.setProcessorType(processorType);
-						if (task.getTaskType() == null) {
-							task.setTaskType(ClusterTaskType.REGULAR);
-						}
+							//  pre-process values
+							task = new ClusterTask(originalTask);
+							task.setProcessorType(processorType);
+							if (task.getTaskType() == null) {
+								task.setTaskType(ClusterTaskType.REGULAR);
+							}
 
-						//  insert body
-						if (task.getBody() != null) {
-							task.setPartitionIndex(resolveBodyTablePartitionIndex());
-							String insertBodySql = ClusterTasksDbUtils.buildInsertTaskBodySQL(task.getPartitionIndex());
+							//  insert body
+							if (task.getBody() != null) {
+								task.setPartitionIndex(resolveBodyTablePartitionIndex());
+								String insertBodySql = ClusterTasksDbUtils.buildInsertTaskBodySQL(task.getPartitionIndex());
+								jdbcTemplate.update(
+										insertBodySql,
+										new Object[]{
+												taskId,
+												new SqlLobValue(task.getBody())},
+										new int[]{
+												Types.BIGINT,
+												Types.CLOB});
+								logger.debug("task's " + task + " body pushed to " + task.getPartitionIndex() + " 'partition' table");
+							} else {
+								logger.debug("task " + task + " contains no body");
+							}
+
+							//  insert meta
+							String insertMetaSql = ClusterTasksDbUtils.buildInsertTaskMetaSQL(serviceConfigurer.getDbType());
 							jdbcTemplate.update(
-									insertBodySql,
+									insertMetaSql,
 									new Object[]{
 											taskId,
-											new SqlLobValue(task.getBody())},
+											task.getTaskType().value,
+											task.getProcessorType(),
+											task.getUniquenessKey(),
+											task.getConcurrencyKey(),
+											task.getDelayByMillis(),
+											task.getMaxTimeToRunMillis(),
+											task.getPartitionIndex(),
+											task.getOrderingFactor(),
+											task.getDelayByMillis()
+									},
 									new int[]{
-											Types.BIGINT,
-											Types.CLOB});
-							logger.debug("task's " + task + " body pushed to " + task.getPartitionIndex() + " 'partition' table");
-						} else {
-							logger.debug("task " + task + " contains no body");
+											Types.BIGINT,               //  task id
+											Types.BIGINT,               //  task type
+											Types.VARCHAR,              //  processor type
+											Types.VARCHAR,              //  uniqueness key
+											Types.VARCHAR,              //  concurrency key
+											Types.BIGINT,               //  delay by millis
+											Types.BIGINT,               //  max time to run millis
+											Types.BIGINT,               //  partition index
+											Types.BIGINT,               //  ordering factor
+											Types.BIGINT                //  delay by millis (second time for potential ordering calculation based on creation time when ordering is NULL)
+									}
+							);
+
+							result.add(new ClusterTaskPersistenceResult(task.getId()));
+							logger.debug("cluster task " + task.getId() + " created successfully");
+						} catch (DuplicateKeyException dke) {
+							transactionStatus.setRollbackOnly();
+							result.add(new ClusterTaskPersistenceResult(CTPPersistStatus.UNIQUE_CONSTRAINT_FAILURE));
+							logger.info("rejected " + task + " due to uniqueness violation");
+						} catch (Exception e) {
+							transactionStatus.setRollbackOnly();
+							result.add(new ClusterTaskPersistenceResult(CTPPersistStatus.UNEXPECTED_FAILURE));
+							logger.error("failed to persist " + task, e);
 						}
-
-						//  insert meta
-						String insertMetaSql = ClusterTasksDbUtils.buildInsertTaskMetaSQL(serviceConfigurer.getDbType());
-						jdbcTemplate.update(
-								insertMetaSql,
-								new Object[]{
-										taskId,
-										task.getTaskType().value,
-										task.getProcessorType(),
-										task.getUniquenessKey(),
-										task.getConcurrencyKey(),
-										task.getDelayByMillis(),
-										task.getMaxTimeToRunMillis(),
-										task.getPartitionIndex(),
-										task.getOrderingFactor(),
-										task.getDelayByMillis()
-								},
-								new int[]{
-										Types.BIGINT,               //  task id
-										Types.BIGINT,               //  task type
-										Types.VARCHAR,              //  processor type
-										Types.VARCHAR,              //  uniqueness key
-										Types.VARCHAR,              //  concurrency key
-										Types.BIGINT,               //  delay by millis
-										Types.BIGINT,               //  max time to run millis
-										Types.BIGINT,               //  partition index
-										Types.BIGINT,               //  ordering factor
-										Types.BIGINT                //  delay by millis (second time for potential ordering calculation based on creation time when ordering is NULL)
-								}
-						);
-
-						result.add(new ClusterTaskPersistenceResult(task.getId()));
-						logger.debug("cluster task " + task.getId() + " created successfully");
-					} catch (DuplicateKeyException dke) {
-						transactionStatus.setRollbackOnly();
-						result.add(new ClusterTaskPersistenceResult(CTPPersistStatus.UNIQUE_CONSTRAINT_FAILURE));
-						logger.info("rejected " + task + " due to uniqueness violation");
-					} catch (Exception e) {
-						transactionStatus.setRollbackOnly();
-						result.add(new ClusterTaskPersistenceResult(CTPPersistStatus.UNEXPECTED_FAILURE));
-						logger.error("failed to persist " + task, e);
-					}
-					return null;
-				});
-			} else {
-				result.add(new ClusterTaskPersistenceResult(validationStatus));
-				logger.debug("rejected invalid " + originalTask);
+						return null;
+					});
+				} else {
+					result.add(new ClusterTaskPersistenceResult(validationStatus));
+					logger.debug("rejected invalid " + originalTask);
+				}
 			}
 		}
 
@@ -370,29 +382,35 @@ class ClusterTasksDbDataProvider implements ClusterTasksDataProvider {
 	}
 
 	private JdbcTemplate getJdbcTemplate() {
-		JdbcTemplate result;
-		try {
-			result = serviceConfigurer.getJdbcTemplate();
-			if (result == null) {
-				throw new IllegalStateException("hosting application's configurer failed to provide valid JDBC template");
+		if (jdbcTemplate == null) {
+			try {
+				DataSource dataSource = serviceConfigurer.getDataSource();
+				if (dataSource == null) {
+					throw new IllegalStateException("hosting application's configurer failed to provide valid DataSource");
+				} else {
+					jdbcTemplate = new JdbcTemplate(dataSource);
+				}
+			} catch (Exception e) {
+				throw new IllegalStateException("failed to create JdbcTemplate", e);
 			}
-		} catch (Exception e) {
-			throw new IllegalStateException("hosting application's configurer failed to provide valid JDBC template", e);
 		}
-		return result;
+		return jdbcTemplate;
 	}
 
 	private TransactionTemplate getTransactionTemplate() {
-		TransactionTemplate result;
-		try {
-			result = serviceConfigurer.getTransactionalTemplate();
-			if (result == null) {
-				throw new IllegalStateException("hosting application's configurer failed to provide valid Transaction template");
+		if (transactionTemplate == null) {
+			try {
+				DataSource dataSource = serviceConfigurer.getDataSource();
+				if (dataSource == null) {
+					throw new IllegalStateException("hosting application's configurer failed to provide valid DataSource");
+				} else {
+					transactionTemplate = new TransactionTemplate(new DataSourceTransactionManager(dataSource));
+				}
+			} catch (Exception e) {
+				throw new IllegalStateException("failed to create TransactionTemplate", e);
 			}
-		} catch (Exception e) {
-			throw new IllegalStateException("hosting application's configurer failed to provide valid Transaction template", e);
 		}
-		return result;
+		return transactionTemplate;
 	}
 
 	private long resolveBodyTablePartitionIndex() {

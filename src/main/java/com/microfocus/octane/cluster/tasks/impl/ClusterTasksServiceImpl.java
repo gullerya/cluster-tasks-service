@@ -61,8 +61,12 @@ public class ClusterTasksServiceImpl implements ClusterTasksService {
 			dispatcherExecutor.execute(dispatcher);
 			logger.info("tasks dispatcher initialized");
 
-			ensureScheduledTasksInitialized();
-			logger.info("scheduled tasks initialization verified");
+			if (serviceConfigurer.tasksCreationSupported()) {
+				ensureScheduledTasksInitialized();
+				logger.info("scheduled tasks initialization verified");
+			} else {
+				logger.info("current hosting environment is said to NOT support tasks creation, scheduled tasks initialization verification skipped (including GC task)");
+			}
 
 			logger.info("CTS is configured & initialized");
 			return null;

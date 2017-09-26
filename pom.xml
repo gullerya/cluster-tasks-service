@@ -4,172 +4,25 @@
 		 xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
 	<modelVersion>4.0.0</modelVersion>
 
-	<groupId>com.microfocus.octane</groupId>
 	<artifactId>cluster-tasks-service</artifactId>
 	<version>1.0-SNAPSHOT</version>
 
+	<parent>
+		<groupId>com.microfocus.octane</groupId>
+		<artifactId>octane-component-parent</artifactId>
+		<version>1.0.1</version>
+	</parent>
+
 	<properties>
-		<baseNexusURL>http://mydtbld0051.hpeswlab.net:8081/nexus</baseNexusURL>
-		<enable.snapshots>false</enable.snapshots>
-
-		<maven-assembly-plugin.version>2.5.3</maven-assembly-plugin.version>
-		<maven-deploy-plugin.version>2.8.2</maven-deploy-plugin.version>
-		<maven-compiler-plugin.version>2.4</maven-compiler-plugin.version>
-		<maven-jar-plugin.version>3.0.1</maven-jar-plugin.version>
-		<surefire.version>2.19.1-XSDFIX</surefire.version>
-		<surefire.argline>-Xmx512m</surefire.argline>
-		<failsafe.version>2.19.1-XSDFIX</failsafe.version>
-
-		<jdk.version>1.8</jdk.version>
 		<spring.version>4.2.5.RELEASE</spring.version>
-		<log4j.version>1.2.17</log4j.version>
-		<slf4j.version>1.7.2</slf4j.version>
-		<javax.servlet-api.version>3.1.0</javax.servlet-api.version>
-		<junit.version>4.11</junit.version>
-		<git.revision>none</git.revision>
-		<git.url>none</git.url>
 	</properties>
 
-	<repositories>
-		<repository>
-			<id>mqm-public</id>
-			<url>${baseNexusURL}/content/groups/mqm-public</url>
-			<snapshots>
-				<enabled>false</enabled>
-			</snapshots>
-		</repository>
-	</repositories>
-	<pluginRepositories>
-		<pluginRepository>
-			<id>mqm-public</id>
-			<url>${baseNexusURL}/content/groups/mqm-public</url>
-			<snapshots>
-				<enabled>false</enabled>
-			</snapshots>
-		</pluginRepository>
-	</pluginRepositories>
-	<distributionManagement>
-		<repository>
-			<id>mqm-prod</id>
-			<name>mqm-prod</name>
-			<url>${baseNexusURL}/content/repositories/mqm-prod</url>
-		</repository>
-		<snapshotRepository>
-			<id>mqm-latest</id>
-			<name>Latest repository</name>
-			<url>${baseNexusURL}/content/repositories/mqm-latest</url>
-		</snapshotRepository>
-	</distributionManagement>
-
 	<dependencies>
-		<dependency>
-			<artifactId>spring-context</artifactId>
-			<groupId>org.springframework</groupId>
-			<version>${spring.version}</version>
-		</dependency>
 		<dependency>
 			<artifactId>spring-jdbc</artifactId>
 			<groupId>org.springframework</groupId>
 			<version>${spring.version}</version>
 		</dependency>
-		<dependency>
-			<artifactId>slf4j-api</artifactId>
-			<groupId>org.slf4j</groupId>
-			<version>${slf4j.version}</version>
-		</dependency>
 	</dependencies>
-
-	<build>
-		<pluginManagement>
-			<plugins>
-				<plugin>
-					<groupId>org.codehaus.mojo</groupId>
-					<artifactId>versions-maven-plugin</artifactId>
-					<version>2.1</version>
-				</plugin>
-				<plugin>
-					<groupId>org.apache.maven.plugins</groupId>
-					<artifactId>maven-assembly-plugin</artifactId>
-					<version>${maven-assembly-plugin.version}</version>
-				</plugin>
-				<plugin>
-					<groupId>org.apache.maven.plugins</groupId>
-					<artifactId>maven-compiler-plugin</artifactId>
-					<version>${maven-compiler-plugin.version}</version>
-					<configuration>
-						<source>${jdk.version}</source>
-						<target>${jdk.version}</target>
-						<encoding>UTF-8</encoding>
-					</configuration>
-				</plugin>
-				<plugin>
-					<groupId>org.apache.maven.plugins</groupId>
-					<artifactId>maven-deploy-plugin</artifactId>
-					<version>${maven-deploy-plugin.version}</version>
-				</plugin>
-				<plugin>
-					<groupId>org.apache.maven.plugins</groupId>
-					<artifactId>maven-jar-plugin</artifactId>
-					<version>${maven-jar-plugin.version}</version>
-					<configuration>
-						<archive>
-							<addMavenDescriptor>false</addMavenDescriptor>
-							<manifestEntries>
-								<Revision>${git.revision}</Revision>
-								<Git-URL>${git.url}</Git-URL>
-							</manifestEntries>
-						</archive>
-					</configuration>
-				</plugin>
-				<plugin>
-					<groupId>org.apache.maven.plugins</groupId>
-					<artifactId>maven-surefire-plugin</artifactId>
-					<version>${surefire.version}</version>
-					<configuration>
-						<skipTests>true</skipTests>
-						<testFailureIgnore>true</testFailureIgnore>
-						<argLine>${surefire.argline}</argLine>
-					</configuration>
-				</plugin>
-				<plugin>
-					<groupId>org.apache.maven.plugins</groupId>
-					<artifactId>maven-failsafe-plugin</artifactId>
-					<version>${failsafe.version}</version>
-					<configuration>
-						<skipTests>true</skipTests>
-						<argLine>-Xmx1024m</argLine>
-						<dependencies>
-							<dependency>
-								<groupId>org.apache.maven.plugins</groupId>
-								<artifactId>maven-surefire-plugin</artifactId>
-								<version>${surefire.version}</version>
-							</dependency>
-						</dependencies>
-					</configuration>
-				</plugin>
-			</plugins>
-		</pluginManagement>
-		<plugins>
-			<plugin>
-				<artifactId>maven-source-plugin</artifactId>
-				<version>2.2.1</version>
-				<configuration>
-					<excludeResources>true</excludeResources>
-				</configuration>
-				<executions>
-					<execution>
-						<id>attach-sources</id>
-						<goals>
-							<goal>jar</goal>
-						</goals>
-					</execution>
-				</executions>
-			</plugin>
-			<plugin>
-				<groupId>org.apache.maven.plugins</groupId>
-				<artifactId>maven-jar-plugin</artifactId>
-			</plugin>
-		</plugins>
-	</build>
 
 </project>

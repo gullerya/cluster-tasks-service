@@ -1,8 +1,6 @@
 package com.microfocus.octane.cluster.tasks.api;
 
-import org.springframework.jdbc.core.JdbcTemplate;
-import org.springframework.transaction.support.TransactionTemplate;
-
+import javax.sql.DataSource;
 import java.util.concurrent.CompletableFuture;
 
 public interface ClusterTasksServiceConfigurerSPI {
@@ -41,30 +39,39 @@ public interface ClusterTasksServiceConfigurerSPI {
 	Integer getGCIntervalMillis();
 
 	/**
-	 * returns DB type that ClusterTasksService is working with
+	 * returns DB type, that ClusterTasksService's tables resides in
 	 *
 	 * @return db type; MUST NOT be null
 	 */
 	DBType getDbType();
 
 	/**
-	 * returns valid jdbc template
+	 * returns data source to the DB, that the ClusterTasksService's tables reside in
 	 *
-	 * @return jdbc template; MUST NOT be null
+	 * @return data source; MUST NOT be null
 	 */
-	JdbcTemplate getJdbcTemplate();
+	DataSource getDataSource();
 
 	/**
-	 * returns valid transaction template
+	 * this API's purpose is to early react on host environment that is not providing tasks ID (thus not being able to create tasks, working in processing mode only)
+	 * PAY ATTENTION: having this flag as 'false' means that the hosting service will also NOT ATTEMPT TO ADD GC TASK (it will still handle it if the task is already there)
+	 * [YG] this API is deprecated since it is serving the 'obtainAvailableTaskID' case only; both API should be removed in the future
 	 *
-	 * @return transaction template; MUST NOT be null
+	 * @return task creation supported flag
 	 */
-	TransactionTemplate getTransactionalTemplate();
+	@Deprecated
+	default boolean tasksCreationSupported() {
+		return false;
+	}
 
 	/**
 	 * returns valid ID to be used to mark the newly created task with
+	 * [YG] this API is deprecated; striving to manage the tasks' ID generation/provisioning internally
 	 *
 	 * @return task ID
 	 */
-	long obtainAvailableTaskID();
+	@Deprecated
+	default long obtainAvailableTaskID() {
+		throw new IllegalStateException("not implemented flow in this service's context");
+	}
 }
