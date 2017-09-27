@@ -15,6 +15,7 @@
 
 	<properties>
 		<spring.version>4.2.5.RELEASE</spring.version>
+		<flyway.version>4.2.0</flyway.version>
 	</properties>
 
 	<dependencies>
@@ -22,6 +23,11 @@
 			<artifactId>spring-jdbc</artifactId>
 			<groupId>org.springframework</groupId>
 			<version>${spring.version}</version>
+		</dependency>
+		<dependency>
+			<artifactId>flyway-core</artifactId>
+			<groupId>org.flywaydb</groupId>
+			<version>${flyway.version}</version>
 		</dependency>
 	</dependencies>
 

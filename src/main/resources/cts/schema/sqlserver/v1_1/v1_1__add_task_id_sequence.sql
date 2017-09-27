@@ -1,0 +1,12 @@
+DECLARE @maxTaskId BIGINT
+SELECT @maxTaskId = MAX(CTSKM_ID) + 1000
+FROM CLUSTER_TASK_META
+
+DECLARE @dsql NVARCHAR(1000)
+SET @dsql = 'CREATE SEQUENCE CLUSTER_TASK_ID' +
+            ' AS BIGINT' +
+            ' START WITH ' + CONVERT(NVARCHAR, @maxTaskId) +
+            ' INCREMENT BY 1 CACHE 500'
+
+EXEC (@dsql)
+

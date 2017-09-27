@@ -41,7 +41,7 @@ public class ClusterTasksServiceImpl implements ClusterTasksService {
 	private ClusterTasksServiceConfigurerSPI serviceConfigurer;
 
 	@Autowired
-	private void registerClusterTasksServiceConfigurer(ClusterTasksServiceConfigurerSPI serviceConfigurer) {
+	private void registerClusterTasksServiceConfigurer(ClusterTasksServiceConfigurerSPI serviceConfigurer, ClusterTasksServiceSchemaManager schemaManager) {
 		this.serviceConfigurer = serviceConfigurer;
 		logger.info("------------------------------------------------");
 		logger.info("----- Cluster Tasks Service initialization -----");
@@ -60,6 +60,8 @@ public class ClusterTasksServiceImpl implements ClusterTasksService {
 
 			dispatcherExecutor.execute(dispatcher);
 			logger.info("tasks dispatcher initialized");
+
+			schemaManager.executeSchemaMaintenance(serviceConfigurer.getDbType(), serviceConfigurer.getDataSource());
 
 			if (serviceConfigurer.tasksCreationSupported()) {
 				ensureScheduledTasksInitialized();
