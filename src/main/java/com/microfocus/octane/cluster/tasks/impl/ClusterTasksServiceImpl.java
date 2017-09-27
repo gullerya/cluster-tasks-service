@@ -58,19 +58,22 @@ public class ClusterTasksServiceImpl implements ClusterTasksService {
 					throw new IllegalStateException("hosting application failed to provide configuration, ClusterTasksService won't run");
 			}
 
-			dispatcherExecutor.execute(dispatcher);
-			logger.info("tasks dispatcher initialized");
+			if (schemaManager.executeSchemaMaintenance(serviceConfigurer.getDbType(), serviceConfigurer.getDataSource())) {
+				if (serviceConfigurer.tasksCreationSupported()) {
+					ensureScheduledTasksInitialized();
+					logger.info("scheduled tasks initialization verified");
+				} else {
+					logger.info("current hosting environment is said to NOT support tasks creation, scheduled tasks initialization verification skipped (including GC task)");
+				}
 
-			schemaManager.executeSchemaMaintenance(serviceConfigurer.getDbType(), serviceConfigurer.getDataSource());
+				dispatcherExecutor.execute(dispatcher);
+				logger.info("tasks dispatcher initialized");
 
-			if (serviceConfigurer.tasksCreationSupported()) {
-				ensureScheduledTasksInitialized();
-				logger.info("scheduled tasks initialization verified");
+				logger.info("CTS is configured & initialized");
 			} else {
-				logger.info("current hosting environment is said to NOT support tasks creation, scheduled tasks initialization verification skipped (including GC task)");
+				logger.error("CTS initialization failed (failed to execute schema maintenance) and won't run");
 			}
 
-			logger.info("CTS is configured & initialized");
 			return null;
 		});
 	}

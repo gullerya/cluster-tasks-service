@@ -15,25 +15,29 @@ class ClusterTasksServiceSchemaManager {
 	private static final String CTS_SCHEMA_HISTORY_TABLE_NAME = "CTS_SCHEMA_HISTORY";
 	private static final String SQL_MIGRATION_PREFIX = "v";
 
-	void executeSchemaMaintenance(ClusterTasksServiceConfigurerSPI.DBType dbType, DataSource dataSource) {
+	boolean executeSchemaMaintenance(ClusterTasksServiceConfigurerSPI.DBType dbType, DataSource dataSource) {
+		boolean result = true;
 		if (dbType == null) {
-			throw new IllegalArgumentException("DB type MUST NOT be null");
+			logger.error("DB type MUST NOT be null, schema maintenance won't run");
+			result = false;
+		} else if (dataSource == null) {
+			logger.error("DataSource MUST NOT be null, schema maintenance won't run");
+			result = false;
+		} else {
+			try {
+				Flyway flyway = new Flyway();
+				flyway.setDataSource(dataSource);
+				flyway.setTable(CTS_SCHEMA_HISTORY_TABLE_NAME);
+				flyway.setSqlMigrationPrefix(SQL_MIGRATION_PREFIX);
+				flyway.setBaselineOnMigrate(true);
+				flyway.setLocations(getSQLsLocation(dbType));
+				flyway.migrate();
+			} catch (Exception e) {
+				logger.error("DB maintenance failed", e);
+				result = false;
+			}
 		}
-		if (dataSource == null) {
-			throw new IllegalArgumentException("DataSource MUST NOT be null");
-		}
-
-		try {
-			Flyway flyway = new Flyway();
-			flyway.setDataSource(dataSource);
-			flyway.setTable(CTS_SCHEMA_HISTORY_TABLE_NAME);
-			flyway.setSqlMigrationPrefix(SQL_MIGRATION_PREFIX);
-			flyway.setBaselineOnMigrate(true);
-			flyway.setLocations(getSQLsLocation(dbType));
-			flyway.migrate();
-		} catch (Exception e) {
-			logger.error("DB maintenance failed", e);
-		}
+		return result;
 	}
 
 	private String getSQLsLocation(ClusterTasksServiceConfigurerSPI.DBType dbType) {
