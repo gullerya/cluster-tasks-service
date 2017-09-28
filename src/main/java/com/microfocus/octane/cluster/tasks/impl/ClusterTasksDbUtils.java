@@ -30,6 +30,7 @@ final class ClusterTasksDbUtils {
 
 	//  Metadata table
 	private static final String META_TABLE_NAME = "CLUSTER_TASK_META";
+	private static final String CLUSTER_TASK_ID_SEQUENCE = "CLUSTER_TASK_ID";
 	private static final String META_COLUMNS_PREFIX = "CTSKM_";
 
 	private static final String META_ID = META_COLUMNS_PREFIX.concat("ID");
@@ -74,10 +75,12 @@ final class ClusterTasksDbUtils {
 				STATUS);
 		if (DBType.ORACLE == dbType) {
 			return "INSERT INTO " + META_TABLE_NAME + " (" + fields + ") " +
-					"VALUES (?, ?, ?, ?, ?, ?, ?, ?, COALESCE(?, TO_NUMBER(TO_CHAR(SYSTIMESTAMP,'yyyymmddhh24missff3')) + ?), SYSDATE, " + ClusterTaskStatus.PENDING.value + ")";
+					"VALUES (" + CLUSTER_TASK_ID_SEQUENCE + ".NEXTVAL, ?, ?, ?, ?, ?, ?, ?, COALESCE(?, TO_NUMBER(TO_CHAR(SYSTIMESTAMP,'yyyymmddhh24missff3')) + ?), SYSDATE, " + ClusterTaskStatus.PENDING.value + ")";
 		} else if (DBType.MSSQL == dbType) {
-			return "INSERT INTO " + META_TABLE_NAME + " (" + fields + ") " +
-					"VALUES (?, ?, ?, ?, ?, ?, ?, ?, COALESCE(?, CAST(FORMAT(CURRENT_TIMESTAMP,'yyyyMMddHHmmssfff') AS BIGINT) + ?), GETDATE(), " + ClusterTaskStatus.PENDING.value + ")";
+			return "DECLARE @taskId BIGINT = NEXT VALUE FOR " + CLUSTER_TASK_ID_SEQUENCE + "; " +
+					"INSERT INTO " + META_TABLE_NAME + " (" + fields + ") " +
+					"OUTPUT INSERTED." + META_ID + " " +
+					"VALUES (@taskId, ?, ?, ?, ?, ?, ?, ?, COALESCE(?, CAST(FORMAT(CURRENT_TIMESTAMP,'yyyyMMddHHmmssfff') AS BIGINT) + ?), GETDATE(), " + ClusterTaskStatus.PENDING.value + ")";
 		} else {
 			throw new CtsDBTypeNotSupported("DB type " + dbType + " is not supported");
 		}

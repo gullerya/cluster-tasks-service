@@ -16,9 +16,13 @@ import org.springframework.dao.DuplicateKeyException;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.jdbc.core.support.SqlLobValue;
 import org.springframework.jdbc.datasource.DataSourceTransactionManager;
+import org.springframework.jdbc.support.GeneratedKeyHolder;
+import org.springframework.jdbc.support.KeyHolder;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.support.TransactionTemplate;
 
+import java.sql.PreparedStatement;
+import java.sql.Statement;
 import java.sql.Types;
 import java.time.Duration;
 import java.time.ZoneOffset;
@@ -75,93 +79,97 @@ class ClusterTasksDbDataProvider implements ClusterTasksDataProvider {
 
 		List<ClusterTaskPersistenceResult> result = new ArrayList<>(tasks.length);
 
-		if (!serviceConfigurer.tasksCreationSupported()) {
-			logger.warn("tasks creation is not supported in the current hosting environment");
-			for (int i = 0; i < tasks.length; i++) {
-				result.set(i, new ClusterTaskPersistenceResult(CTPPersistStatus.TASKS_CREATION_NOT_SUPPORTED));
-			}
-		} else {
-			for (ClusterTask originalTask : tasks) {
-				CTPPersistStatus validationStatus = validateAndNormalizeTask(originalTask);
+		for (ClusterTask originalTask : tasks) {
+			CTPPersistStatus validationStatus = validateAndNormalizeTask(originalTask);
 
-				if (validationStatus == CTPPersistStatus.SUCCESS) {
-					getTransactionTemplate().execute(transactionStatus -> {
-						ClusterTask task = null;
-						try {
-							JdbcTemplate jdbcTemplate = getJdbcTemplate();
-							long taskId = serviceConfigurer.obtainAvailableTaskID();
+			if (validationStatus == CTPPersistStatus.SUCCESS) {
+				getTransactionTemplate().execute(transactionStatus -> {
+					ClusterTask task = new ClusterTask(originalTask);
+					try {
+						JdbcTemplate jdbcTemplate = getJdbcTemplate();
 
-							//  pre-process values
-							task = new ClusterTask(originalTask);
-							task.setProcessorType(processorType);
-							if (task.getTaskType() == null) {
-								task.setTaskType(ClusterTaskType.REGULAR);
-							}
-
-							//  insert body
-							if (task.getBody() != null) {
-								task.setPartitionIndex(resolveBodyTablePartitionIndex());
-								String insertBodySql = ClusterTasksDbUtils.buildInsertTaskBodySQL(task.getPartitionIndex());
-								jdbcTemplate.update(
-										insertBodySql,
-										new Object[]{
-												taskId,
-												new SqlLobValue(task.getBody())},
-										new int[]{
-												Types.BIGINT,
-												Types.CLOB});
-								logger.debug("task's " + task + " body pushed to " + task.getPartitionIndex() + " 'partition' table");
-							} else {
-								logger.debug("task " + task + " contains no body");
-							}
-
-							//  insert meta
-							String insertMetaSql = ClusterTasksDbUtils.buildInsertTaskMetaSQL(serviceConfigurer.getDbType());
-							jdbcTemplate.update(
-									insertMetaSql,
-									new Object[]{
-											taskId,
-											task.getTaskType().value,
-											task.getProcessorType(),
-											task.getUniquenessKey(),
-											task.getConcurrencyKey(),
-											task.getDelayByMillis(),
-											task.getMaxTimeToRunMillis(),
-											task.getPartitionIndex(),
-											task.getOrderingFactor(),
-											task.getDelayByMillis()
-									},
-									new int[]{
-											Types.BIGINT,               //  task id
-											Types.BIGINT,               //  task type
-											Types.VARCHAR,              //  processor type
-											Types.VARCHAR,              //  uniqueness key
-											Types.VARCHAR,              //  concurrency key
-											Types.BIGINT,               //  delay by millis
-											Types.BIGINT,               //  max time to run millis
-											Types.BIGINT,               //  partition index
-											Types.BIGINT,               //  ordering factor
-											Types.BIGINT                //  delay by millis (second time for potential ordering calculation based on creation time when ordering is NULL)
-									}
-							);
-
-							result.add(new ClusterTaskPersistenceResult(task.getId()));
-							logger.debug("cluster task " + task.getId() + " created successfully");
-						} catch (DuplicateKeyException dke) {
-							transactionStatus.setRollbackOnly();
-							result.add(new ClusterTaskPersistenceResult(CTPPersistStatus.UNIQUE_CONSTRAINT_FAILURE));
-							logger.info("rejected " + task + " due to uniqueness violation");
-						} catch (Exception e) {
-							transactionStatus.setRollbackOnly();
-							result.add(new ClusterTaskPersistenceResult(CTPPersistStatus.UNEXPECTED_FAILURE));
-							logger.error("failed to persist " + task, e);
+						//  pre-process values
+						task.setProcessorType(processorType);
+						if (task.getTaskType() == null) {
+							task.setTaskType(ClusterTaskType.REGULAR);
 						}
-						return null;
-					});
-				} else {
-					result.add(new ClusterTaskPersistenceResult(validationStatus));
-					logger.debug("rejected invalid " + originalTask);
-				}
+
+						//  insert meta
+						String insertMetaSql = ClusterTasksDbUtils.buildInsertTaskMetaSQL(serviceConfigurer.getDbType());
+						KeyHolder taskIdHolder = new GeneratedKeyHolder();
+						jdbcTemplate.update(connection -> {
+							PreparedStatement ps = connection.prepareStatement(insertMetaSql, Statement.RETURN_GENERATED_KEYS);
+							ps.setLong(0, task.getTaskType().value);
+							ps.setString(1, task.getProcessorType());
+							ps.setString(2, task.getUniquenessKey());
+							ps.setString(3, task.getConcurrencyKey());
+							ps.setLong(4, task.getDelayByMillis());
+							ps.setLong(5, task.getMaxTimeToRunMillis());
+							ps.setLong(6, task.getPartitionIndex());
+							ps.setLong(7, task.getOrderingFactor());
+							ps.setLong(8, task.getDelayByMillis());
+							return ps;
+						}, taskIdHolder);
+
+//						jdbcTemplate.update(
+//								insertMetaSql,
+//								new Object[]{
+//										task.getTaskType().value,
+//										task.getProcessorType(),
+//										task.getUniquenessKey(),
+//										task.getConcurrencyKey(),
+//										task.getDelayByMillis(),
+//										task.getMaxTimeToRunMillis(),
+//										task.getPartitionIndex(),
+//										task.getOrderingFactor(),
+//										task.getDelayByMillis()
+//								},
+//								new int[]{
+//										Types.BIGINT,               //  task type
+//										Types.VARCHAR,              //  processor type
+//										Types.VARCHAR,              //  uniqueness key
+//										Types.VARCHAR,              //  concurrency key
+//										Types.BIGINT,               //  delay by millis
+//										Types.BIGINT,               //  max time to run millis
+//										Types.BIGINT,               //  partition index
+//										Types.BIGINT,               //  ordering factor
+//										Types.BIGINT                //  delay by millis (second time for potential ordering calculation based on creation time when ordering is NULL)
+//								}
+//						);
+
+						//  insert body
+						if (task.getBody() != null) {
+							task.setPartitionIndex(resolveBodyTablePartitionIndex());
+							String insertBodySql = ClusterTasksDbUtils.buildInsertTaskBodySQL(task.getPartitionIndex());
+							jdbcTemplate.update(
+									insertBodySql,
+									new Object[]{
+											taskIdHolder.getKey(),
+											new SqlLobValue(task.getBody())},
+									new int[]{
+											Types.BIGINT,
+											Types.CLOB});
+							logger.debug("task's " + task + " body pushed to " + task.getPartitionIndex() + " 'partition' table");
+						} else {
+							logger.debug("task " + task + " contains no body");
+						}
+
+						result.add(new ClusterTaskPersistenceResult(task.getId()));
+						logger.debug("cluster task " + task.getId() + " created successfully");
+					} catch (DuplicateKeyException dke) {
+						transactionStatus.setRollbackOnly();
+						result.add(new ClusterTaskPersistenceResult(CTPPersistStatus.UNIQUE_CONSTRAINT_FAILURE));
+						logger.info("rejected " + task + " due to uniqueness violation");
+					} catch (Exception e) {
+						transactionStatus.setRollbackOnly();
+						result.add(new ClusterTaskPersistenceResult(CTPPersistStatus.UNEXPECTED_FAILURE));
+						logger.error("failed to persist " + task, e);
+					}
+					return null;
+				});
+			} else {
+				result.add(new ClusterTaskPersistenceResult(validationStatus));
+				logger.debug("rejected invalid " + originalTask);
 			}
 		}
 

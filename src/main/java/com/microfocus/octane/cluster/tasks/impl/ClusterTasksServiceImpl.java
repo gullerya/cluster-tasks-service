@@ -59,12 +59,8 @@ public class ClusterTasksServiceImpl implements ClusterTasksService {
 			}
 
 			if (schemaManager.executeSchemaMaintenance(serviceConfigurer.getDbType(), serviceConfigurer.getDataSource())) {
-				if (serviceConfigurer.tasksCreationSupported()) {
-					ensureScheduledTasksInitialized();
-					logger.info("scheduled tasks initialization verified");
-				} else {
-					logger.info("current hosting environment is said to NOT support tasks creation, scheduled tasks initialization verification skipped (including GC task)");
-				}
+				ensureScheduledTasksInitialized();
+				logger.info("scheduled tasks initialization verified");
 
 				dispatcherExecutor.execute(dispatcher);
 				logger.info("tasks dispatcher initialized");

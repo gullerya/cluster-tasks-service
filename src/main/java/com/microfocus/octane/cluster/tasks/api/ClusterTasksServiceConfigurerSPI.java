@@ -51,27 +51,4 @@ public interface ClusterTasksServiceConfigurerSPI {
 	 * @return data source; MUST NOT be null
 	 */
 	DataSource getDataSource();
-
-	/**
-	 * this API's purpose is to early react on host environment that is not providing tasks ID (thus not being able to create tasks, working in processing mode only)
-	 * PAY ATTENTION: having this flag as 'false' means that the hosting service will also NOT ATTEMPT TO ADD GC TASK (it will still handle it if the task is already there)
-	 * [YG] this API is deprecated since it is serving the 'obtainAvailableTaskID' case only; both API should be removed in the future
-	 *
-	 * @return task creation supported flag
-	 */
-	@Deprecated
-	default boolean tasksCreationSupported() {
-		return false;
-	}
-
-	/**
-	 * returns valid ID to be used to mark the newly created task with
-	 * [YG] this API is deprecated; striving to manage the tasks' ID generation/provisioning internally
-	 *
-	 * @return task ID
-	 */
-	@Deprecated
-	default long obtainAvailableTaskID() {
-		throw new IllegalStateException("not implemented flow in this service's context");
-	}
 }
