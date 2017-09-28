@@ -60,7 +60,8 @@ final class ClusterTasksDbUtils {
 	//
 	//  INSERT TASK
 	//
-	static String buildInsertTaskMetaSQL(DBType dbType) {
+	static String buildInsertTaskSQL(DBType dbType, Long partitionIndex) {
+		String result;
 		String fields = String.join(",",
 				META_ID,
 				TASK_TYPE,
@@ -74,23 +75,20 @@ final class ClusterTasksDbUtils {
 				CREATED,
 				STATUS);
 		if (DBType.ORACLE == dbType) {
-			return "INSERT INTO " + META_TABLE_NAME + " (" + fields + ") " +
+			result = "INSERT INTO " + META_TABLE_NAME + " (" + fields + ") " +
 					"VALUES (" + CLUSTER_TASK_ID_SEQUENCE + ".NEXTVAL, ?, ?, ?, ?, ?, ?, ?, COALESCE(?, TO_NUMBER(TO_CHAR(SYSTIMESTAMP,'yyyymmddhh24missff3')) + ?), SYSDATE, " + ClusterTaskStatus.PENDING.value + ")";
 		} else if (DBType.MSSQL == dbType) {
-			return "DECLARE @taskId BIGINT = NEXT VALUE FOR " + CLUSTER_TASK_ID_SEQUENCE + "; " +
+			result = "DECLARE @taskId BIGINT = NEXT VALUE FOR " + CLUSTER_TASK_ID_SEQUENCE + "; " +
 					"INSERT INTO " + META_TABLE_NAME + " (" + fields + ") " +
-					"OUTPUT INSERTED." + META_ID + " " +
-					"VALUES (@taskId, ?, ?, ?, ?, ?, ?, ?, COALESCE(?, CAST(FORMAT(CURRENT_TIMESTAMP,'yyyyMMddHHmmssfff') AS BIGINT) + ?), GETDATE(), " + ClusterTaskStatus.PENDING.value + ")";
+					"VALUES (@taskId, ?, ?, ?, ?, ?, ?, ?, COALESCE(?, CAST(FORMAT(CURRENT_TIMESTAMP,'yyyyMMddHHmmssfff') AS BIGINT) + ?), GETDATE(), " + ClusterTaskStatus.PENDING.value + "); ";
+			if (partitionIndex != null) {
+				result += "INSERT INTO " + BODY_TABLE_NAME + partitionIndex + " (" + String.join(",", BODY_ID, BODY) + ") VALUES (@taskId, ?); ";
+			}
+			result += "SELECT @taskId;";
 		} else {
 			throw new CtsDBTypeNotSupported("DB type " + dbType + " is not supported");
 		}
-	}
-
-	static String buildInsertTaskBodySQL(Long partitionIndex) {
-		if (partitionIndex == null) {
-			throw new IllegalArgumentException("partition index MUST NOT be null");
-		}
-		return "INSERT INTO " + BODY_TABLE_NAME + partitionIndex + " (" + String.join(",", BODY_ID, BODY) + ") VALUES (?, ?)";
+		return result;
 	}
 
 	//
@@ -251,6 +249,24 @@ final class ClusterTasksDbUtils {
 	//
 	//  READERS - DB responses processors
 	//
+	static Long extractTaskId(ResultSet resultSet) {
+		Long newTaskId = null;
+		try {
+			if (resultSet.next()) {
+				try {
+					newTaskId = resultSet.getLong(1);
+				} catch (SQLException sqle) {
+					logger.warn("failed to retrieve newly inserted task's ID", sqle);
+				}
+			} else {
+				logger.warn("failed to retrieve newly inserted task's ID");
+			}
+		} catch (SQLException sqle) {
+			logger.warn("failed to retrieve newly inserted task's ID", sqle);
+		}
+		return newTaskId;
+	}
+
 	static List<ClusterTask> tasksMetadataReader(ResultSet resultSet) {
 		List<ClusterTask> result = new LinkedList<>();
 		ClusterTask tmpTask;

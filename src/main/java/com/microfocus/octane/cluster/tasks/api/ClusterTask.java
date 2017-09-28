@@ -125,7 +125,7 @@ public class ClusterTask {
 	public String toString() {
 		return "ClusterTask {" +
 				"id: " + id +
-				", taskType:  " + taskType +
+				", taskType: " + taskType +
 				", processorType: " + processorType +
 				", uniquenessKey: " + uniquenessKey +
 				", concurrencyKey: " + concurrencyKey +

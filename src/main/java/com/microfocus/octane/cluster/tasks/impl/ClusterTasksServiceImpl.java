@@ -153,7 +153,7 @@ public class ClusterTasksServiceImpl implements ClusterTasksService {
 						logger.info("failed to create initial scheduled task for " + type + " with unique constraint violation, assuming that task was already created, will not reattempt");
 						break;
 					} else {
-						logger.error("failed to create scheduled task for " + type + " with error" + enqueueResult.status + "; will reattempt for more " + (maxEnqueueAttempts - enqueueAttemptsCount) + " times");
+						logger.error("failed to create scheduled task for " + type + " with error " + enqueueResult.status + "; will reattempt for more " + (maxEnqueueAttempts - enqueueAttemptsCount) + " times");
 						try {
 							Thread.sleep(3000);
 						} catch (InterruptedException ie) {

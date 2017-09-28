@@ -14,15 +14,12 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.dao.DataAccessException;
 import org.springframework.dao.DuplicateKeyException;
 import org.springframework.jdbc.core.JdbcTemplate;
-import org.springframework.jdbc.core.support.SqlLobValue;
 import org.springframework.jdbc.datasource.DataSourceTransactionManager;
-import org.springframework.jdbc.support.GeneratedKeyHolder;
-import org.springframework.jdbc.support.KeyHolder;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.support.TransactionTemplate;
 
+import java.io.StringReader;
 import java.sql.PreparedStatement;
-import java.sql.Statement;
 import java.sql.Types;
 import java.time.Duration;
 import java.time.ZoneOffset;
@@ -93,69 +90,39 @@ class ClusterTasksDbDataProvider implements ClusterTasksDataProvider {
 						if (task.getTaskType() == null) {
 							task.setTaskType(ClusterTaskType.REGULAR);
 						}
-
-						//  insert meta
-						String insertMetaSql = ClusterTasksDbUtils.buildInsertTaskMetaSQL(serviceConfigurer.getDbType());
-						KeyHolder taskIdHolder = new GeneratedKeyHolder();
-						jdbcTemplate.update(connection -> {
-							PreparedStatement ps = connection.prepareStatement(insertMetaSql, Statement.RETURN_GENERATED_KEYS);
-							ps.setLong(0, task.getTaskType().value);
-							ps.setString(1, task.getProcessorType());
-							ps.setString(2, task.getUniquenessKey());
-							ps.setString(3, task.getConcurrencyKey());
-							ps.setLong(4, task.getDelayByMillis());
-							ps.setLong(5, task.getMaxTimeToRunMillis());
-							ps.setLong(6, task.getPartitionIndex());
-							ps.setLong(7, task.getOrderingFactor());
-							ps.setLong(8, task.getDelayByMillis());
-							return ps;
-						}, taskIdHolder);
-
-//						jdbcTemplate.update(
-//								insertMetaSql,
-//								new Object[]{
-//										task.getTaskType().value,
-//										task.getProcessorType(),
-//										task.getUniquenessKey(),
-//										task.getConcurrencyKey(),
-//										task.getDelayByMillis(),
-//										task.getMaxTimeToRunMillis(),
-//										task.getPartitionIndex(),
-//										task.getOrderingFactor(),
-//										task.getDelayByMillis()
-//								},
-//								new int[]{
-//										Types.BIGINT,               //  task type
-//										Types.VARCHAR,              //  processor type
-//										Types.VARCHAR,              //  uniqueness key
-//										Types.VARCHAR,              //  concurrency key
-//										Types.BIGINT,               //  delay by millis
-//										Types.BIGINT,               //  max time to run millis
-//										Types.BIGINT,               //  partition index
-//										Types.BIGINT,               //  ordering factor
-//										Types.BIGINT                //  delay by millis (second time for potential ordering calculation based on creation time when ordering is NULL)
-//								}
-//						);
-
-						//  insert body
 						if (task.getBody() != null) {
 							task.setPartitionIndex(resolveBodyTablePartitionIndex());
-							String insertBodySql = ClusterTasksDbUtils.buildInsertTaskBodySQL(task.getPartitionIndex());
-							jdbcTemplate.update(
-									insertBodySql,
-									new Object[]{
-											taskIdHolder.getKey(),
-											new SqlLobValue(task.getBody())},
-									new int[]{
-											Types.BIGINT,
-											Types.CLOB});
-							logger.debug("task's " + task + " body pushed to " + task.getPartitionIndex() + " 'partition' table");
-						} else {
-							logger.debug("task " + task + " contains no body");
 						}
 
-						result.add(new ClusterTaskPersistenceResult(task.getId()));
-						logger.debug("cluster task " + task.getId() + " created successfully");
+						//  insert task
+						String insertTaskSql = ClusterTasksDbUtils.buildInsertTaskSQL(serviceConfigurer.getDbType(), task.getPartitionIndex());
+						Long taskId = jdbcTemplate.query(connection -> {
+							PreparedStatement ps = connection.prepareStatement(insertTaskSql);
+							ps.setLong(1, task.getTaskType().value);
+							ps.setString(2, task.getProcessorType());
+							ps.setString(3, task.getUniquenessKey());
+							ps.setString(4, task.getConcurrencyKey());
+							ps.setLong(5, task.getDelayByMillis());
+							ps.setLong(6, task.getMaxTimeToRunMillis());
+							if (task.getPartitionIndex() != null) {
+								ps.setLong(7, task.getPartitionIndex());
+							} else {
+								ps.setNull(7, Types.BIGINT);
+							}
+							if (task.getOrderingFactor() != null) {
+								ps.setLong(8, task.getOrderingFactor());
+							} else {
+								ps.setNull(8, Types.BIGINT);
+							}
+							ps.setLong(9, task.getDelayByMillis());
+							if (task.getPartitionIndex() != null) {
+								ps.setClob(10, new StringReader(task.getBody()));
+							}
+							return ps;
+						}, ClusterTasksDbUtils::extractTaskId);
+
+						result.add(new ClusterTaskPersistenceResult(taskId));
+						logger.debug("cluster task " + taskId + " created successfully");
 					} catch (DuplicateKeyException dke) {
 						transactionStatus.setRollbackOnly();
 						result.add(new ClusterTaskPersistenceResult(CTPPersistStatus.UNIQUE_CONSTRAINT_FAILURE));
