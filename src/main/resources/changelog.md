@@ -1,7 +1,7 @@
 ###Change Log
 
 #####1.0.7
-- adding FlyWay as DB versioning tool
+- adding FlyWay as the DB management/versioning tool
 
 #####1.0.6
 - changed SPI to provide DataSource instead of JdbcTemplate/TransactionTemplate
