@@ -7,16 +7,9 @@ package com.microfocus.octane.cluster.tasks.api;
  */
 
 public final class ClusterTaskPersistenceResult {
-	public final Long id;
 	public final CTPPersistStatus status;
 
-	public ClusterTaskPersistenceResult(Long id) {
-		this.id = id;
-		this.status = CTPPersistStatus.SUCCESS;
-	}
-
 	public ClusterTaskPersistenceResult(CTPPersistStatus status) {
-		this.id = null;
 		this.status = status;
 	}
 }

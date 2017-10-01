@@ -13,19 +13,17 @@ import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.dao.DataAccessException;
 import org.springframework.dao.DuplicateKeyException;
-import org.springframework.jdbc.core.CallableStatementCallback;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.jdbc.datasource.DataSourceTransactionManager;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.support.TransactionTemplate;
 
-import java.io.StringReader;
-import java.sql.CallableStatement;
 import java.sql.Types;
 import java.time.Duration;
 import java.time.ZoneOffset;
 import java.time.ZonedDateTime;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
 import java.util.LinkedList;
@@ -87,6 +85,7 @@ class ClusterTasksDbDataProvider implements ClusterTasksDataProvider {
 					ClusterTask task = new ClusterTask(originalTask);
 					try {
 						JdbcTemplate jdbcTemplate = getJdbcTemplate();
+						boolean hasBody = false;
 
 						//  pre-process values
 						task.setProcessorType(processorType);
@@ -95,71 +94,44 @@ class ClusterTasksDbDataProvider implements ClusterTasksDataProvider {
 						}
 						if (task.getBody() != null) {
 							task.setPartitionIndex(resolveBodyTablePartitionIndex());
+							hasBody = true;
 						}
 
 						//  insert task
 						String insertTaskSql = ClusterTasksDbUtils.buildInsertTaskSQL(serviceConfigurer.getDbType(), task.getPartitionIndex());
-						Map<String, Integer> outParamsIndexes = new LinkedHashMap<>();
-						Long taskId = jdbcTemplate.execute(connection -> {
-							CallableStatement cs = connection.prepareCall(insertTaskSql);
-							int paramIndex = 1;
-							cs.setLong(paramIndex++, task.getTaskType().value);
-							cs.setString(paramIndex++, task.getProcessorType());
-							cs.setString(paramIndex++, task.getUniquenessKey());
-							cs.setString(paramIndex++, task.getConcurrencyKey());
-							cs.setLong(paramIndex++, task.getDelayByMillis());
-							cs.setLong(paramIndex++, task.getMaxTimeToRunMillis());
-							if (task.getPartitionIndex() != null) {
-								cs.setLong(paramIndex++, task.getPartitionIndex());
-							} else {
-								cs.setNull(paramIndex++, BIGINT);
-							}
-							if (task.getOrderingFactor() != null) {
-								cs.setLong(paramIndex++, task.getOrderingFactor());
-							} else {
-								cs.setNull(paramIndex++, BIGINT);
-							}
-							cs.setLong(paramIndex++, task.getDelayByMillis());
-							outParamsIndexes.put("taskId", paramIndex);
-							cs.registerOutParameter(paramIndex++, BIGINT);
-							if (task.getPartitionIndex() != null) {
-								cs.setClob(paramIndex, new StringReader(task.getBody()));
-							}
-							return cs;
-						}, (CallableStatementCallback<Long>) cs -> {
-							cs.execute();
-							return cs.getLong(outParamsIndexes.get("taskId"));
-						});
+						Object[] paramValues = new Object[]{
+								task.getTaskType().value,
+								task.getProcessorType(),
+								task.getUniquenessKey(),
+								task.getConcurrencyKey(),
+								task.getDelayByMillis(),
+								task.getMaxTimeToRunMillis(),
+								task.getPartitionIndex(),
+								task.getOrderingFactor(),
+								task.getDelayByMillis(),
+								task.getBody()
+						};
+						int[] paramTypes = new int[]{
+								Types.BIGINT,               //  task type
+								Types.VARCHAR,              //  processor type
+								Types.VARCHAR,              //  uniqueness key
+								Types.VARCHAR,              //  concurrency key
+								Types.BIGINT,               //  delay by millis
+								Types.BIGINT,               //  max time to run millis
+								Types.BIGINT,               //  partition index
+								Types.BIGINT,               //  ordering factor
+								Types.BIGINT,               //  delay by millis (second time for potential ordering calculation based on creation time when ordering is NULL)
+								Types.CLOB                  //  task body -  will be used only if actually has body
+						};
 
+						jdbcTemplate.update(
+								insertTaskSql,
+								hasBody ? paramValues : Arrays.copyOfRange(paramValues, 0, paramValues.length - 1),
+								hasBody ? paramTypes : Arrays.copyOfRange(paramTypes, 0, paramTypes.length - 1)
+						);
 
-//						String insertTaskSql = ClusterTasksDbUtils.buildInsertTaskSQL(serviceConfigurer.getDbType(), task.getPartitionIndex());
-//						Long taskId = jdbcTemplate.query(connection -> {
-//							PreparedStatement ps = connection.prepareStatement(insertTaskSql);
-//							ps.setLong(1, task.getTaskType().value);
-//							ps.setString(2, task.getProcessorType());
-//							ps.setString(3, task.getUniquenessKey());
-//							ps.setString(4, task.getConcurrencyKey());
-//							ps.setLong(5, task.getDelayByMillis());
-//							ps.setLong(6, task.getMaxTimeToRunMillis());
-//							if (task.getPartitionIndex() != null) {
-//								ps.setLong(7, task.getPartitionIndex());
-//							} else {
-//								ps.setNull(7, Types.BIGINT);
-//							}
-//							if (task.getOrderingFactor() != null) {
-//								ps.setLong(8, task.getOrderingFactor());
-//							} else {
-//								ps.setNull(8, Types.BIGINT);
-//							}
-//							ps.setLong(9, task.getDelayByMillis());
-//							if (task.getPartitionIndex() != null) {
-//								ps.setClob(10, new StringReader(task.getBody()));
-//							}
-//							return ps;
-//						}, ClusterTasksDbUtils::extractTaskId);
-
-						result.add(new ClusterTaskPersistenceResult(taskId));
-						logger.debug("cluster task " + taskId + " created successfully");
+						result.add(new ClusterTaskPersistenceResult(CTPPersistStatus.SUCCESS));
+						logger.debug("successfully created " + task);
 					} catch (DuplicateKeyException dke) {
 						transactionStatus.setRollbackOnly();
 						result.add(new ClusterTaskPersistenceResult(CTPPersistStatus.UNIQUE_CONSTRAINT_FAILURE));

@@ -75,12 +75,10 @@ final class ClusterTasksDbUtils {
 				CREATED,
 				STATUS);
 		if (DBType.ORACLE == dbType) {
-			result = "DECLARE taskId NUMBER(19); " +
+			result = "DECLARE taskId NUMBER(19) := " + CLUSTER_TASK_ID_SEQUENCE + ".NEXTVAL; " +
 					"BEGIN " +
-					"SELECT " + CLUSTER_TASK_ID_SEQUENCE + ".NEXTVAL INTO taskId FROM DUAL; " +
 					"INSERT INTO " + META_TABLE_NAME + " (" + fields + ") " +
-					"VALUES (taskId, ?, ?, ?, ?, ?, ?, ?, COALESCE(?, TO_NUMBER(TO_CHAR(SYSTIMESTAMP,'yyyymmddhh24missff3')) + ?), SYSDATE, " + ClusterTaskStatus.PENDING.value + ") " +
-					"RETURNING " + META_ID + " INTO ?; ";
+					"VALUES (taskId, ?, ?, ?, ?, ?, ?, ?, COALESCE(?, TO_NUMBER(TO_CHAR(SYSTIMESTAMP,'yyyymmddhh24missff3')) + ?), SYSDATE, " + ClusterTaskStatus.PENDING.value + "); ";
 			if (partitionIndex != null) {
 				result += "INSERT INTO " + BODY_TABLE_NAME + partitionIndex + " (" + String.join(",", BODY_ID, BODY) + ") VALUES (taskId, ?); ";
 			}
@@ -92,7 +90,6 @@ final class ClusterTasksDbUtils {
 			if (partitionIndex != null) {
 				result += "INSERT INTO " + BODY_TABLE_NAME + partitionIndex + " (" + String.join(",", BODY_ID, BODY) + ") VALUES (@taskId, ?); ";
 			}
-			result += "SELECT @taskId;";
 		} else {
 			throw new CtsDBTypeNotSupported("DB type " + dbType + " is not supported");
 		}
@@ -257,24 +254,6 @@ final class ClusterTasksDbUtils {
 	//
 	//  READERS - DB responses processors
 	//
-	static Long extractTaskId(ResultSet resultSet) {
-		Long newTaskId = null;
-		try {
-			if (resultSet.next()) {
-				try {
-					newTaskId = resultSet.getLong(1);
-				} catch (SQLException sqle) {
-					logger.warn("failed to retrieve newly inserted task's ID", sqle);
-				}
-			} else {
-				logger.warn("failed to retrieve newly inserted task's ID");
-			}
-		} catch (SQLException sqle) {
-			logger.warn("failed to retrieve newly inserted task's ID", sqle);
-		}
-		return newTaskId;
-	}
-
 	static List<ClusterTask> tasksMetadataReader(ResultSet resultSet) {
 		List<ClusterTask> result = new LinkedList<>();
 		ClusterTask tmpTask;
