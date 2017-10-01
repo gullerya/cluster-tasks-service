@@ -24,16 +24,22 @@ class ClusterTasksServiceSchemaManager {
 			logger.error("DataSource MUST NOT be null, schema maintenance won't run");
 			result = false;
 		} else {
+			Flyway flyway = new Flyway();
 			try {
-				Flyway flyway = new Flyway();
 				flyway.setDataSource(dataSource);
 				flyway.setTable(CTS_SCHEMA_HISTORY_TABLE_NAME);
 				flyway.setSqlMigrationPrefix(SQL_MIGRATION_PREFIX);
 				flyway.setBaselineOnMigrate(true);
 				flyway.setLocations(getSQLsLocation(dbType));
 				flyway.migrate();
-			} catch (Exception e) {
-				logger.error("DB maintenance failed", e);
+			} catch (Exception me) {
+				logger.error("DB maintenance failed, attempting repair", me);
+				try {
+					flyway.repair();
+					logger.error("DB repair after migration failure has SUCCEED", me);
+				} catch (Exception re) {
+					logger.error("DB repair after migration failure has FAILED", re);
+				}
 				result = false;
 			}
 		}

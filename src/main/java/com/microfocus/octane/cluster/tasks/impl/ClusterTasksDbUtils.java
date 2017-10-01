@@ -75,8 +75,16 @@ final class ClusterTasksDbUtils {
 				CREATED,
 				STATUS);
 		if (DBType.ORACLE == dbType) {
-			result = "INSERT INTO " + META_TABLE_NAME + " (" + fields + ") " +
-					"VALUES (" + CLUSTER_TASK_ID_SEQUENCE + ".NEXTVAL, ?, ?, ?, ?, ?, ?, ?, COALESCE(?, TO_NUMBER(TO_CHAR(SYSTIMESTAMP,'yyyymmddhh24missff3')) + ?), SYSDATE, " + ClusterTaskStatus.PENDING.value + ")";
+			result = "DECLARE taskId NUMBER(19); " +
+					"BEGIN " +
+					"SELECT " + CLUSTER_TASK_ID_SEQUENCE + ".NEXTVAL INTO taskId FROM DUAL; " +
+					"INSERT INTO " + META_TABLE_NAME + " (" + fields + ") " +
+					"VALUES (taskId, ?, ?, ?, ?, ?, ?, ?, COALESCE(?, TO_NUMBER(TO_CHAR(SYSTIMESTAMP,'yyyymmddhh24missff3')) + ?), SYSDATE, " + ClusterTaskStatus.PENDING.value + "); ";
+			if (partitionIndex != null) {
+				result += "INSERT INTO " + BODY_TABLE_NAME + partitionIndex + " (" + String.join(",", BODY_ID, BODY) + ") VALUES (@taskId, ?); ";
+			}
+			result += "END; " +
+					"SELECT taskId";
 		} else if (DBType.MSSQL == dbType) {
 			result = "DECLARE @taskId BIGINT = NEXT VALUE FOR " + CLUSTER_TASK_ID_SEQUENCE + "; " +
 					"INSERT INTO " + META_TABLE_NAME + " (" + fields + ") " +
