@@ -79,12 +79,12 @@ final class ClusterTasksDbUtils {
 					"BEGIN " +
 					"SELECT " + CLUSTER_TASK_ID_SEQUENCE + ".NEXTVAL INTO taskId FROM DUAL; " +
 					"INSERT INTO " + META_TABLE_NAME + " (" + fields + ") " +
-					"VALUES (taskId, ?, ?, ?, ?, ?, ?, ?, COALESCE(?, TO_NUMBER(TO_CHAR(SYSTIMESTAMP,'yyyymmddhh24missff3')) + ?), SYSDATE, " + ClusterTaskStatus.PENDING.value + "); ";
+					"VALUES (taskId, ?, ?, ?, ?, ?, ?, ?, COALESCE(?, TO_NUMBER(TO_CHAR(SYSTIMESTAMP,'yyyymmddhh24missff3')) + ?), SYSDATE, " + ClusterTaskStatus.PENDING.value + ") " +
+					"RETURNING " + META_ID + " INTO ?; ";
 			if (partitionIndex != null) {
-				result += "INSERT INTO " + BODY_TABLE_NAME + partitionIndex + " (" + String.join(",", BODY_ID, BODY) + ") VALUES (@taskId, ?); ";
+				result += "INSERT INTO " + BODY_TABLE_NAME + partitionIndex + " (" + String.join(",", BODY_ID, BODY) + ") VALUES (taskId, ?); ";
 			}
-			result += "END; " +
-					"SELECT taskId";
+			result += "END;";
 		} else if (DBType.MSSQL == dbType) {
 			result = "DECLARE @taskId BIGINT = NEXT VALUE FOR " + CLUSTER_TASK_ID_SEQUENCE + "; " +
 					"INSERT INTO " + META_TABLE_NAME + " (" + fields + ") " +

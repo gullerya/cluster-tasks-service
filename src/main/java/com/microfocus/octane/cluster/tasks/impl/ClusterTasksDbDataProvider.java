@@ -13,13 +13,14 @@ import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.dao.DataAccessException;
 import org.springframework.dao.DuplicateKeyException;
+import org.springframework.jdbc.core.CallableStatementCallback;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.jdbc.datasource.DataSourceTransactionManager;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.support.TransactionTemplate;
 
 import java.io.StringReader;
-import java.sql.PreparedStatement;
+import java.sql.CallableStatement;
 import java.sql.Types;
 import java.time.Duration;
 import java.time.ZoneOffset;
@@ -37,6 +38,8 @@ import java.util.stream.Collectors;
 import com.microfocus.octane.cluster.tasks.api.ClusterTasksServiceConfigurerSPI.DBType;
 
 import javax.sql.DataSource;
+
+import static java.sql.Types.BIGINT;
 
 /**
  * Created by gullery on 08/05/2016.
@@ -96,30 +99,64 @@ class ClusterTasksDbDataProvider implements ClusterTasksDataProvider {
 
 						//  insert task
 						String insertTaskSql = ClusterTasksDbUtils.buildInsertTaskSQL(serviceConfigurer.getDbType(), task.getPartitionIndex());
-						Long taskId = jdbcTemplate.query(connection -> {
-							PreparedStatement ps = connection.prepareStatement(insertTaskSql);
-							ps.setLong(1, task.getTaskType().value);
-							ps.setString(2, task.getProcessorType());
-							ps.setString(3, task.getUniquenessKey());
-							ps.setString(4, task.getConcurrencyKey());
-							ps.setLong(5, task.getDelayByMillis());
-							ps.setLong(6, task.getMaxTimeToRunMillis());
+						Map<String, Integer> outParamsIndexes = new LinkedHashMap<>();
+						Long taskId = jdbcTemplate.execute(connection -> {
+							CallableStatement cs = connection.prepareCall(insertTaskSql);
+							int paramIndex = 1;
+							cs.setLong(paramIndex++, task.getTaskType().value);
+							cs.setString(paramIndex++, task.getProcessorType());
+							cs.setString(paramIndex++, task.getUniquenessKey());
+							cs.setString(paramIndex++, task.getConcurrencyKey());
+							cs.setLong(paramIndex++, task.getDelayByMillis());
+							cs.setLong(paramIndex++, task.getMaxTimeToRunMillis());
 							if (task.getPartitionIndex() != null) {
-								ps.setLong(7, task.getPartitionIndex());
+								cs.setLong(paramIndex++, task.getPartitionIndex());
 							} else {
-								ps.setNull(7, Types.BIGINT);
+								cs.setNull(paramIndex++, BIGINT);
 							}
 							if (task.getOrderingFactor() != null) {
-								ps.setLong(8, task.getOrderingFactor());
+								cs.setLong(paramIndex++, task.getOrderingFactor());
 							} else {
-								ps.setNull(8, Types.BIGINT);
+								cs.setNull(paramIndex++, BIGINT);
 							}
-							ps.setLong(9, task.getDelayByMillis());
+							cs.setLong(paramIndex++, task.getDelayByMillis());
+							outParamsIndexes.put("taskId", paramIndex);
+							cs.registerOutParameter(paramIndex++, BIGINT);
 							if (task.getPartitionIndex() != null) {
-								ps.setClob(10, new StringReader(task.getBody()));
+								cs.setClob(paramIndex, new StringReader(task.getBody()));
 							}
-							return ps;
-						}, ClusterTasksDbUtils::extractTaskId);
+							return cs;
+						}, (CallableStatementCallback<Long>) cs -> {
+							cs.execute();
+							return cs.getLong(outParamsIndexes.get("taskId"));
+						});
+
+
+//						String insertTaskSql = ClusterTasksDbUtils.buildInsertTaskSQL(serviceConfigurer.getDbType(), task.getPartitionIndex());
+//						Long taskId = jdbcTemplate.query(connection -> {
+//							PreparedStatement ps = connection.prepareStatement(insertTaskSql);
+//							ps.setLong(1, task.getTaskType().value);
+//							ps.setString(2, task.getProcessorType());
+//							ps.setString(3, task.getUniquenessKey());
+//							ps.setString(4, task.getConcurrencyKey());
+//							ps.setLong(5, task.getDelayByMillis());
+//							ps.setLong(6, task.getMaxTimeToRunMillis());
+//							if (task.getPartitionIndex() != null) {
+//								ps.setLong(7, task.getPartitionIndex());
+//							} else {
+//								ps.setNull(7, Types.BIGINT);
+//							}
+//							if (task.getOrderingFactor() != null) {
+//								ps.setLong(8, task.getOrderingFactor());
+//							} else {
+//								ps.setNull(8, Types.BIGINT);
+//							}
+//							ps.setLong(9, task.getDelayByMillis());
+//							if (task.getPartitionIndex() != null) {
+//								ps.setClob(10, new StringReader(task.getBody()));
+//							}
+//							return ps;
+//						}, ClusterTasksDbUtils::extractTaskId);
 
 						result.add(new ClusterTaskPersistenceResult(taskId));
 						logger.debug("cluster task " + taskId + " created successfully");
@@ -194,7 +231,7 @@ class ClusterTasksDbDataProvider implements ClusterTasksDataProvider {
 							updateParamTypes[0] = Types.VARCHAR;
 							for (int i = 0; i < startedTasksIDs.size(); i++) {
 								updateParams[i + 1] = startedTasksIDs.get(i);
-								updateParamTypes[i + 1] = Types.BIGINT;
+								updateParamTypes[i + 1] = BIGINT;
 							}
 							jdbcTemplate.update(updateTasksStartedSQL, updateParams, updateParamTypes);
 						} catch (DataAccessException dae) {
@@ -228,7 +265,7 @@ class ClusterTasksDbDataProvider implements ClusterTasksDataProvider {
 			return jdbcTemplate.query(
 					sql,
 					new Object[]{taskId},
-					new int[]{Types.BIGINT},
+					new int[]{BIGINT},
 					ClusterTasksDbUtils::rowToTaskBodyReader);
 		} catch (DataAccessException dae) {
 			logger.error("failed to retrieve task's body", dae);
@@ -248,7 +285,7 @@ class ClusterTasksDbDataProvider implements ClusterTasksDataProvider {
 			jdbcTemplate.update(
 					updateTaskFinishedSQL,
 					new Object[]{taskId},
-					new int[]{Types.BIGINT});
+					new int[]{BIGINT});
 		} catch (DataAccessException dae) {
 			logger.error("failed to update task finished", dae);
 		}
@@ -266,7 +303,7 @@ class ClusterTasksDbDataProvider implements ClusterTasksDataProvider {
 			jdbcTemplate.update(
 					updateTaskFinishedSQL,
 					new Object[]{taskId},
-					new int[]{Types.BIGINT});
+					new int[]{BIGINT});
 		} catch (DataAccessException dae) {
 			logger.error("failed to update task finished", dae);
 		}
@@ -402,7 +439,7 @@ class ClusterTasksDbDataProvider implements ClusterTasksDataProvider {
 
 			//  prepare param types
 			int[] paramTypes = new int[deleteBulkSize];
-			for (int i = 0; i < paramTypes.length; i++) paramTypes[i] = Types.BIGINT;
+			for (int i = 0; i < paramTypes.length; i++) paramTypes[i] = BIGINT;
 
 			//  delete metas
 			Long[] taskIDs = taskIDsBodyPartitionsMap.keySet().toArray(new Long[taskIDsBodyPartitionsMap.size()]);
@@ -449,7 +486,7 @@ class ClusterTasksDbDataProvider implements ClusterTasksDataProvider {
 			int[] paramTypes = new int[taskIDsToReenqueue.size()];
 			for (int i = 0; i < taskIDsToReenqueue.size(); i++) {
 				params[i] = taskIDsToReenqueue.get(i);
-				paramTypes[i] = Types.BIGINT;
+				paramTypes[i] = BIGINT;
 			}
 			jdbcTemplate.update(updateReenqueueTasks, params, paramTypes);
 		} catch (Exception e) {
