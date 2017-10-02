@@ -19,6 +19,7 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ThreadFactory;
@@ -34,6 +35,7 @@ import java.util.stream.Collectors;
 public class ClusterTasksServiceImpl implements ClusterTasksService {
 	private final Logger logger = LoggerFactory.getLogger(ClusterTasksServiceImpl.class);
 
+	private final CompletableFuture<Boolean> readyPromise = new CompletableFuture<>();
 	private final Map<ClusterTasksDataProviderType, ClusterTasksDataProvider> dataProvidersMap = new LinkedHashMap<>();
 	private final Map<String, ClusterTasksProcessorDefault> processorsMap = new LinkedHashMap<>();
 	private final ExecutorService dispatcherExecutor = Executors.newSingleThreadExecutor(new ClusterTasksDispatcherThreadFactory());
@@ -52,22 +54,26 @@ public class ClusterTasksServiceImpl implements ClusterTasksService {
 		serviceConfigurer.getConfigReadyLatch().handleAsync((value, error) -> {
 			logger.info("listener on configuration readiness resolved; value: " + value + ", error: " + error);
 			if (value == null || !value) {
-				if (error != null)
+				readyPromise.complete(false);
+				if (error != null) {
 					throw new IllegalStateException("hosting application failed to provide configuration, ClusterTasksService won't run", error);
-				else
+				} else {
 					throw new IllegalStateException("hosting application failed to provide configuration, ClusterTasksService won't run");
-			}
-
-			if (schemaManager.executeSchemaMaintenance(serviceConfigurer.getDbType(), serviceConfigurer.getDataSource())) {
-				ensureScheduledTasksInitialized();
-				logger.info("scheduled tasks initialization verified");
-
-				dispatcherExecutor.execute(dispatcher);
-				logger.info("tasks dispatcher initialized");
-
-				logger.info("CTS is configured & initialized");
+				}
 			} else {
-				logger.error("CTS initialization failed (failed to execute schema maintenance) and won't run");
+				if (schemaManager.executeSchemaMaintenance(serviceConfigurer.getDbType(), serviceConfigurer.getDataSource())) {
+					dispatcherExecutor.execute(dispatcher);
+					logger.info("local tasks dispatcher initialized");
+
+					readyPromise.complete(true);
+					logger.info("CTS is configured & initialized");
+
+					ensureScheduledTasksInitialized();
+					logger.info("scheduled tasks initialization verified");
+				} else {
+					readyPromise.complete(false);
+					logger.error("CTS initialization failed (failed to execute schema maintenance) and won't run");
+				}
 			}
 
 			return null;
@@ -104,6 +110,11 @@ public class ClusterTasksServiceImpl implements ClusterTasksService {
 				processorsMap.put(type, processor);
 			}
 		});
+	}
+
+	@Override
+	public CompletableFuture<Boolean> getReadyPromise() {
+		return readyPromise;
 	}
 
 	@Override

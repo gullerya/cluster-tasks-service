@@ -1,5 +1,7 @@
 package com.microfocus.octane.cluster.tasks.api;
 
+import java.util.concurrent.CompletableFuture;
+
 /**
  * Created by gullery on 08/05/2016.
  * <p>
@@ -7,6 +9,8 @@ package com.microfocus.octane.cluster.tasks.api;
  */
 
 public interface ClusterTasksService {
+
+	CompletableFuture<Boolean> getReadyPromise();
 
 	/**
 	 * enqueues tasks for async processing somewhere in the cluster

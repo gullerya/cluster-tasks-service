@@ -7,7 +7,7 @@
 	<parent>
 		<groupId>com.microfocus.octane</groupId>
 		<artifactId>octane-component-parent</artifactId>
-		<version>1.0.1</version>
+		<version>1.0-SNAPSHOT</version>
 	</parent>
 
 	<artifactId>cluster-tasks-service</artifactId>
@@ -16,6 +16,13 @@
 	<properties>
 		<spring.version>4.2.5.RELEASE</spring.version>
 		<flyway.version>4.2.0</flyway.version>
+
+		<!--TESTS-->
+		<db.driver>TEMPLATE</db.driver>
+		<db.url>jdbc:sqlserver://localhost:1433</db.url>
+		<db.schemaname>octane_tests</db.schemaname>
+		<db.username>sa</db.username>
+		<db.password>Mercurypw123</db.password>
 	</properties>
 
 	<dependencies>
@@ -29,6 +36,124 @@
 			<groupId>org.flywaydb</groupId>
 			<version>${flyway.version}</version>
 		</dependency>
+
+		<!--TESTS-->
+		<dependency>
+			<artifactId>octane-jdbc-service</artifactId>
+			<groupId>com.microfocus.octane</groupId>
+			<version>1.0-SNAPSHOT</version>
+			<scope>test</scope>
+		</dependency>
+		<dependency>
+			<artifactId>junit</artifactId>
+			<groupId>junit</groupId>
+			<version>4.12</version>
+			<scope>test</scope>
+		</dependency>
+		<dependency>
+			<artifactId>spring-test</artifactId>
+			<groupId>org.springframework</groupId>
+			<version>${spring.version}</version>
+			<scope>test</scope>
+		</dependency>
 	</dependencies>
+
+	<profiles>
+		<profile>
+			<id>sqlserver</id>
+			<properties>
+				<db.driver>com.microsoft.sqlserver.jdbc.SQLServerDriver</db.driver>
+			</properties>
+		</profile>
+		<profile>
+			<id>oracle</id>
+			<properties>
+				<db.driver>oracle.jdbc.driver.OracleDriver</db.driver>
+			</properties>
+		</profile>
+		<profile>
+			<id>auto-schema</id>
+			<build>
+				<plugins>
+					<plugin>
+						<groupId>org.codehaus.mojo</groupId>
+						<artifactId>sql-maven-plugin</artifactId>
+						<version>1.5</version>
+
+						<dependencies>
+							<dependency>
+								<artifactId>mssql-jdbc</artifactId>
+								<groupId>com.microsoft.sqlserver</groupId>
+								<version>6.2.1.jre8</version>
+							</dependency>
+							<dependency>
+								<artifactId>com.springsource.oracle.jdbc</artifactId>
+								<groupId>com.oracle.jdbc</groupId>
+								<version>10.2.0.2</version>
+							</dependency>
+						</dependencies>
+
+						<configuration>
+							<driver>${db.driver}</driver>
+							<url>${db.url}</url>
+							<username>${db.username}</username>
+							<password>${db.password}</password>
+						</configuration>
+
+						<executions>
+							<execution>
+								<id>create-db</id>
+								<phase>process-test-resources</phase>
+								<goals>
+									<goal>execute</goal>
+								</goals>
+								<configuration>
+									<autocommit>true</autocommit>
+									<sqlCommand>CREATE DATABASE ${db.schemaname}</sqlCommand>
+								</configuration>
+							</execution>
+							<execution>
+								<id>drop-db</id>
+								<phase>test</phase>
+								<goals>
+									<goal>execute</goal>
+								</goals>
+								<configuration>
+									<autocommit>true</autocommit>
+									<sqlCommand>DROP DATABASE ${db.schemaname}</sqlCommand>
+								</configuration>
+							</execution>
+						</executions>
+					</plugin>
+				</plugins>
+			</build>
+		</profile>
+	</profiles>
+
+	<build>
+		<plugins>
+			<plugin>
+				<groupId>org.apache.maven.plugins</groupId>
+				<artifactId>maven-surefire-plugin</artifactId>
+				<configuration>
+					<testFailureIgnore>true</testFailureIgnore>
+					<includes>com.microfocus.octane.cluster.tasks/**/*.java</includes>
+				</configuration>
+			</plugin>
+			<plugin>
+				<groupId>org.apache.maven.plugins</groupId>
+				<artifactId>maven-failsafe-plugin</artifactId>
+				<configuration>
+					<dependencies>
+						<dependency>
+							<groupId>org.apache.maven.plugins</groupId>
+							<artifactId>maven-surefire-plugin</artifactId>
+							<version>${surefire.version}</version>
+						</dependency>
+					</dependencies>
+				</configuration>
+			</plugin>
+		</plugins>
+	</build>
 
 </project>

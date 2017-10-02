@@ -1,0 +1,60 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<Configuration status="INFO" monitorInterval="30">
+	<Properties>
+		<Property name="logsFolder"/>
+		<Property name="DEFAULT_PATTERN">%d %-5level %logger [%t] - %msg%n</Property>
+	</Properties>
+
+	<Appenders>
+		<Console name="console" target="SYSTEM_OUT">
+			<PatternLayout pattern="${DEFAULT_PATTERN}"/>
+		</Console>
+
+		<RollingFile name="serviceAppender" fileName="${sys:logsFolder}logs/service.log"
+					 filePattern="${sys:logsFolder}logs/service-%i.log">
+			<PatternLayout pattern="${DEFAULT_PATTERN}"/>
+			<Policies>
+				<SizeBasedTriggeringPolicy size="10 MB"/>
+			</Policies>
+			<DefaultRolloverStrategy max="10"/>
+		</RollingFile>
+		<Async name="serviceAsyncAppender">
+			<AppenderRef ref="serviceAppender"/>
+		</Async>
+
+		<RollingFile name="ctpAppender" fileName="${sys:logsFolder}logs/ctp.log"
+					 filePattern="${sys:logsFolder}logs/ctp-%i.log">
+			<PatternLayout pattern="${DEFAULT_PATTERN}"/>
+			<Policies>
+				<SizeBasedTriggeringPolicy size="10 MB"/>
+			</Policies>
+			<DefaultRolloverStrategy max="10"/>
+		</RollingFile>
+		<Async name="ctpAsyncAppender">
+			<AppenderRef ref="ctpAppender"/>
+		</Async>
+	</Appenders>
+
+	<Loggers>
+		<!-- Mercury DB driver -->
+		<Logger name="com.mchange.v2" level="error" additivity="false">
+			<AppenderRef ref="serviceAsyncAppender"/>
+			<AppenderRef ref="console"/>
+		</Logger>
+
+		<!-- Service -->
+		<Logger name="com.microfocus.octane.cluster.tasks" level="info" additivity="false">
+			<AppenderRef ref="serviceAsyncAppender"/>
+			<AppenderRef ref="console"/>
+		</Logger>
+
+		<!-- CTP -->
+		<Logger name="com.microfocus.octane.cluster.tasks" level="info" additivity="false">
+			<AppenderRef ref="ctpAsyncAppender"/>
+		</Logger>
+
+		<Root level="info">
+			<AppenderRef ref="console"/>
+		</Root>
+	</Loggers>
+</Configuration>

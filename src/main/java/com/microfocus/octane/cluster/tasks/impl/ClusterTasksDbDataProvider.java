@@ -3,6 +3,7 @@ package com.microfocus.octane.cluster.tasks.impl;
 import com.microfocus.octane.cluster.tasks.api.CTPPersistStatus;
 import com.microfocus.octane.cluster.tasks.api.ClusterTaskStatus;
 import com.microfocus.octane.cluster.tasks.api.ClusterTasksDataProviderType;
+import com.microfocus.octane.cluster.tasks.api.ClusterTasksService;
 import com.microfocus.octane.cluster.tasks.api.ClusterTasksServiceConfigurerSPI;
 import com.microfocus.octane.cluster.tasks.api.CtsGeneralFailure;
 import com.microfocus.octane.cluster.tasks.api.ClusterTask;
@@ -56,6 +57,8 @@ class ClusterTasksDbDataProvider implements ClusterTasksDataProvider {
 	private TransactionTemplate transactionTemplate;
 
 	@Autowired
+	private ClusterTasksService clusterTasksService;
+	@Autowired
 	private ClusterTasksServiceConfigurerSPI serviceConfigurer;
 	@Autowired
 	private ClusterTaskWorkersFactory clusterTaskWorkersFactory;
@@ -68,6 +71,12 @@ class ClusterTasksDbDataProvider implements ClusterTasksDataProvider {
 	//  TODO: support bulk insert here
 	@Override
 	public ClusterTaskPersistenceResult[] storeTasks(String processorType, ClusterTask... tasks) {
+		if (!clusterTasksService.getReadyPromise().isDone()) {
+			throw new IllegalStateException("cluster tasks service has not yet been initialized; either postpone tasks submission or listen to completion of [clusterTasksService].getReadyPromise()");
+		}
+		if (clusterTasksService.getReadyPromise().isCompletedExceptionally()) {
+			throw new IllegalStateException("cluster tasks service failed to initialize; check prior logs for a root cause");
+		}
 		if (processorType == null || processorType.isEmpty()) {
 			throw new IllegalArgumentException("processor type MUST NOT be null nor empty");
 		}
