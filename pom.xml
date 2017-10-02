@@ -7,7 +7,7 @@
 	<parent>
 		<groupId>com.microfocus.octane</groupId>
 		<artifactId>octane-component-parent</artifactId>
-		<version>1.0-SNAPSHOT</version>
+		<version>1.0.2</version>
 	</parent>
 
 	<artifactId>cluster-tasks-service</artifactId>
@@ -18,11 +18,7 @@
 		<flyway.version>4.2.0</flyway.version>
 
 		<!--TESTS-->
-		<db.driver>TEMPLATE</db.driver>
-		<db.url>jdbc:sqlserver://localhost:1433</db.url>
-		<db.schemaname>octane_tests</db.schemaname>
-		<db.username>sa</db.username>
-		<db.password>Mercurypw123</db.password>
+		<tests.db.schemaname>cts_tests_schema</tests.db.schemaname>
 	</properties>
 
 	<dependencies>
@@ -57,78 +53,6 @@
 			<scope>test</scope>
 		</dependency>
 	</dependencies>
-
-	<profiles>
-		<profile>
-			<id>sqlserver</id>
-			<properties>
-				<db.driver>com.microsoft.sqlserver.jdbc.SQLServerDriver</db.driver>
-			</properties>
-		</profile>
-		<profile>
-			<id>oracle</id>
-			<properties>
-				<db.driver>oracle.jdbc.driver.OracleDriver</db.driver>
-			</properties>
-		</profile>
-		<profile>
-			<id>auto-schema</id>
-			<build>
-				<plugins>
-					<plugin>
-						<groupId>org.codehaus.mojo</groupId>
-						<artifactId>sql-maven-plugin</artifactId>
-						<version>1.5</version>
-
-						<dependencies>
-							<dependency>
-								<artifactId>mssql-jdbc</artifactId>
-								<groupId>com.microsoft.sqlserver</groupId>
-								<version>6.2.1.jre8</version>
-							</dependency>
-							<dependency>
-								<artifactId>com.springsource.oracle.jdbc</artifactId>
-								<groupId>com.oracle.jdbc</groupId>
-								<version>10.2.0.2</version>
-							</dependency>
-						</dependencies>
-
-						<configuration>
-							<driver>${db.driver}</driver>
-							<url>${db.url}</url>
-							<username>${db.username}</username>
-							<password>${db.password}</password>
-						</configuration>
-
-						<executions>
-							<execution>
-								<id>create-db</id>
-								<phase>process-test-resources</phase>
-								<goals>
-									<goal>execute</goal>
-								</goals>
-								<configuration>
-									<autocommit>true</autocommit>
-									<sqlCommand>CREATE DATABASE ${db.schemaname}</sqlCommand>
-								</configuration>
-							</execution>
-							<execution>
-								<id>drop-db</id>
-								<phase>test</phase>
-								<goals>
-									<goal>execute</goal>
-								</goals>
-								<configuration>
-									<autocommit>true</autocommit>
-									<sqlCommand>DROP DATABASE ${db.schemaname}</sqlCommand>
-								</configuration>
-							</execution>
-						</executions>
-					</plugin>
-				</plugins>
-			</build>
-		</profile>
-	</profiles>
 
 	<build>
 		<plugins>
