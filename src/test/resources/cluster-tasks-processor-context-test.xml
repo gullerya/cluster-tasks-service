@@ -4,7 +4,7 @@
 	   xsi:schemaLocation="http://www.springframework.org/schema/beans
             http://www.springframework.org/schema/beans/spring-beans.xsd">
 
-	<bean class="com.microfocus.octane.cluster.tasks.ClusterTasksServiceConfigurerSPITests"/>
+	<bean class="com.microfocus.octane.cluster.tasks.ClusterTasksServiceConfigurerForTestsSPI"/>
 
 	<bean id="tasksProcessorA_test"
 		  class="com.microfocus.octane.cluster.tasks.processors.ClusterTasksProcessorA_test"/>

@@ -8,7 +8,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import javax.sql.DataSource;
 import java.util.concurrent.CompletableFuture;
 
-public class ClusterTasksServiceConfigurerSPITests implements ClusterTasksServiceConfigurerSPI {
+public class ClusterTasksServiceConfigurerForTestsSPI implements ClusterTasksServiceConfigurerSPI {
 	private CompletableFuture<Boolean> configReadyLatch = new CompletableFuture<>();
 	private DBType dbType;
 	private DataSource dataSource;

@@ -26,8 +26,8 @@ import static org.junit.Assert.assertEquals;
 		"/cluster-tasks-processor-context-test.xml",
 		"classpath*:/SpringIOC/**/*.xml"
 })
-public class ClusterTasksProcessorConcurrencyITCase extends CTSTestsBase {
-	private static final Logger logger = LoggerFactory.getLogger(ClusterTasksProcessorConcurrencyITCase.class);
+public class ClusterTasksProcessorConcurrencyTest extends CTSTestsBase {
+	private static final Logger logger = LoggerFactory.getLogger(ClusterTasksProcessorConcurrencyTest.class);
 
 	@Autowired
 	private ClusterTasksProcessorConcurrency_test clusterTasksProcessorConcurrency_test;

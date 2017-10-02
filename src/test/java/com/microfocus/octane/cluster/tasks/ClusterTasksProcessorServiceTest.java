@@ -39,8 +39,8 @@ import static org.junit.Assert.fail;
 		"/cluster-tasks-processor-context-test.xml",
 		"classpath*:/SpringIOC/**/*.xml"
 })
-public class ClusterTasksProcessorServiceITCase extends CTSTestsBase {
-	private final Logger logger = LoggerFactory.getLogger(ClusterTasksProcessorServiceITCase.class);
+public class ClusterTasksProcessorServiceTest extends CTSTestsBase {
+	private final Logger logger = LoggerFactory.getLogger(ClusterTasksProcessorServiceTest.class);
 
 	@Autowired
 	private ClusterTasksProcessorA_test clusterTasksProcessorA_test;

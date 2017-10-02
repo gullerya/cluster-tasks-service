@@ -29,8 +29,8 @@ import static org.junit.Assert.assertEquals;
 		"/cluster-tasks-processor-context-test.xml",
 		"classpath*:/SpringIOC/**/*.xml"
 })
-public class ClusterTasksProcessorCountTasksITCase extends CTSTestsBase {
-	private static final Logger logger = LoggerFactory.getLogger(ClusterTasksProcessorCountTasksITCase.class);
+public class ClusterTasksProcessorCountTasksTest extends CTSTestsBase {
+	private static final Logger logger = LoggerFactory.getLogger(ClusterTasksProcessorCountTasksTest.class);
 
 	@Autowired
 	private ClusterTasksProcessorCount_test clusterTasksProcessorCount_test;
