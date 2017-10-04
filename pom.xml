@@ -5,13 +5,13 @@
 	<modelVersion>4.0.0</modelVersion>
 
 	<parent>
-		<groupId>com.microfocus.octane</groupId>
 		<artifactId>octane-component-parent</artifactId>
-		<version>1.0.3</version>
+		<groupId>com.microfocus.octane</groupId>
+		<version>1.0.5</version>
 	</parent>
 
 	<artifactId>cluster-tasks-service</artifactId>
-	<version>1.0-SNAPSHOT</version>
+	<version>1.0.7-SNAPSHOT</version>
 
 	<properties>
 		<spring.version>4.2.5.RELEASE</spring.version>
@@ -19,6 +19,7 @@
 
 		<!--TESTS-->
 		<tests.db.schemaname>cts_tests_schema</tests.db.schemaname>
+		<octane.jdbc.service.version>1.0.0</octane.jdbc.service.version>
 	</properties>
 
 	<dependencies>
@@ -37,19 +38,7 @@
 		<dependency>
 			<artifactId>octane-jdbc-service</artifactId>
 			<groupId>com.microfocus.octane</groupId>
-			<version>1.0-SNAPSHOT</version>
-			<scope>test</scope>
-		</dependency>
-		<dependency>
-			<artifactId>junit</artifactId>
-			<groupId>junit</groupId>
-			<version>4.12</version>
-			<scope>test</scope>
-		</dependency>
-		<dependency>
-			<artifactId>spring-test</artifactId>
-			<groupId>org.springframework</groupId>
-			<version>${spring.version}</version>
+			<version>${octane.jdbc.service.version}</version>
 			<scope>test</scope>
 		</dependency>
 	</dependencies>
