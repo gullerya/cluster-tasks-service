@@ -30,8 +30,8 @@ class ClusterTasksServiceSchemaManager {
 				flyway.setTable(CTS_SCHEMA_HISTORY_TABLE_NAME);
 				flyway.setSqlMigrationPrefix(SQL_MIGRATION_PREFIX);
 				flyway.setBaselineOnMigrate(true);
+				flyway.setValidateOnMigrate(true);
 				flyway.setCleanDisabled(true);
-				flyway.setValidateOnMigrate(false);
 				flyway.setLocations(getSQLsLocation(dbType));
 				flyway.migrate();
 			} catch (Exception me) {
