@@ -1,6 +1,7 @@
 ###Changelog
 
 #####1.0.7 (current)
+- added tests coverage monitoring (`coverage` Maven profile)
 
 #####1.0.6
 - sequencing added (becoming fully independent from hosting application)
