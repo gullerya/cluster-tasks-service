@@ -16,7 +16,6 @@ import org.springframework.dao.DataAccessException;
 import org.springframework.dao.DuplicateKeyException;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.jdbc.datasource.DataSourceTransactionManager;
-import org.springframework.stereotype.Component;
 import org.springframework.transaction.support.TransactionTemplate;
 
 import java.sql.Types;
@@ -46,7 +45,6 @@ import static java.sql.Types.BIGINT;
  * Cluster tasks data provider backed by DB
  */
 
-@Component
 class ClusterTasksDbDataProvider implements ClusterTasksDataProvider {
 	private static final Logger logger = LoggerFactory.getLogger(ClusterTasksDbDataProvider.class);
 	private static final String RUNTIME_INSTANCE_ID = UUID.randomUUID().toString();

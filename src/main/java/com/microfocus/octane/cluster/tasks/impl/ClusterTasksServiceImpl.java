@@ -12,7 +12,6 @@ import com.microfocus.octane.cluster.tasks.api.ClusterTasksService;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.stereotype.Service;
 
 import java.util.Arrays;
 import java.util.LinkedHashMap;
@@ -198,14 +197,14 @@ public class ClusterTasksServiceImpl implements ClusterTasksService {
 			long dispatchStarted = System.currentTimeMillis();
 			long dispatchDuration;
 
+			//  infallible tasks dispatch round
 			while (true) {
-				//  infallible tasks dispatch round
 				try {
 					dispatchStarted = System.currentTimeMillis();
 					runDispatch();
-				} catch (Exception e) {
+				} catch (Throwable t) {
 					totalFailures++;
-					logger.error("failure within dispatch iteration; total failures: " + totalFailures, e);
+					logger.error("failure within dispatch iteration; total failures: " + totalFailures, t);
 				} finally {
 					dispatchDuration = System.currentTimeMillis() - dispatchStarted;
 					totalDispatchRounds++;
@@ -219,8 +218,8 @@ public class ClusterTasksServiceImpl implements ClusterTasksService {
 				Integer breathingInterval = null;
 				try {
 					breathingInterval = serviceConfigurer.getTasksPollIntervalMillis();
-				} catch (Exception e) {
-					logger.warn("failed to obtain breathing interval from service configurer, falling back to DEFAULT (" + serviceConfigurer.DEFAULT_POLL_INTERVAL + ")", e);
+				} catch (Throwable t) {
+					logger.warn("failed to obtain breathing interval from service configurer, falling back to DEFAULT (" + serviceConfigurer.DEFAULT_POLL_INTERVAL + ")", t);
 				}
 				breathingInterval = breathingInterval == null ? serviceConfigurer.DEFAULT_POLL_INTERVAL : breathingInterval;
 				breathingInterval = Math.max(breathingInterval, serviceConfigurer.MINIMAL_POLL_INTERVAL);
@@ -243,9 +242,9 @@ public class ClusterTasksServiceImpl implements ClusterTasksService {
 				if (!availableProcessorsOfDPType.isEmpty()) {
 					try {
 						provider.retrieveAndDispatchTasks(availableProcessorsOfDPType);
-					} catch (Exception e) {
+					} catch (Throwable t) {
 						totalFailures++;
-						logger.error("failed to dispatch tasks in " + providerType + "; total failures: " + totalFailures, e);
+						logger.error("failed to dispatch tasks in " + providerType + "; total failures: " + totalFailures, t);
 					}
 				} else {
 					logger.debug("no available processors powered by data provider " + providerType + " found, skipping this dispatch round");
@@ -271,15 +270,17 @@ public class ClusterTasksServiceImpl implements ClusterTasksService {
 
 		@Override
 		public void run() {
+			long gcStarted = System.currentTimeMillis();
+			long gcDuration;
+
 			//  infallible GC round
 			while (true) {
-				long gcStarted = System.currentTimeMillis();
-				long gcDuration;
 				try {
+					gcStarted = System.currentTimeMillis();
 					dataProvidersMap.forEach((dpType, dataProvider) -> dataProvider.handleGarbageAndStaled());
-				} catch (Exception e) {
+				} catch (Throwable t) {
 					totalFailures++;
-					logger.error("failed to perform GC round; total failures: " + totalFailures, e);
+					logger.error("failed to perform GC round; total failures: " + totalFailures, t);
 				} finally {
 					gcDuration = System.currentTimeMillis() - gcStarted;
 					totalGCRounds++;
@@ -291,8 +292,8 @@ public class ClusterTasksServiceImpl implements ClusterTasksService {
 					Integer gcInterval = null;
 					try {
 						gcInterval = serviceConfigurer.getGCIntervalMillis();
-					} catch (Exception e) {
-						logger.error("failed to obtain GC interval from hosting application, falling back to default (" + ClusterTasksServiceConfigurerSPI.DEFAULT_GC_INTERVAL + ")", e);
+					} catch (Throwable t) {
+						logger.error("failed to obtain GC interval from hosting application, falling back to default (" + ClusterTasksServiceConfigurerSPI.DEFAULT_GC_INTERVAL + ")", t);
 					}
 					gcInterval = gcInterval == null ? ClusterTasksServiceConfigurerSPI.DEFAULT_GC_INTERVAL : gcInterval;
 					gcInterval = Math.max(gcInterval, ClusterTasksServiceConfigurerSPI.MINIMAL_GC_INTERVAL);

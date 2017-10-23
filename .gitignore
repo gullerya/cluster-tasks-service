@@ -2,7 +2,7 @@
 *.iml
 .idea/
 
-# build artifacts
+# build/tests artifacts
 *.class
 target*/
 logs/**

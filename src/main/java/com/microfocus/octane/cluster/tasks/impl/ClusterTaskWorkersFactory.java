@@ -4,7 +4,6 @@ import com.microfocus.octane.cluster.tasks.api.ClusterTask;
 import com.microfocus.octane.cluster.tasks.api.ClusterTasksProcessorDefault;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.springframework.stereotype.Component;
 
 /**
  * Created by gullery on 10/05/2016.
@@ -12,7 +11,6 @@ import org.springframework.stereotype.Component;
  * Base implementation of Cluster tasks workers Factory
  */
 
-@Component
 class ClusterTaskWorkersFactory {
 	private static final Logger logger = LoggerFactory.getLogger(ClusterTaskWorkersFactory.class);
 
