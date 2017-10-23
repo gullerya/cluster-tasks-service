@@ -31,7 +31,6 @@ import java.util.stream.Collectors;
  * Default implementation of ClusterTasksService
  */
 
-@Service
 public class ClusterTasksServiceImpl implements ClusterTasksService {
 	private final Logger logger = LoggerFactory.getLogger(ClusterTasksServiceImpl.class);
 
@@ -39,7 +38,9 @@ public class ClusterTasksServiceImpl implements ClusterTasksService {
 	private final Map<ClusterTasksDataProviderType, ClusterTasksDataProvider> dataProvidersMap = new LinkedHashMap<>();
 	private final Map<String, ClusterTasksProcessorDefault> processorsMap = new LinkedHashMap<>();
 	private final ExecutorService dispatcherExecutor = Executors.newSingleThreadExecutor(new ClusterTasksDispatcherThreadFactory());
+	private final ExecutorService gcExecutor = Executors.newSingleThreadExecutor(new ClusterTasksGCThreadFactory());
 	private final ClusterTasksDispatcher dispatcher = new ClusterTasksDispatcher();
+	private final ClusterTasksGC gc = new ClusterTasksGC();
 	private ClusterTasksServiceConfigurerSPI serviceConfigurer;
 
 	@Autowired
@@ -63,6 +64,7 @@ public class ClusterTasksServiceImpl implements ClusterTasksService {
 			} else {
 				if (schemaManager.executeSchemaMaintenance(serviceConfigurer.getDbType(), serviceConfigurer.getDataSource())) {
 					dispatcherExecutor.execute(dispatcher);
+					gcExecutor.execute(gc);
 					logger.info("local tasks dispatcher initialized");
 
 					readyPromise.complete(true);
@@ -249,6 +251,58 @@ public class ClusterTasksServiceImpl implements ClusterTasksService {
 					logger.debug("no available processors powered by data provider " + providerType + " found, skipping this dispatch round");
 				}
 			});
+		}
+	}
+
+	private final static class ClusterTasksGCThreadFactory implements ThreadFactory {
+		@Override
+		public Thread newThread(Runnable runnable) {
+			Thread result = new Thread(runnable);
+			result.setName("CTP GC; TID: " + result.getId());
+			result.setDaemon(true);
+			return result;
+		}
+	}
+
+	private final class ClusterTasksGC implements Runnable {
+		private long totalGCRounds = 0;
+		private long totalGCDuration = 0;
+		private long totalFailures = 0;
+
+		@Override
+		public void run() {
+			//  infallible GC round
+			while (true) {
+				long gcStarted = System.currentTimeMillis();
+				long gcDuration;
+				try {
+					dataProvidersMap.forEach((dpType, dataProvider) -> dataProvider.handleGarbageAndStaled());
+				} catch (Exception e) {
+					totalFailures++;
+					logger.error("failed to perform GC round; total failures: " + totalFailures, e);
+				} finally {
+					gcDuration = System.currentTimeMillis() - gcStarted;
+					totalGCRounds++;
+					totalGCDuration += gcDuration;
+					if (totalGCRounds % 10 == 0) {
+						logger.debug("GC executed in " + gcDuration + "ms; total GCs: " + totalGCRounds + "; average GC time: " + totalGCDuration / totalGCRounds + "ms");
+					}
+
+					Integer gcInterval = null;
+					try {
+						gcInterval = serviceConfigurer.getGCIntervalMillis();
+					} catch (Exception e) {
+						logger.error("failed to obtain GC interval from hosting application, falling back to default (" + ClusterTasksServiceConfigurerSPI.DEFAULT_GC_INTERVAL + ")", e);
+					}
+					gcInterval = gcInterval == null ? ClusterTasksServiceConfigurerSPI.DEFAULT_GC_INTERVAL : gcInterval;
+					gcInterval = Math.max(gcInterval, ClusterTasksServiceConfigurerSPI.MINIMAL_GC_INTERVAL);
+					try {
+						Thread.sleep(gcInterval);
+					} catch (InterruptedException ie) {
+						logger.warn("interrupted while breathing between GC rounds", ie);
+					}
+				}
+			}
 		}
 	}
 }

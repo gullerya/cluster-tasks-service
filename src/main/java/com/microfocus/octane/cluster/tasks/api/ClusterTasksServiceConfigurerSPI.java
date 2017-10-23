@@ -7,7 +7,7 @@ public interface ClusterTasksServiceConfigurerSPI {
 	int MINIMAL_POLL_INTERVAL = 703;
 	int DEFAULT_POLL_INTERVAL = 1023;
 	int MINIMAL_GC_INTERVAL = 7131;
-	int DEFAULT_GC_INTERVAL = 13039;
+	int DEFAULT_GC_INTERVAL = 17039;
 
 	enum DBType {ORACLE, MSSQL}
 
