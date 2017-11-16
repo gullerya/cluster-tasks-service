@@ -1,5 +1,6 @@
 package com.microfocus.octane.cluster.tasks.api;
 
+import com.microfocus.octane.cluster.tasks.impl.ClusterTaskInternal;
 import com.microfocus.octane.cluster.tasks.impl.ClusterTasksWorker;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -54,7 +55,7 @@ public abstract class ClusterTasksProcessorDefault {
 		return dataProviderType;
 	}
 
-	abstract public void processTask(ClusterTask task) throws Exception;
+	abstract public void processTask(ClusterTaskInternal task) throws Exception;
 
 	protected void setMinimalTasksTakeInterval(Integer minimalTasksTakeInterval) {
 		minimalTasksTakeInterval = minimalTasksTakeInterval == null ? ClusterTasksServiceConfigurerSPI.DEFAULT_POLL_INTERVAL : minimalTasksTakeInterval;

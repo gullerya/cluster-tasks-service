@@ -1,6 +1,5 @@
 package com.microfocus.octane.cluster.tasks.impl;
 
-import com.microfocus.octane.cluster.tasks.api.ClusterTask;
 import com.microfocus.octane.cluster.tasks.api.ClusterTaskStatus;
 import com.microfocus.octane.cluster.tasks.api.CtsDBTypeNotSupported;
 import com.microfocus.octane.cluster.tasks.api.CtsSqlFailure;
@@ -254,15 +253,15 @@ final class ClusterTasksDbUtils {
 	//
 	//  READERS - DB responses processors
 	//
-	static List<ClusterTask> tasksMetadataReader(ResultSet resultSet) {
-		List<ClusterTask> result = new LinkedList<>();
-		ClusterTask tmpTask;
+	static List<ClusterTaskInternal> tasksMetadataReader(ResultSet resultSet) {
+		List<ClusterTaskInternal> result = new LinkedList<>();
+		ClusterTaskInternal tmpTask;
 		Long tmpLong;
 		String tmpString;
 		try {
 			while (resultSet.next()) {
 				try {
-					tmpTask = new ClusterTask(resultSet.getLong(META_ID));
+					tmpTask = new ClusterTaskInternal(resultSet.getLong(META_ID));
 					tmpTask.setTaskType(ClusterTaskType.byValue(resultSet.getLong(TASK_TYPE)));
 					tmpTask.setProcessorType(resultSet.getString(PROCESSOR_TYPE));
 					tmpTask.setUniquenessKey(resultSet.getString(UNIQUENESS_KEY));
@@ -312,12 +311,12 @@ final class ClusterTasksDbUtils {
 		return result;
 	}
 
-	static List<ClusterTask> gcCandidatesReader(ResultSet resultSet) {
-		List<ClusterTask> result = new LinkedList<>();
+	static List<ClusterTaskInternal> gcCandidatesReader(ResultSet resultSet) {
+		List<ClusterTaskInternal> result = new LinkedList<>();
 		try {
 			while (resultSet.next()) {
 				try {
-					ClusterTask task = new ClusterTask(resultSet.getLong(META_ID));
+					ClusterTaskInternal task = new ClusterTaskInternal(resultSet.getLong(META_ID));
 					task.setTaskType(ClusterTaskType.byValue(resultSet.getLong(TASK_TYPE)));
 					task.setPartitionIndex(resultSet.getLong(BODY_PARTITION));
 					result.add(task);

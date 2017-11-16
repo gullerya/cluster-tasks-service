@@ -1,6 +1,6 @@
 package com.microfocus.octane.cluster.tasks;
 
-import com.microfocus.octane.cluster.tasks.api.ClusterTask;
+import com.microfocus.octane.cluster.tasks.impl.ClusterTaskInternal;
 import com.microfocus.octane.cluster.tasks.api.ClusterTasksDataProviderType;
 import com.microfocus.octane.cluster.tasks.processors.ClusterTasksProcessorConcurrency_test;
 import org.junit.Test;
@@ -34,10 +34,10 @@ public class ClusterTasksProcessorConcurrencyTest extends CTSTestsBase {
 
 	@Test
 	public void TestA_concurrency_value_all_null() {
-		ClusterTask[] tasks = new ClusterTask[2];
-		tasks[0] = new ClusterTask();
+		ClusterTaskInternal[] tasks = new ClusterTaskInternal[2];
+		tasks[0] = new ClusterTaskInternal();
 		tasks[0].setBody("test A - task 1 - concurrency value is NULL");
-		tasks[1] = new ClusterTask();
+		tasks[1] = new ClusterTaskInternal();
 		tasks[1].setBody("test A - task 2 - concurrency value is NULL");
 
 		clusterTasksProcessorConcurrency_test.tasksProcessed = 0;
@@ -51,21 +51,21 @@ public class ClusterTasksProcessorConcurrencyTest extends CTSTestsBase {
 	public void TestB_concurrency_value_some_null() {
 		String concurrencyKeyA = UUID.randomUUID().toString();
 		String concurrencyKeyB = UUID.randomUUID().toString();
-		ClusterTask[] tasks = new ClusterTask[6];
-		tasks[0] = new ClusterTask();
+		ClusterTaskInternal[] tasks = new ClusterTaskInternal[6];
+		tasks[0] = new ClusterTaskInternal();
 		tasks[0].setConcurrencyKey(concurrencyKeyA);
 		tasks[0].setBody("test B - task 1 - concurrency value is " + concurrencyKeyA);
-		tasks[1] = new ClusterTask();
+		tasks[1] = new ClusterTaskInternal();
 		tasks[1].setBody("test B - task 2 - concurrency value is NULL");
-		tasks[2] = new ClusterTask();
+		tasks[2] = new ClusterTaskInternal();
 		tasks[2].setConcurrencyKey(concurrencyKeyB);
 		tasks[2].setBody("test B - task 3 - concurrency value in " + concurrencyKeyB);
-		tasks[3] = new ClusterTask();
+		tasks[3] = new ClusterTaskInternal();
 		tasks[3].setConcurrencyKey(concurrencyKeyA);
 		tasks[3].setBody("test B - task 4 - concurrency value is " + concurrencyKeyA);
-		tasks[4] = new ClusterTask();
+		tasks[4] = new ClusterTaskInternal();
 		tasks[4].setBody("test B - task 5 - concurrency value is NULL");
-		tasks[5] = new ClusterTask();
+		tasks[5] = new ClusterTaskInternal();
 		tasks[5].setConcurrencyKey(concurrencyKeyB);
 		tasks[5].setBody("test B - task 6 - concurrency value in " + concurrencyKeyB);
 

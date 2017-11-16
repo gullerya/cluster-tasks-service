@@ -1,7 +1,7 @@
 package com.microfocus.octane.cluster.tasks.processors;
 
 import com.microfocus.octane.cluster.tasks.ClusterTasksITUtils;
-import com.microfocus.octane.cluster.tasks.api.ClusterTask;
+import com.microfocus.octane.cluster.tasks.impl.ClusterTaskInternal;
 import com.microfocus.octane.cluster.tasks.api.ClusterTasksDataProviderType;
 import com.microfocus.octane.cluster.tasks.api.ClusterTasksProcessorDefault;
 
@@ -19,7 +19,7 @@ public class ClusterTasksProcessorConcurrency_test extends ClusterTasksProcessor
 	}
 
 	@Override
-	public void processTask(ClusterTask task) {
+	public void processTask(ClusterTaskInternal task) {
 		System.out.println("Concurrency Test task '" + task.getBody() + "' started: " + System.currentTimeMillis());
 		ClusterTasksITUtils.sleepSafely(5000);
 		System.out.println("Concurrency Test task '" + task.getBody() + "' ended: " + System.currentTimeMillis());

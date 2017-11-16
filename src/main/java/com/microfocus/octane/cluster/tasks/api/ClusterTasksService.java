@@ -1,5 +1,7 @@
 package com.microfocus.octane.cluster.tasks.api;
 
+import com.microfocus.octane.cluster.tasks.impl.ClusterTaskInternal;
+
 import java.util.concurrent.CompletableFuture;
 
 /**
@@ -20,7 +22,7 @@ public interface ClusterTasksService {
 	 * @param tasks            one or more tasks content to be pushed into the queue; MUST NOT be null; MUST NOT be empty
 	 * @return an array of enqueue results, corresponding to the array of the tasks, having either the task ID in case of success or an exception in case of failure
 	 */
-	ClusterTaskPersistenceResult[] enqueueTasks(ClusterTasksDataProviderType dataProviderType, String processorType, ClusterTask... tasks);
+	ClusterTaskPersistenceResult[] enqueueTasks(ClusterTasksDataProviderType dataProviderType, String processorType, ClusterTaskInternal... tasks);
 
 	@Deprecated
 	int countTasks(ClusterTasksDataProviderType dataProviderType, String processorType, ClusterTaskStatus... statuses);

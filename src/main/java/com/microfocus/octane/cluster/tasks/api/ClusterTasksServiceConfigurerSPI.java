@@ -12,43 +12,50 @@ public interface ClusterTasksServiceConfigurerSPI {
 	enum DBType {ORACLE, MSSQL}
 
 	/**
-	 * OOTB provided promise that MUST BE resolved by the hosting application in order to allow ClusterTasksService to run correctly
-	 * - resolved with TRUE when the configuration ready and ClusterTasksService may start it's routine
-	 * - resolved with FALSE when hosting application decided that it fails to provide ClusterTasksService it's required configuration (DB connectivity, for instance)
+	 * MAY provide a promise, which resolving will notify ClusterTasksService that it may start its job
+	 * - the promise, if provided, MUST be resolved
+	 * - resolving to TRUE means the configuration is ready and ClusterTasksService may start its routine
+	 * - resolving to FALSE means that application failed to provide required configuration (DB connectivity, for instance) - ClusterTasksService won't run
 	 *
-	 * @return promise on configuration readiness
+	 * @return promise on configuration readiness; if NULL is returned - CLusterTasksService will continue as if it was resolved to TRUE
 	 */
 	CompletableFuture<Boolean> getConfigReadyLatch();
 
 	/**
-	 * return interval in millis to breathe between the tasks polling requests
-	 * if result is lower than minimum figure - the MINIMAL_POLL_INTERVAL will be used
-	 * if result is NULL - the DEFAULT_POLL_INTERVAL will be used
+	 * MUST provide data source to the DB, that the ClusterTasksService's tables reside in
 	 *
-	 * @return interval in millis or NULL (default value will be taken)
+	 * @return working data source
 	 */
-	Integer getTasksPollIntervalMillis();
+	DataSource getDataSource();
 
 	/**
-	 * return interval in millis to breathe between the GC cycles
-	 * if result is lower than minimum figure - the MINIMAL_GC_INTERVAL will be used
-	 * if result is NULL - the DEFAULT_GC_INTERVAL will be used
+	 * MAY provide a data source to the DB, that the ClusterTasksService's tables reside in
+	 * this data source, if provided, MUST be privileged enough to perform schema changes
 	 *
-	 * @return either number of millis to wait between intervals or NULL (default value will be taken)
+	 * @return admin data source; if returns NULL - this specific instance will NOT perform schema management
 	 */
-	Integer getGCIntervalMillis();
+	DataSource getAdministrativeDataSource();
 
 	/**
-	 * returns DB type, that ClusterTasksService's tables resides in
+	 * MUST provide DB type, that ClusterTasksService will work with
 	 *
-	 * @return db type; MUST NOT be null
+	 * @return db type; MUST NOT be NULL
 	 */
 	DBType getDbType();
 
 	/**
-	 * returns data source to the DB, that the ClusterTasksService's tables reside in
+	 * MAY provide interval (in millis) of breathing between the tasks polls
+	 * if value is lower than minimum figure - the MINIMAL_POLL_INTERVAL will be used
 	 *
-	 * @return data source; MUST NOT be null
+	 * @return number of millis between tasks polls; if NULL is returned - DEFAULT_POLL_INTERVAL will be taken
 	 */
-	DataSource getDataSource();
+	Integer getTasksPollIntervalMillis();
+
+	/**
+	 * MAY provide interval (in millis) of breathing between the GC cycles
+	 * if value is lower than minimum figure - the MINIMAL_GC_INTERVAL will be used
+	 *
+	 * @return number of millis between GC cycles; if NULL is returned - DEFAULT_GC_INTERVAL will be taken
+	 */
+	Integer getGCIntervalMillis();
 }

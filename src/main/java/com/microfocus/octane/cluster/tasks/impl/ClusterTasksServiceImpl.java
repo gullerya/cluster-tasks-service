@@ -5,7 +5,6 @@ import com.microfocus.octane.cluster.tasks.api.ClusterTaskStatus;
 import com.microfocus.octane.cluster.tasks.api.ClusterTasksDataProviderType;
 import com.microfocus.octane.cluster.tasks.api.ClusterTasksProcessorScheduled;
 import com.microfocus.octane.cluster.tasks.api.ClusterTasksServiceConfigurerSPI;
-import com.microfocus.octane.cluster.tasks.api.ClusterTask;
 import com.microfocus.octane.cluster.tasks.api.ClusterTaskPersistenceResult;
 import com.microfocus.octane.cluster.tasks.api.ClusterTasksProcessorDefault;
 import com.microfocus.octane.cluster.tasks.api.ClusterTasksService;
@@ -41,51 +40,13 @@ public class ClusterTasksServiceImpl implements ClusterTasksService {
 	private final ClusterTasksDispatcher dispatcher = new ClusterTasksDispatcher();
 	private final ClusterTasksGC gc = new ClusterTasksGC();
 	private ClusterTasksServiceConfigurerSPI serviceConfigurer;
-
-	@Autowired
-	private void registerClusterTasksServiceConfigurer(ClusterTasksServiceConfigurerSPI serviceConfigurer, ClusterTasksServiceSchemaManager schemaManager) {
-		this.serviceConfigurer = serviceConfigurer;
-		logger.info("------------------------------------------------");
-		logger.info("----- Cluster Tasks Service initialization -----");
-		logger.info("starting listener on configuration readiness...");
-		if (serviceConfigurer.getConfigReadyLatch() == null) {
-			throw new IllegalStateException("service configurer's readiness latch MUST NOT be null");
-		}
-		serviceConfigurer.getConfigReadyLatch().handleAsync((value, error) -> {
-			logger.info("listener on configuration readiness resolved; value: " + value + ", error: " + error);
-			if (value == null || !value) {
-				readyPromise.complete(false);
-				if (error != null) {
-					throw new IllegalStateException("hosting application failed to provide configuration, ClusterTasksService won't run", error);
-				} else {
-					throw new IllegalStateException("hosting application failed to provide configuration, ClusterTasksService won't run");
-				}
-			} else {
-				if (schemaManager.executeSchemaMaintenance(serviceConfigurer.getDbType(), serviceConfigurer.getDataSource())) {
-					dispatcherExecutor.execute(dispatcher);
-					gcExecutor.execute(gc);
-					logger.info("local tasks dispatcher initialized");
-
-					readyPromise.complete(true);
-					logger.info("CTS is configured & initialized");
-
-					ensureScheduledTasksInitialized();
-					logger.info("scheduled tasks initialization verified");
-				} else {
-					readyPromise.complete(false);
-					logger.error("CTS initialization failed (failed to execute schema maintenance) and won't run");
-				}
-			}
-
-			return null;
-		});
-	}
+	private ClusterTasksServiceSchemaManager schemaManager;
 
 	@Autowired
 	private void registerDataProviders(List<ClusterTasksDataProvider> dataProviders) {
 		dataProviders.forEach(dataProvider -> {
 			if (dataProvidersMap.containsKey(dataProvider.getType())) {
-				logger.error("more than one implementations pretend to provide '" + dataProvider.getType() + "' data provider");
+				logger.error("more than one implementation pretend to provide '" + dataProvider.getType() + "' data provider");
 			} else {
 				dataProvidersMap.put(dataProvider.getType(), dataProvider);
 			}
@@ -95,7 +56,7 @@ public class ClusterTasksServiceImpl implements ClusterTasksService {
 	@Autowired(required = false)
 	private void registerProcessors(List<ClusterTasksProcessorDefault> processors) {
 		if (processors.size() > 500) {
-			throw new IllegalStateException("processor types number is higher than allowed");
+			throw new IllegalStateException("processors number is higher than allowed (500)");
 		}
 
 		processors.forEach(processor -> {
@@ -106,11 +67,40 @@ public class ClusterTasksServiceImpl implements ClusterTasksService {
 			} else if (type.length() > 40) {
 				logger.error("processor " + className + " rejected: type MUST NOT exceed 40 characters, found " + type.length() + " (" + type + ")");
 			} else if (processorsMap.containsKey(type)) {
-				logger.error("processor " + className + " rejected: more than one implementations pretend to process '" + type + "' tasks");
+				logger.error("processor " + className + " rejected: more than one implementation pretend to process '" + type + "' tasks");
 			} else {
 				processorsMap.put(type, processor);
 			}
 		});
+	}
+
+	@Autowired
+	private void registerClusterTasksServiceConfigurer(ClusterTasksServiceConfigurerSPI serviceConfigurer, ClusterTasksServiceSchemaManager schemaManager) {
+		this.serviceConfigurer = serviceConfigurer;
+		this.schemaManager = schemaManager;
+		logger.info("------------------------------------------------");
+		logger.info("------------- Cluster Tasks Service ------------");
+
+		if (serviceConfigurer.getConfigReadyLatch() == null) {
+			initService();
+		} else {
+			logger.info("starting listener on configuration readiness...");
+			serviceConfigurer.getConfigReadyLatch().handleAsync((value, error) -> {
+				logger.info("listener on configuration readiness resolved; value: " + value + ", error: " + error);
+				if (value == null || !value) {
+					readyPromise.complete(false);
+					if (error != null) {
+						throw new IllegalStateException("hosting application failed to provide configuration", error);
+					} else {
+						throw new IllegalStateException("hosting application failed to provide configuration");
+					}
+				} else {
+					initService();
+				}
+
+				return null;
+			});
+		}
 	}
 
 	@Override
@@ -119,7 +109,7 @@ public class ClusterTasksServiceImpl implements ClusterTasksService {
 	}
 
 	@Override
-	public ClusterTaskPersistenceResult[] enqueueTasks(ClusterTasksDataProviderType dataProviderType, String processorType, ClusterTask... tasks) {
+	public ClusterTaskPersistenceResult[] enqueueTasks(ClusterTasksDataProviderType dataProviderType, String processorType, ClusterTaskInternal... tasks) {
 		if (dataProviderType == null) {
 			throw new IllegalArgumentException("data provider type MUST NOT be null");
 		}
@@ -145,13 +135,39 @@ public class ClusterTasksServiceImpl implements ClusterTasksService {
 		return dataProvidersMap.get(dataProviderType).countTasks(processorType, statusSet);
 	}
 
+	private void initService() {
+		logger.info("starting initialization");
+		boolean proceed = true;
+		if (serviceConfigurer.getAdministrativeDataSource() != null) {
+			logger.info("performing schema maintenance");
+			proceed = schemaManager.executeSchemaMaintenance(serviceConfigurer.getDbType(), serviceConfigurer.getAdministrativeDataSource());
+		} else {
+			logger.info("administrative DataSource not provided, skipping schema maintenance");
+		}
+
+		if (proceed) {
+			dispatcherExecutor.execute(dispatcher);
+			gcExecutor.execute(gc);
+			logger.info("local tasks dispatcher initialized");
+
+			logger.info("CTS is configured & initialized");
+			readyPromise.complete(true);
+
+			ensureScheduledTasksInitialized();
+			logger.info("scheduled tasks initialization verified");
+		} else {
+			logger.error("CTS initialization failed (failed to execute schema maintenance) and won't run");
+			readyPromise.complete(false);
+		}
+	}
+
 	private void ensureScheduledTasksInitialized() {
 		processorsMap.forEach((type, processor) -> {
 			if (processor instanceof ClusterTasksProcessorScheduled) {
 				logger.info("performing initial scheduled task upsert for the first-ever-run case on behalf of " + type);
 				ClusterTaskPersistenceResult enqueueResult;
 				int maxEnqueueAttempts = 20, enqueueAttemptsCount = 0;
-				ClusterTask scheduledTask = new ClusterTask();
+				ClusterTaskInternal scheduledTask = new ClusterTaskInternal();
 				scheduledTask.setTaskType(ClusterTaskType.SCHEDULED);
 				scheduledTask.setUniquenessKey(type);
 				scheduledTask.setMaxTimeToRunMillis(((ClusterTasksProcessorScheduled) processor).getMaxTimeToRun());

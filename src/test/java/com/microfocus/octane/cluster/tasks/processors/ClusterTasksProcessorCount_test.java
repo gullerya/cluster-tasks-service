@@ -1,7 +1,7 @@
 package com.microfocus.octane.cluster.tasks.processors;
 
 import com.microfocus.octane.cluster.tasks.ClusterTasksITUtils;
-import com.microfocus.octane.cluster.tasks.api.ClusterTask;
+import com.microfocus.octane.cluster.tasks.impl.ClusterTaskInternal;
 import com.microfocus.octane.cluster.tasks.api.ClusterTasksDataProviderType;
 import com.microfocus.octane.cluster.tasks.api.ClusterTasksProcessorDefault;
 
@@ -24,7 +24,7 @@ public class ClusterTasksProcessorCount_test extends ClusterTasksProcessorDefaul
 	}
 
 	@Override
-	public void processTask(ClusterTask task) {
+	public void processTask(ClusterTaskInternal task) {
 		ClusterTasksITUtils.sleepSafely(holdTaskForMillis);
 	}
 }

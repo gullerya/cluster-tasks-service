@@ -9,116 +9,34 @@ import com.microfocus.octane.cluster.tasks.impl.ClusterTaskType;
  */
 
 public class ClusterTask {
-	private final Long id;
-	private ClusterTaskType taskType = ClusterTaskType.REGULAR;
-	private String processorType;
-	private String uniquenessKey;
-	private String concurrencyKey;
-	private Long orderingFactor;
-	private Long delayByMillis;
-	private Long maxTimeToRunMillis;
-	private String body;
-	private Long partitionIndex;
+	public final Long id;
+	public final ClusterTaskType taskType;
+	public final String processorType;
+	public final String uniquenessKey;
+	public final String concurrencyKey;
+	public final Long orderingFactor;
+	public final Long delayByMillis;
+	public final Long maxTimeToRunMillis;
+	public final String body;
 
-	public ClusterTask() {
-		this.id = null;
-	}
-
-	public ClusterTask(Long id) {
+	ClusterTask(Long id,
+	            ClusterTaskType taskType,
+	            String processorType,
+	            String uniquenessKey,
+	            String concurrencyKey,
+	            Long orderingFactor,
+	            Long delayByMillis,
+	            Long maxTimeToRunMillis,
+	            String body) {
 		this.id = id;
-	}
-
-	public ClusterTask(ClusterTask origin) {
-		if (origin == null) {
-			throw new IllegalArgumentException("origin task MUST NOT be null");
-		}
-
-		id = origin.id;
-		taskType = origin.taskType;
-		processorType = origin.processorType;
-		uniquenessKey = origin.uniquenessKey;
-		concurrencyKey = origin.concurrencyKey;
-		orderingFactor = origin.orderingFactor;
-		delayByMillis = origin.delayByMillis;
-		maxTimeToRunMillis = origin.maxTimeToRunMillis;
-		body = origin.body;
-		partitionIndex = origin.partitionIndex;
-	}
-
-	public Long getId() {
-		return id;
-	}
-
-	public ClusterTaskType getTaskType() {
-		return taskType;
-	}
-
-	public void setTaskType(ClusterTaskType taskType) {
 		this.taskType = taskType;
-	}
-
-	public String getProcessorType() {
-		return processorType;
-	}
-
-	public void setProcessorType(String processorType) {
 		this.processorType = processorType;
-	}
-
-	public String getUniquenessKey() {
-		return uniquenessKey;
-	}
-
-	public void setUniquenessKey(String uniquenessKey) {
 		this.uniquenessKey = uniquenessKey;
-	}
-
-	public String getConcurrencyKey() {
-		return concurrencyKey;
-	}
-
-	public void setConcurrencyKey(String concurrencyKey) {
 		this.concurrencyKey = concurrencyKey;
-	}
-
-	public Long getOrderingFactor() {
-		return orderingFactor;
-	}
-
-	public void setOrderingFactor(Long orderingFactor) {
 		this.orderingFactor = orderingFactor;
-	}
-
-	public Long getDelayByMillis() {
-		return delayByMillis;
-	}
-
-	public void setDelayByMillis(Long delayByMillis) {
 		this.delayByMillis = delayByMillis;
-	}
-
-	public Long getMaxTimeToRunMillis() {
-		return maxTimeToRunMillis;
-	}
-
-	public void setMaxTimeToRunMillis(Long maxTimeToRunMillis) {
 		this.maxTimeToRunMillis = maxTimeToRunMillis;
-	}
-
-	public String getBody() {
-		return body;
-	}
-
-	public void setBody(String body) {
 		this.body = body;
-	}
-
-	public Long getPartitionIndex() {
-		return partitionIndex;
-	}
-
-	public void setPartitionIndex(Long partitionIndex) {
-		this.partitionIndex = partitionIndex;
 	}
 
 	@Override
@@ -131,7 +49,6 @@ public class ClusterTask {
 				", concurrencyKey: " + concurrencyKey +
 				", orderingFactor: " + orderingFactor +
 				", delayByMillis: " + delayByMillis +
-				", maxTimeToRunMillis: " + maxTimeToRunMillis +
-				", partitionIndex: " + partitionIndex + "}";
+				", maxTimeToRunMillis: " + maxTimeToRunMillis + "}";
 	}
 }

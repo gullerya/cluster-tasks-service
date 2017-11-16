@@ -1,6 +1,6 @@
 package com.microfocus.octane.cluster.tasks.processors;
 
-import com.microfocus.octane.cluster.tasks.api.ClusterTask;
+import com.microfocus.octane.cluster.tasks.impl.ClusterTaskInternal;
 import com.microfocus.octane.cluster.tasks.api.ClusterTasksDataProviderType;
 import com.microfocus.octane.cluster.tasks.api.ClusterTasksProcessorDefault;
 
@@ -21,7 +21,7 @@ public class ClusterTasksProcessorF_test_cna extends ClusterTasksProcessorDefaul
 	}
 
 	@Override
-	public void processTask(ClusterTask task) {
+	public void processTask(ClusterTaskInternal task) {
 		tasksProcessed.put(task.getBody(), task.getBody());
 	}
 }

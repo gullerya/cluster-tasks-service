@@ -33,13 +33,13 @@ public class ClusterTasksServiceConfigurerForTestsSPI implements ClusterTasksSer
 	}
 
 	@Override
-	public Integer getTasksPollIntervalMillis() {
-		return null;
+	public DataSource getDataSource() {
+		return dataSource;
 	}
 
 	@Override
-	public Integer getGCIntervalMillis() {
-		return null;
+	public DataSource getAdministrativeDataSource() {
+		return dataSource;
 	}
 
 	@Override
@@ -48,7 +48,12 @@ public class ClusterTasksServiceConfigurerForTestsSPI implements ClusterTasksSer
 	}
 
 	@Override
-	public DataSource getDataSource() {
-		return dataSource;
+	public Integer getTasksPollIntervalMillis() {
+		return null;
+	}
+
+	@Override
+	public Integer getGCIntervalMillis() {
+		return null;
 	}
 }

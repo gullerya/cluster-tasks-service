@@ -6,7 +6,6 @@ import com.microfocus.octane.cluster.tasks.api.ClusterTasksDataProviderType;
 import com.microfocus.octane.cluster.tasks.api.ClusterTasksService;
 import com.microfocus.octane.cluster.tasks.api.ClusterTasksServiceConfigurerSPI;
 import com.microfocus.octane.cluster.tasks.api.CtsGeneralFailure;
-import com.microfocus.octane.cluster.tasks.api.ClusterTask;
 import com.microfocus.octane.cluster.tasks.api.ClusterTaskPersistenceResult;
 import com.microfocus.octane.cluster.tasks.api.ClusterTasksProcessorDefault;
 import org.slf4j.Logger;
@@ -68,7 +67,7 @@ class ClusterTasksDbDataProvider implements ClusterTasksDataProvider {
 
 	//  TODO: support bulk insert here
 	@Override
-	public ClusterTaskPersistenceResult[] storeTasks(String processorType, ClusterTask... tasks) {
+	public ClusterTaskPersistenceResult[] storeTasks(String processorType, ClusterTaskInternal... tasks) {
 		if (!clusterTasksService.getReadyPromise().isDone()) {
 			throw new IllegalStateException("cluster tasks service has not yet been initialized; either postpone tasks submission or listen to completion of [clusterTasksService].getReadyPromise()");
 		}
@@ -84,12 +83,12 @@ class ClusterTasksDbDataProvider implements ClusterTasksDataProvider {
 
 		List<ClusterTaskPersistenceResult> result = new ArrayList<>(tasks.length);
 
-		for (ClusterTask originalTask : tasks) {
+		for (ClusterTaskInternal originalTask : tasks) {
 			CTPPersistStatus validationStatus = validateAndNormalizeTask(originalTask);
 
 			if (validationStatus == CTPPersistStatus.SUCCESS) {
 				getTransactionTemplate().execute(transactionStatus -> {
-					ClusterTask task = new ClusterTask(originalTask);
+					ClusterTaskInternal task = new ClusterTaskInternal(originalTask);
 					try {
 						JdbcTemplate jdbcTemplate = getJdbcTemplate();
 						boolean hasBody = false;
@@ -177,7 +176,7 @@ class ClusterTasksDbDataProvider implements ClusterTasksDataProvider {
 				int[] paramTypes = new int[paramsTotal];
 				for (int i = 0; i < paramsTotal; i++) paramTypes[i] = Types.NVARCHAR;
 
-				List<ClusterTask> tasks = jdbcTemplate.query(selectForUpdateSql, params, paramTypes, ClusterTasksDbUtils::tasksMetadataReader);
+				List<ClusterTaskInternal> tasks = jdbcTemplate.query(selectForUpdateSql, params, paramTypes, ClusterTasksDbUtils::tasksMetadataReader);
 				if (!tasks.isEmpty()) {
 					List<Long> startedTasksIDs = new LinkedList<>();
 
@@ -294,12 +293,12 @@ class ClusterTasksDbDataProvider implements ClusterTasksDataProvider {
 			try {
 				JdbcTemplate jdbcTemplate = getJdbcTemplate();
 				String selectGCValidTasksSQL = ClusterTasksDbUtils.buildSelectGCValidTasksSQL(getDBType());
-				List<ClusterTask> gcCandidates = jdbcTemplate.query(selectGCValidTasksSQL, ClusterTasksDbUtils::gcCandidatesReader);
+				List<ClusterTaskInternal> gcCandidates = jdbcTemplate.query(selectGCValidTasksSQL, ClusterTasksDbUtils::gcCandidatesReader);
 
 				//  delete garbage tasks data
 				Map<Long, Long> dataSetToDelete = gcCandidates.stream()
 						.filter(task -> task.getTaskType() == ClusterTaskType.REGULAR)
-						.collect(Collectors.toMap(ClusterTask::getId, ClusterTask::getPartitionIndex));
+						.collect(Collectors.toMap(ClusterTaskInternal::getId, ClusterTaskInternal::getPartitionIndex));
 				if (!dataSetToDelete.isEmpty()) {
 					deleteGarbageTasksData(jdbcTemplate, dataSetToDelete);
 				}
@@ -307,7 +306,7 @@ class ClusterTasksDbDataProvider implements ClusterTasksDataProvider {
 				//  update tasks valid for reenqueue
 				List<Long> dataSetToUpdate = gcCandidates.stream()
 						.filter(task -> task.getTaskType() == ClusterTaskType.SCHEDULED)
-						.map(ClusterTask::getId)
+						.map(ClusterTaskInternal::getId)
 						.collect(Collectors.toList());
 				if (!dataSetToUpdate.isEmpty()) {
 					updateReenqueueTasks(jdbcTemplate, dataSetToUpdate);
@@ -333,7 +332,7 @@ class ClusterTasksDbDataProvider implements ClusterTasksDataProvider {
 		return getJdbcTemplate().queryForObject(countTasksSQL, Integer.class);
 	}
 
-	private CTPPersistStatus validateAndNormalizeTask(ClusterTask task) {
+	private CTPPersistStatus validateAndNormalizeTask(ClusterTaskInternal task) {
 		CTPPersistStatus result = CTPPersistStatus.SUCCESS;
 		//  validation
 		//  TODO: add more task validations here...

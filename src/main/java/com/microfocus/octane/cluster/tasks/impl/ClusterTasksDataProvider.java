@@ -1,6 +1,5 @@
 package com.microfocus.octane.cluster.tasks.impl;
 
-import com.microfocus.octane.cluster.tasks.api.ClusterTask;
 import com.microfocus.octane.cluster.tasks.api.ClusterTaskPersistenceResult;
 import com.microfocus.octane.cluster.tasks.api.ClusterTaskStatus;
 import com.microfocus.octane.cluster.tasks.api.ClusterTasksDataProviderType;
@@ -32,7 +31,7 @@ interface ClusterTasksDataProvider {
 	 * @param tasks         one or more tasks content to be pushed into the queue
 	 * @return an array of Optionals, corresponding to the array of the tasks, having either the task ID in case of successful push or an exception in case of failure
 	 */
-	ClusterTaskPersistenceResult[] storeTasks(String processorType, ClusterTask... tasks);
+	ClusterTaskPersistenceResult[] storeTasks(String processorType, ClusterTaskInternal... tasks);
 
 	/**
 	 * Attempts to retrieve next valid task per type, marks the retrieved task as running and possible checks is there are more tasks valid to be executed
