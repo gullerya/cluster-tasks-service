@@ -6,27 +6,19 @@
 
 	<bean class="com.microfocus.octane.cluster.tasks.ClusterTasksServiceConfigurerForTestsSPI"/>
 
-	<bean id="tasksProcessorA_test"
-		  class="com.microfocus.octane.cluster.tasks.processors.ClusterTasksProcessorA_test"/>
+	<bean class="com.microfocus.octane.cluster.tasks.processors.ClusterTasksProcessorA_test"/>
 
-	<bean id="tasksProcessorB_test"
-		  class="com.microfocus.octane.cluster.tasks.processors.ClusterTasksProcessorB_test"/>
+	<bean class="com.microfocus.octane.cluster.tasks.processors.ClusterTasksProcessorB_test"/>
 
-	<bean id="tasksProcessorC_test"
-		  class="com.microfocus.octane.cluster.tasks.processors.ClusterTasksProcessorC_test"/>
+	<bean class="com.microfocus.octane.cluster.tasks.processors.ClusterTasksProcessorC_test"/>
 
-	<bean id="tasksProcessorD_test"
-		  class="com.microfocus.octane.cluster.tasks.processors.ClusterTasksProcessorD_test"/>
+	<bean class="com.microfocus.octane.cluster.tasks.processors.ClusterTasksProcessorD_test"/>
 
-	<bean id="tasksProcessorE_test_non_available_ever"
-		  class="com.microfocus.octane.cluster.tasks.processors.ClusterTasksProcessorE_test_na"/>
+	<bean class="com.microfocus.octane.cluster.tasks.processors.ClusterTasksProcessorE_test_na"/>
 
-	<bean id="tasksProcessorF_test_concurrent_with_non_available"
-		  class="com.microfocus.octane.cluster.tasks.processors.ClusterTasksProcessorF_test_cna"/>
+	<bean class="com.microfocus.octane.cluster.tasks.processors.ClusterTasksProcessorF_test_cna"/>
 
-	<bean id="tasksProcessorCount_test"
-		  class="com.microfocus.octane.cluster.tasks.processors.ClusterTasksProcessorCount_test"/>
+	<bean class="com.microfocus.octane.cluster.tasks.processors.ClusterTasksProcessorCount_test"/>
 
-	<bean id="tasksProcessorConcurrency_test"
-		  class="com.microfocus.octane.cluster.tasks.processors.ClusterTasksProcessorConcurrency_test"/>
+	<bean class="com.microfocus.octane.cluster.tasks.processors.ClusterTasksProcessorConcurrency_test"/>
 </beans>

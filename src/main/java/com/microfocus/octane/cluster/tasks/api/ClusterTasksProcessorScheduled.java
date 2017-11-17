@@ -1,5 +1,6 @@
 package com.microfocus.octane.cluster.tasks.api;
 
+import com.microfocus.octane.cluster.tasks.api.enums.ClusterTasksDataProviderType;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 

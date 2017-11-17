@@ -1,4 +1,4 @@
-package com.microfocus.octane.cluster.tasks.api;
+package com.microfocus.octane.cluster.tasks.api.enums;
 
 /**
  * Created by gullery on 08/06/2017

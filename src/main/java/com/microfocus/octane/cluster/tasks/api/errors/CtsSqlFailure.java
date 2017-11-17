@@ -1,4 +1,4 @@
-package com.microfocus.octane.cluster.tasks.api;
+package com.microfocus.octane.cluster.tasks.api.errors;
 
 import java.sql.SQLException;
 

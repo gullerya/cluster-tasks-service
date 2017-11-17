@@ -1,13 +1,15 @@
 package com.microfocus.octane.cluster.tasks.impl;
 
-import com.microfocus.octane.cluster.tasks.api.CTPPersistStatus;
-import com.microfocus.octane.cluster.tasks.api.ClusterTaskStatus;
-import com.microfocus.octane.cluster.tasks.api.ClusterTasksDataProviderType;
+import com.microfocus.octane.cluster.tasks.api.enums.CTPPersistStatus;
+import com.microfocus.octane.cluster.tasks.api.enums.ClusterTaskStatus;
+import com.microfocus.octane.cluster.tasks.api.enums.ClusterTaskType;
+import com.microfocus.octane.cluster.tasks.api.enums.ClusterTasksDataProviderType;
 import com.microfocus.octane.cluster.tasks.api.ClusterTasksProcessorScheduled;
 import com.microfocus.octane.cluster.tasks.api.ClusterTasksServiceConfigurerSPI;
-import com.microfocus.octane.cluster.tasks.api.ClusterTaskPersistenceResult;
+import com.microfocus.octane.cluster.tasks.api.dto.ClusterTaskPersistenceResult;
 import com.microfocus.octane.cluster.tasks.api.ClusterTasksProcessorDefault;
 import com.microfocus.octane.cluster.tasks.api.ClusterTasksService;
+import com.microfocus.octane.cluster.tasks.api.dto.TaskToEnqueue;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -109,7 +111,7 @@ public class ClusterTasksServiceImpl implements ClusterTasksService {
 	}
 
 	@Override
-	public ClusterTaskPersistenceResult[] enqueueTasks(ClusterTasksDataProviderType dataProviderType, String processorType, ClusterTaskInternal... tasks) {
+	public ClusterTaskPersistenceResult[] enqueueTasks(ClusterTasksDataProviderType dataProviderType, String processorType, TaskToEnqueue... tasks) {
 		if (dataProviderType == null) {
 			throw new IllegalArgumentException("data provider type MUST NOT be null");
 		}
@@ -167,21 +169,21 @@ public class ClusterTasksServiceImpl implements ClusterTasksService {
 				logger.info("performing initial scheduled task upsert for the first-ever-run case on behalf of " + type);
 				ClusterTaskPersistenceResult enqueueResult;
 				int maxEnqueueAttempts = 20, enqueueAttemptsCount = 0;
-				ClusterTaskInternal scheduledTask = new ClusterTaskInternal();
+				TaskToEnqueue scheduledTask = new TaskToEnqueue();
 				scheduledTask.setTaskType(ClusterTaskType.SCHEDULED);
 				scheduledTask.setUniquenessKey(type);
 				scheduledTask.setMaxTimeToRunMillis(((ClusterTasksProcessorScheduled) processor).getMaxTimeToRun());
 				do {
 					enqueueAttemptsCount++;
 					enqueueResult = enqueueTasks(processor.getDataProviderType(), type, scheduledTask)[0];
-					if (enqueueResult.status == CTPPersistStatus.SUCCESS) {
+					if (enqueueResult.getStatus() == CTPPersistStatus.SUCCESS) {
 						logger.info("initial task for " + type + " created");
 						break;
-					} else if (enqueueResult.status == CTPPersistStatus.UNIQUE_CONSTRAINT_FAILURE) {
+					} else if (enqueueResult.getStatus() == CTPPersistStatus.UNIQUE_CONSTRAINT_FAILURE) {
 						logger.info("failed to create initial scheduled task for " + type + " with unique constraint violation, assuming that task was already created, will not reattempt");
 						break;
 					} else {
-						logger.error("failed to create scheduled task for " + type + " with error " + enqueueResult.status + "; will reattempt for more " + (maxEnqueueAttempts - enqueueAttemptsCount) + " times");
+						logger.error("failed to create scheduled task for " + type + " with error " + enqueueResult.getStatus() + "; will reattempt for more " + (maxEnqueueAttempts - enqueueAttemptsCount) + " times");
 						try {
 							Thread.sleep(3000);
 						} catch (InterruptedException ie) {

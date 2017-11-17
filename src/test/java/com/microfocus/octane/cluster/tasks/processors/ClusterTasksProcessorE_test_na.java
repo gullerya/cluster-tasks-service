@@ -1,7 +1,7 @@
 package com.microfocus.octane.cluster.tasks.processors;
 
-import com.microfocus.octane.cluster.tasks.impl.ClusterTaskInternal;
-import com.microfocus.octane.cluster.tasks.api.ClusterTasksDataProviderType;
+import com.microfocus.octane.cluster.tasks.api.dto.TaskToProcess;
+import com.microfocus.octane.cluster.tasks.api.enums.ClusterTasksDataProviderType;
 import com.microfocus.octane.cluster.tasks.api.ClusterTasksProcessorDefault;
 
 /**
@@ -9,8 +9,6 @@ import com.microfocus.octane.cluster.tasks.api.ClusterTasksProcessorDefault;
  */
 
 public class ClusterTasksProcessorE_test_na extends ClusterTasksProcessorDefault {
-	public static String BEAN_ID = "tasksProcessorE_test_non_available_ever";
-
 	protected ClusterTasksProcessorE_test_na() {
 		super(ClusterTasksDataProviderType.DB, 1);
 	}
@@ -21,6 +19,6 @@ public class ClusterTasksProcessorE_test_na extends ClusterTasksProcessorDefault
 	}
 
 	@Override
-	public void processTask(ClusterTaskInternal task) {
+	public void processTask(TaskToProcess task) {
 	}
 }

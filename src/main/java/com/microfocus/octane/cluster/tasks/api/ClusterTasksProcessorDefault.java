@@ -1,6 +1,7 @@
 package com.microfocus.octane.cluster.tasks.api;
 
-import com.microfocus.octane.cluster.tasks.impl.ClusterTaskInternal;
+import com.microfocus.octane.cluster.tasks.api.dto.TaskToProcess;
+import com.microfocus.octane.cluster.tasks.api.enums.ClusterTasksDataProviderType;
 import com.microfocus.octane.cluster.tasks.impl.ClusterTasksWorker;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -51,11 +52,12 @@ public abstract class ClusterTasksProcessorDefault {
 		return type;
 	}
 
-	public ClusterTasksDataProviderType getDataProviderType() {
+	//  INTERNAL - to be invoked by CTS system only
+	public final ClusterTasksDataProviderType getDataProviderType() {
 		return dataProviderType;
 	}
 
-	abstract public void processTask(ClusterTaskInternal task) throws Exception;
+	abstract public void processTask(TaskToProcess task) throws Exception;
 
 	protected void setMinimalTasksTakeInterval(Integer minimalTasksTakeInterval) {
 		minimalTasksTakeInterval = minimalTasksTakeInterval == null ? ClusterTasksServiceConfigurerSPI.DEFAULT_POLL_INTERVAL : minimalTasksTakeInterval;
@@ -78,7 +80,7 @@ public abstract class ClusterTasksProcessorDefault {
 	}
 
 	//  INTERNAL - to be invoked by CTS system only
-	public void internalProcessTasksAsync(ClusterTasksWorker worker) {
+	public final void internalProcessTasksAsync(ClusterTasksWorker worker) {
 		notifyTaskWorkerStarted();
 		workersThreadPool.execute(worker);
 	}
@@ -88,7 +90,8 @@ public abstract class ClusterTasksProcessorDefault {
 		logger.debug(type + " available workers " + aWorkers);
 	}
 
-	public void notifyTaskWorkerFinished() {
+	//  INTERNAL - to be invoked by CTS system only
+	public final void notifyTaskWorkerFinished() {
 		int aWorkers = availableWorkers.incrementAndGet();
 		lastTaskHandledLocalTime = System.currentTimeMillis();
 		logger.debug(type + " available workers " + aWorkers);

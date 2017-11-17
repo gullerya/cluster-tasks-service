@@ -1,8 +1,9 @@
 package com.microfocus.octane.cluster.tasks.impl;
 
-import com.microfocus.octane.cluster.tasks.api.ClusterTaskStatus;
-import com.microfocus.octane.cluster.tasks.api.CtsDBTypeNotSupported;
-import com.microfocus.octane.cluster.tasks.api.CtsSqlFailure;
+import com.microfocus.octane.cluster.tasks.api.enums.ClusterTaskStatus;
+import com.microfocus.octane.cluster.tasks.api.errors.CtsDBTypeNotSupported;
+import com.microfocus.octane.cluster.tasks.api.errors.CtsSqlFailure;
+import com.microfocus.octane.cluster.tasks.api.enums.ClusterTaskType;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -253,29 +254,30 @@ final class ClusterTasksDbUtils {
 	//
 	//  READERS - DB responses processors
 	//
-	static List<ClusterTaskInternal> tasksMetadataReader(ResultSet resultSet) {
-		List<ClusterTaskInternal> result = new LinkedList<>();
-		ClusterTaskInternal tmpTask;
+	static List<TaskInternal> tasksMetadataReader(ResultSet resultSet) {
+		List<TaskInternal> result = new LinkedList<>();
+		TaskInternal tmpTask;
 		Long tmpLong;
 		String tmpString;
 		try {
 			while (resultSet.next()) {
 				try {
-					tmpTask = new ClusterTaskInternal(resultSet.getLong(META_ID));
-					tmpTask.setTaskType(ClusterTaskType.byValue(resultSet.getLong(TASK_TYPE)));
-					tmpTask.setProcessorType(resultSet.getString(PROCESSOR_TYPE));
-					tmpTask.setUniquenessKey(resultSet.getString(UNIQUENESS_KEY));
+					tmpTask = new TaskInternal();
+					tmpTask.id = resultSet.getLong(META_ID);
+					tmpTask.taskType = ClusterTaskType.byValue(resultSet.getLong(TASK_TYPE));
+					tmpTask.processorType = resultSet.getString(PROCESSOR_TYPE);
+					tmpTask.uniquenessKey = resultSet.getString(UNIQUENESS_KEY);
 					tmpString = resultSet.getString(CONCURRENCY_KEY);
 					if (!resultSet.wasNull()) {
-						tmpTask.setConcurrencyKey(tmpString);
+						tmpTask.concurrencyKey = tmpString;
 					}
 					tmpLong = resultSet.getLong(ORDERING_FACTOR);
 					if (!resultSet.wasNull()) {
-						tmpTask.setOrderingFactor(tmpLong);
+						tmpTask.orderingFactor = tmpLong;
 					}
 					tmpLong = resultSet.getLong(BODY_PARTITION);
 					if (!resultSet.wasNull()) {
-						tmpTask.setPartitionIndex(tmpLong);
+						tmpTask.partitionIndex = tmpLong;
 					}
 
 					result.add(tmpTask);
@@ -311,14 +313,15 @@ final class ClusterTasksDbUtils {
 		return result;
 	}
 
-	static List<ClusterTaskInternal> gcCandidatesReader(ResultSet resultSet) {
-		List<ClusterTaskInternal> result = new LinkedList<>();
+	static List<TaskInternal> gcCandidatesReader(ResultSet resultSet) {
+		List<TaskInternal> result = new LinkedList<>();
 		try {
 			while (resultSet.next()) {
 				try {
-					ClusterTaskInternal task = new ClusterTaskInternal(resultSet.getLong(META_ID));
-					task.setTaskType(ClusterTaskType.byValue(resultSet.getLong(TASK_TYPE)));
-					task.setPartitionIndex(resultSet.getLong(BODY_PARTITION));
+					TaskInternal task = new TaskInternal();
+					task.id = resultSet.getLong(META_ID);
+					task.taskType = ClusterTaskType.byValue(resultSet.getLong(TASK_TYPE));
+					task.partitionIndex = resultSet.getLong(BODY_PARTITION);
 					result.add(task);
 				} catch (SQLException sqle) {
 					logger.error("failed to read cluster task body", sqle);

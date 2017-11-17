@@ -1,7 +1,7 @@
 package com.microfocus.octane.cluster.tasks.processors;
 
-import com.microfocus.octane.cluster.tasks.impl.ClusterTaskInternal;
-import com.microfocus.octane.cluster.tasks.api.ClusterTasksDataProviderType;
+import com.microfocus.octane.cluster.tasks.api.dto.TaskToProcess;
+import com.microfocus.octane.cluster.tasks.api.enums.ClusterTasksDataProviderType;
 import com.microfocus.octane.cluster.tasks.api.ClusterTasksProcessorDefault;
 
 import java.sql.Timestamp;
@@ -13,8 +13,6 @@ import java.util.Map;
  */
 
 public class ClusterTasksProcessorA_test extends ClusterTasksProcessorDefault {
-	public static String BEAN_ID = "tasksProcessorA_test";
-
 	public final Map<String, Timestamp> tasksProcessed = new LinkedHashMap<>();
 
 	protected ClusterTasksProcessorA_test() {
@@ -22,7 +20,7 @@ public class ClusterTasksProcessorA_test extends ClusterTasksProcessorDefault {
 	}
 
 	@Override
-	public void processTask(ClusterTaskInternal task) {
+	public void processTask(TaskToProcess task) {
 		tasksProcessed.put(task.getBody(), new Timestamp(System.currentTimeMillis()));
 	}
 }

@@ -1,6 +1,7 @@
 package com.microfocus.octane.cluster.tasks.impl;
 
 import com.microfocus.octane.cluster.tasks.api.ClusterTasksProcessorDefault;
+import com.microfocus.octane.cluster.tasks.api.enums.ClusterTaskType;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -13,7 +14,7 @@ import org.slf4j.LoggerFactory;
 class ClusterTaskWorkersFactory {
 	private static final Logger logger = LoggerFactory.getLogger(ClusterTaskWorkersFactory.class);
 
-	ClusterTasksWorker createWorker(ClusterTasksDataProvider dataProvider, ClusterTasksProcessorDefault processor, ClusterTaskInternal task) {
+	ClusterTasksWorker createWorker(ClusterTasksDataProvider dataProvider, ClusterTasksProcessorDefault processor, TaskInternal task) {
 		if (processor == null) {
 			throw new IllegalArgumentException("processor MUST NOT be null");
 		}
@@ -27,9 +28,9 @@ class ClusterTaskWorkersFactory {
 	private class ClusterTasksWorkerImpl implements ClusterTasksWorker {
 		private final ClusterTasksDataProvider dataProvider;
 		private final ClusterTasksProcessorDefault tasksProcessor;
-		private final ClusterTaskInternal task;
+		private final TaskInternal task;
 
-		private ClusterTasksWorkerImpl(ClusterTasksDataProvider dataProvider, ClusterTasksProcessorDefault tasksProcessor, ClusterTaskInternal task) {
+		private ClusterTasksWorkerImpl(ClusterTasksDataProvider dataProvider, ClusterTasksProcessorDefault tasksProcessor, TaskInternal task) {
 			this.dataProvider = dataProvider;
 			this.tasksProcessor = tasksProcessor;
 			this.task = task;
@@ -37,10 +38,10 @@ class ClusterTaskWorkersFactory {
 
 		@Override
 		public void run() {
-			if (task.getPartitionIndex() != null) {
+			if (task.partitionIndex != null) {
 				try {
-					task.setBody(dataProvider.retrieveTaskBody(task.getId(), task.getPartitionIndex()));
-					logger.debug(task + " has body: " + task.getBody());
+					task.body = dataProvider.retrieveTaskBody(task.id, task.partitionIndex);
+					logger.debug(task + " has body: " + task.body);
 				} catch (Exception e) {
 					logger.error("failed to retrieve body of the " + task + ", aborting task's execution");
 					return;
@@ -50,15 +51,15 @@ class ClusterTaskWorkersFactory {
 			}
 
 			try {
-				tasksProcessor.processTask(task);
+				tasksProcessor.processTask(TaskToProcessImpl.from(task));
 			} catch (Exception e) {
-				logger.error("failed processing " + task + ", body: " + task.getBody(), e);
+				logger.error("failed processing " + task + ", body: " + task.body, e);
 			} finally {
 				try {
-					if (task.getTaskType() == ClusterTaskType.REGULAR) {
-						dataProvider.updateTaskFinished(task.getId());
-					} else if (task.getTaskType() == ClusterTaskType.SCHEDULED) {
-						dataProvider.updateTaskReenqueued(task.getId());
+					if (task.taskType == ClusterTaskType.REGULAR) {
+						dataProvider.updateTaskToFinished(task.id);
+					} else if (task.taskType == ClusterTaskType.SCHEDULED) {
+						dataProvider.updateTaskToReenqueued(task.id);
 					}
 				} catch (Exception e) {
 					logger.error("failed to update finished on " + task, e);

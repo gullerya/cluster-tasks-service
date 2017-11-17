@@ -1,9 +1,10 @@
 package com.microfocus.octane.cluster.tasks.impl;
 
-import com.microfocus.octane.cluster.tasks.api.ClusterTaskPersistenceResult;
-import com.microfocus.octane.cluster.tasks.api.ClusterTaskStatus;
-import com.microfocus.octane.cluster.tasks.api.ClusterTasksDataProviderType;
+import com.microfocus.octane.cluster.tasks.api.dto.ClusterTaskPersistenceResult;
+import com.microfocus.octane.cluster.tasks.api.enums.ClusterTaskStatus;
+import com.microfocus.octane.cluster.tasks.api.enums.ClusterTasksDataProviderType;
 import com.microfocus.octane.cluster.tasks.api.ClusterTasksProcessorDefault;
+import com.microfocus.octane.cluster.tasks.api.dto.TaskToEnqueue;
 
 import java.util.Map;
 import java.util.Set;
@@ -31,7 +32,7 @@ interface ClusterTasksDataProvider {
 	 * @param tasks         one or more tasks content to be pushed into the queue
 	 * @return an array of Optionals, corresponding to the array of the tasks, having either the task ID in case of successful push or an exception in case of failure
 	 */
-	ClusterTaskPersistenceResult[] storeTasks(String processorType, ClusterTaskInternal... tasks);
+	ClusterTaskPersistenceResult[] storeTasks(String processorType, TaskToEnqueue... tasks);
 
 	/**
 	 * Attempts to retrieve next valid task per type, marks the retrieved task as running and possible checks is there are more tasks valid to be executed
@@ -54,14 +55,14 @@ interface ClusterTasksDataProvider {
 	 *
 	 * @param taskId the value that was assigned to a task in process of creation
 	 */
-	void updateTaskFinished(Long taskId);
+	void updateTaskToFinished(Long taskId);
 
 	/**
 	 * Updates task as PENDING, thus releasing the processor to take next task and make this task valid for renewed run (scheduled tasks, for example)
 	 *
 	 * @param taskId the value that was assigned to a task in process of creation
 	 */
-	void updateTaskReenqueued(Long taskId);
+	void updateTaskToReenqueued(Long taskId);
 
 	/**
 	 * Implementation should perform a clean up of an items in storage that may be considered as 'garbage'
