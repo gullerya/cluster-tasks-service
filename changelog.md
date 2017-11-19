@@ -1,6 +1,10 @@
 ###Changelog
 
-#####1.0.7 (current)
+#####1.0.8 (current)
+- small improvements in tasks retrieving query
+- documentation
+
+#####1.0.7
 - added tests coverage monitoring (`jacoco-coverage` Maven profile from parent pom)
 - moved GC task back to be a thread and not CTP task due to defect in case when this task staled on running
 - sequencing added (becoming fully independent from hosting application)
