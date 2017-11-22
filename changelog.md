@@ -1,5 +1,8 @@
 ###Changelog
 
+#####1.0.9 (current)
+- documentation
+
 #####1.0.8 (current)
 - small improvements in tasks retrieving query
 - fixed potential deadlock while task retrieved in MSSQL use-case
