@@ -119,7 +119,7 @@ final class ClusterTasksDbUtils {
 					" FOR UPDATE";
 		} else if (DBType.MSSQL == dbType) {
 			return "SELECT " + selectFields +
-					" FROM " + META_TABLE_NAME + " WITH (UPDLOCK,HOLDLOCK) WHERE " + META_ID + " IN " +
+					" FROM " + META_TABLE_NAME + " WITH (UPDLOCK,INDEX(CTSKM_IDX_2)) WHERE " + META_ID + " IN " +
 					"   (SELECT " + META_ID + " FROM" +
 					"       (SELECT " + META_ID + "," +
 					"               ROW_NUMBER() OVER (PARTITION BY COALESCE(" + CONCURRENCY_KEY + ",CAST(NEWID() AS VARCHAR(64))) ORDER BY " + ORDERING_FACTOR + "," + CREATED + " ASC) AS row_index," +
