@@ -2,7 +2,7 @@
 
 #####1.0.8 (current)
 - small improvements in tasks retrieving query
-- documentation
+- fixed potential deadlock while task retrieved in MSSQL use-case
 
 #####1.0.7
 - added tests coverage monitoring (`jacoco-coverage` Maven profile from parent pom)
