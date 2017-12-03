@@ -115,7 +115,6 @@ final class ClusterTasksDbUtils {
 					"           AND " + STATUS + " < " + ClusterTaskStatus.FINISHED.value +
 					"           AND " + CREATED + " <= SYSDATE - NUMTODSINTERVAL(" + DELAY_BY_MILLIS + " / 1000, 'SECOND')) meta" +
 					"   WHERE meta.row_index <= 1 AND meta.running_count = 0)" +
-					"   ORDER BY " + ORDERING_FACTOR +
 					" FOR UPDATE";
 		} else if (DBType.MSSQL == dbType) {
 			return "SELECT " + selectFields +
@@ -128,8 +127,7 @@ final class ClusterTasksDbUtils {
 					"       WHERE " + PROCESSOR_TYPE + " IN(" + processorTypesInParameter + ")" +
 					"           AND " + STATUS + " < " + ClusterTaskStatus.FINISHED.value +
 					"           AND " + CREATED + " <= DATEADD(MILLISECOND, -" + DELAY_BY_MILLIS + ", GETDATE())) meta" +
-					"   WHERE meta.row_index <= 1 AND meta.running_count = 0)" +
-					"   ORDER BY " + ORDERING_FACTOR;
+					"   WHERE meta.row_index <= 1 AND meta.running_count = 0)";
 		} else {
 			throw new CtsDBTypeNotSupported("DB type " + dbType + " is not supported");
 		}
