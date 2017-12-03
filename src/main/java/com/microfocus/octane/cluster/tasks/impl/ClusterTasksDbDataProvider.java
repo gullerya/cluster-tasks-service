@@ -172,6 +172,8 @@ class ClusterTasksDbDataProvider implements ClusterTasksDataProvider {
 				if (!tasks.isEmpty()) {
 					List<Long> startedTasksIDs = new LinkedList<>();
 
+					//  TODO: change the logic below to take each time only a tasks of some specific processor
+					//  TODO: then pass the list of the tasks to processor itself, which should pick the most relevant tasks for itself
 					//  dispatch tasks where relevant
 					//
 					tasks.forEach(task -> {

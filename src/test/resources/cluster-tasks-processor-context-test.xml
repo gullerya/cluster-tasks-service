@@ -21,4 +21,6 @@
 	<bean class="com.microfocus.octane.cluster.tasks.processors.ClusterTasksProcessorCount_test"/>
 
 	<bean class="com.microfocus.octane.cluster.tasks.processors.ClusterTasksProcessorConcurrency_test"/>
+
+	<bean class="com.microfocus.octane.cluster.tasks.processors.ClusterTasksProcessorFairness_test"/>
 </beans>
