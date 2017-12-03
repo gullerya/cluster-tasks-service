@@ -78,7 +78,10 @@ public class ClusterTasksProcessorFairnessTest extends CTSTestsBase {
 		task = new TaskToEnqueue();
 		tasks.add(task);
 
-		ClusterTaskPersistenceResult[] enqueueResults = clusterTasksService.enqueueTasks(ClusterTasksDataProviderType.DB, "ClusterTasksProcessorFairness_test", tasks.toArray(new TaskToEnqueue[tasks.size()]));
+		ClusterTaskPersistenceResult[] enqueueResults = clusterTasksService.enqueueTasks(
+				ClusterTasksDataProviderType.DB,
+				ClusterTasksProcessorFairness_test_SingleThread.class.getSimpleName(),
+				tasks.toArray(new TaskToEnqueue[tasks.size()]));
 		for (ClusterTaskPersistenceResult result : enqueueResults) {
 			if (result.getStatus() != CTPPersistStatus.SUCCESS) fail("failed to enqueue tasks");
 		}
