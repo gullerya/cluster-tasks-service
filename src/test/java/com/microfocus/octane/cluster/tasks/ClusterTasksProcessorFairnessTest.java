@@ -4,21 +4,19 @@ import com.microfocus.octane.cluster.tasks.api.dto.ClusterTaskPersistenceResult;
 import com.microfocus.octane.cluster.tasks.api.dto.TaskToEnqueue;
 import com.microfocus.octane.cluster.tasks.api.enums.CTPPersistStatus;
 import com.microfocus.octane.cluster.tasks.api.enums.ClusterTasksDataProviderType;
-import com.microfocus.octane.cluster.tasks.processors.ClusterTasksProcessorConcurrency_test;
-import com.microfocus.octane.cluster.tasks.processors.ClusterTasksProcessorFairness_test;
+import com.microfocus.octane.cluster.tasks.processors.ClusterTasksProcessorFairness_test_SingleThread;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.test.context.ContextConfiguration;
 import org.springframework.test.context.junit4.SpringJUnit4ClassRunner;
 
 import java.util.LinkedList;
 import java.util.List;
-import java.util.UUID;
 
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
 
 /**
@@ -37,11 +35,8 @@ import static org.junit.Assert.fail;
 public class ClusterTasksProcessorFairnessTest extends CTSTestsBase {
 	private static final Logger logger = LoggerFactory.getLogger(ClusterTasksProcessorFairnessTest.class);
 
-	@Autowired
-	private ClusterTasksProcessorFairness_test clusterTasksProcessorFairness_test;
-
 	@Test
-	public void TestA_fairness() {
+	public void TestA_fairness_limited_resource() {
 		List<TaskToEnqueue> tasks = new LinkedList<>();
 		TaskToEnqueue task;
 
@@ -90,7 +85,7 @@ public class ClusterTasksProcessorFairnessTest extends CTSTestsBase {
 
 		waitForEndCondition(tasks.size(), tasks.size() * 1000 * 3);
 
-		List<String> eventsLog = ClusterTasksProcessorFairness_test.keysProcessingEventLog;
+		List<String> eventsLog = ClusterTasksProcessorFairness_test_SingleThread.keysProcessingEventsLog;
 		assertEquals(tasks.size(), eventsLog.size());
 		assertEquals("1", eventsLog.get(0));
 		assertEquals("2", eventsLog.get(1));
@@ -105,17 +100,28 @@ public class ClusterTasksProcessorFairnessTest extends CTSTestsBase {
 		assertEquals("null", eventsLog.get(10));
 		assertEquals("1", eventsLog.get(11));
 
-		//  TODO: validate that "null" keyed tasks were processed in order of enqueueing
+		List<Long> nonConcurrentEventsLog = ClusterTasksProcessorFairness_test_SingleThread.nonConcurrentEventsLog;
+		for (int i = 0; i < nonConcurrentEventsLog.size() - 1; i++) {
+			assertTrue(nonConcurrentEventsLog.get(i) <= nonConcurrentEventsLog.get(i + 1));
+		}
+	}
+
+	@Test
+	public void TestA_fairness_resource_for_multi_non_concurrent() {
+		List<TaskToEnqueue> tasks = new LinkedList<>();
+		TaskToEnqueue task;
+
+
 	}
 
 	private void waitForEndCondition(int expectedSize, long maxTimeToWait) {
 		long timePassed = 0;
 		long pauseInterval = 439;
-		while (ClusterTasksProcessorFairness_test.keysProcessingEventLog.size() < expectedSize && timePassed < maxTimeToWait) {
+		while (ClusterTasksProcessorFairness_test_SingleThread.keysProcessingEventsLog.size() < expectedSize && timePassed < maxTimeToWait) {
 			ClusterTasksITUtils.sleepSafely(pauseInterval);
 			timePassed += pauseInterval;
 		}
-		if (ClusterTasksProcessorFairness_test.keysProcessingEventLog.size() == expectedSize) {
+		if (ClusterTasksProcessorFairness_test_SingleThread.keysProcessingEventsLog.size() == expectedSize) {
 			logger.info("expectation fulfilled in " + timePassed + "ms");
 			System.out.println("expectation fulfilled in " + timePassed + "ms");
 		}

@@ -11,15 +11,19 @@ import java.util.List;
  * Created by gullery on 02/06/2016
  */
 
-public class ClusterTasksProcessorFairness_test extends ClusterTasksProcessorDefault {
-	public static List<String> keysProcessingEventLog = new LinkedList<>();
+public class ClusterTasksProcessorFairness_test_SingleThread extends ClusterTasksProcessorDefault {
+	public static List<String> keysProcessingEventsLog = new LinkedList<>();
+	public static List<Long> nonConcurrentEventsLog = new LinkedList<>();
 
-	protected ClusterTasksProcessorFairness_test() {
+	protected ClusterTasksProcessorFairness_test_SingleThread() {
 		super(ClusterTasksDataProviderType.DB, 1);
 	}
 
 	@Override
 	public void processTask(TaskToProcess task) {
-		keysProcessingEventLog.add(String.valueOf(task.getConcurrencyKey()));
+		keysProcessingEventsLog.add(String.valueOf(task.getConcurrencyKey()));
+		if (task.getConcurrencyKey() == null) {
+			nonConcurrentEventsLog.add(task.getOrderingFactor());
+		}
 	}
 }

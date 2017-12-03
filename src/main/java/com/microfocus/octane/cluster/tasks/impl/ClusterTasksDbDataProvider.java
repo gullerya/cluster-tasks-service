@@ -8,7 +8,6 @@ import com.microfocus.octane.cluster.tasks.api.ClusterTasksService;
 import com.microfocus.octane.cluster.tasks.api.ClusterTasksServiceConfigurerSPI;
 import com.microfocus.octane.cluster.tasks.api.errors.CtsGeneralFailure;
 import com.microfocus.octane.cluster.tasks.api.dto.ClusterTaskPersistenceResult;
-import com.microfocus.octane.cluster.tasks.api.ClusterTasksProcessorDefault;
 import com.microfocus.octane.cluster.tasks.api.dto.TaskToEnqueue;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -59,8 +58,6 @@ class ClusterTasksDbDataProvider implements ClusterTasksDataProvider {
 	private ClusterTasksService clusterTasksService;
 	@Autowired
 	private ClusterTasksServiceConfigurerSPI serviceConfigurer;
-	@Autowired
-	private ClusterTaskWorkersFactory clusterTaskWorkersFactory;
 
 	@Override
 	public ClusterTasksDataProviderType getType() {
@@ -151,7 +148,7 @@ class ClusterTasksDbDataProvider implements ClusterTasksDataProvider {
 	}
 
 	@Override
-	public void retrieveAndDispatchTasks(Map<String, ClusterTasksProcessorDefault> availableProcessors) {
+	public void retrieveAndDispatchTasks(Map<String, ClusterTasksProcessorBase> availableProcessors) {
 		getTransactionTemplate().execute(transactionStatus -> {
 			try {
 				JdbcTemplate jdbcTemplate = getJdbcTemplate();
@@ -171,25 +168,13 @@ class ClusterTasksDbDataProvider implements ClusterTasksDataProvider {
 				List<TaskInternal> tasks = jdbcTemplate.query(selectForUpdateSql, params, paramTypes, ClusterTasksDbUtils::tasksMetadataReader);
 				if (!tasks.isEmpty()) {
 					List<Long> startedTasksIDs = new LinkedList<>();
+					Map<String, List<TaskInternal>> tasksByProcessor = tasks.stream().collect(Collectors.groupingBy(ti -> ti.processorType));
 
-					//  TODO: change the logic below to take each time only a tasks of some specific processor
-					//  TODO: then pass the list of the tasks to processor itself, which should pick the most relevant tasks for itself
 					//  dispatch tasks where relevant
 					//
-					tasks.forEach(task -> {
-						ClusterTasksProcessorDefault processor = availableProcessors.get(task.processorType);
-						if (processor != null && processor.isReadyToHandleTaskInternal()) {
-							try {
-								logger.debug("handing out " + task);
-								ClusterTasksWorker worker = clusterTaskWorkersFactory.createWorker(this, processor, task);
-								processor.internalProcessTasksAsync(worker);
-								startedTasksIDs.add(task.id);
-							} catch (Exception e) {
-								logger.error("failed to hand out " + task + " to processor " + processor.getType(), e);
-							} finally {
-								logger.debug("finished handing out " + task);
-							}
-						}
+					tasksByProcessor.forEach((processorType, processorTasks) -> {
+						ClusterTasksProcessorBase processor = availableProcessors.get(processorType);
+						startedTasksIDs.addAll(processor.handleTasks(processorTasks, this));
 					});
 
 					//  update started tasks in DB within the same transaction

@@ -7,7 +7,6 @@ import com.microfocus.octane.cluster.tasks.api.enums.ClusterTasksDataProviderTyp
 import com.microfocus.octane.cluster.tasks.api.ClusterTasksProcessorScheduled;
 import com.microfocus.octane.cluster.tasks.api.ClusterTasksServiceConfigurerSPI;
 import com.microfocus.octane.cluster.tasks.api.dto.ClusterTaskPersistenceResult;
-import com.microfocus.octane.cluster.tasks.api.ClusterTasksProcessorDefault;
 import com.microfocus.octane.cluster.tasks.api.ClusterTasksService;
 import com.microfocus.octane.cluster.tasks.api.dto.TaskToEnqueue;
 import org.slf4j.Logger;
@@ -36,7 +35,7 @@ public class ClusterTasksServiceImpl implements ClusterTasksService {
 
 	private final CompletableFuture<Boolean> readyPromise = new CompletableFuture<>();
 	private final Map<ClusterTasksDataProviderType, ClusterTasksDataProvider> dataProvidersMap = new LinkedHashMap<>();
-	private final Map<String, ClusterTasksProcessorDefault> processorsMap = new LinkedHashMap<>();
+	private final Map<String, ClusterTasksProcessorBase> processorsMap = new LinkedHashMap<>();
 	private final ExecutorService dispatcherExecutor = Executors.newSingleThreadExecutor(new ClusterTasksDispatcherThreadFactory());
 	private final ExecutorService gcExecutor = Executors.newSingleThreadExecutor(new ClusterTasksGCThreadFactory());
 	private final ClusterTasksDispatcher dispatcher = new ClusterTasksDispatcher();
@@ -56,7 +55,7 @@ public class ClusterTasksServiceImpl implements ClusterTasksService {
 	}
 
 	@Autowired(required = false)
-	private void registerProcessors(List<ClusterTasksProcessorDefault> processors) {
+	private void registerProcessors(List<ClusterTasksProcessorBase> processors) {
 		if (processors.size() > 500) {
 			throw new IllegalStateException("processors number is higher than allowed (500)");
 		}
@@ -251,7 +250,7 @@ public class ClusterTasksServiceImpl implements ClusterTasksService {
 
 		private void runDispatch() {
 			dataProvidersMap.forEach((providerType, provider) -> {
-				Map<String, ClusterTasksProcessorDefault> availableProcessorsOfDPType = new LinkedHashMap<>();
+				Map<String, ClusterTasksProcessorBase> availableProcessorsOfDPType = new LinkedHashMap<>();
 				processorsMap.forEach((processorType, processor) -> {
 					if (processor.getDataProviderType().equals(providerType) && processor.isReadyToHandleTaskInternal()) {
 						availableProcessorsOfDPType.put(processorType, processor);

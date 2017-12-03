@@ -1,6 +1,5 @@
 package com.microfocus.octane.cluster.tasks.impl;
 
-import com.microfocus.octane.cluster.tasks.api.ClusterTasksProcessorDefault;
 import com.microfocus.octane.cluster.tasks.api.enums.ClusterTaskType;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -14,7 +13,7 @@ import org.slf4j.LoggerFactory;
 class ClusterTaskWorkersFactory {
 	private static final Logger logger = LoggerFactory.getLogger(ClusterTaskWorkersFactory.class);
 
-	ClusterTasksWorker createWorker(ClusterTasksDataProvider dataProvider, ClusterTasksProcessorDefault processor, TaskInternal task) {
+	ClusterTasksWorker createWorker(ClusterTasksDataProvider dataProvider, ClusterTasksProcessorBase processor, TaskInternal task) {
 		if (processor == null) {
 			throw new IllegalArgumentException("processor MUST NOT be null");
 		}
@@ -27,10 +26,10 @@ class ClusterTaskWorkersFactory {
 
 	private class ClusterTasksWorkerImpl implements ClusterTasksWorker {
 		private final ClusterTasksDataProvider dataProvider;
-		private final ClusterTasksProcessorDefault tasksProcessor;
+		private final ClusterTasksProcessorBase tasksProcessor;
 		private final TaskInternal task;
 
-		private ClusterTasksWorkerImpl(ClusterTasksDataProvider dataProvider, ClusterTasksProcessorDefault tasksProcessor, TaskInternal task) {
+		private ClusterTasksWorkerImpl(ClusterTasksDataProvider dataProvider, ClusterTasksProcessorBase tasksProcessor, TaskInternal task) {
 			this.dataProvider = dataProvider;
 			this.tasksProcessor = tasksProcessor;
 			this.task = task;

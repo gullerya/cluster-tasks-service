@@ -3,7 +3,6 @@ package com.microfocus.octane.cluster.tasks.impl;
 import com.microfocus.octane.cluster.tasks.api.dto.ClusterTaskPersistenceResult;
 import com.microfocus.octane.cluster.tasks.api.enums.ClusterTaskStatus;
 import com.microfocus.octane.cluster.tasks.api.enums.ClusterTasksDataProviderType;
-import com.microfocus.octane.cluster.tasks.api.ClusterTasksProcessorDefault;
 import com.microfocus.octane.cluster.tasks.api.dto.TaskToEnqueue;
 
 import java.util.Map;
@@ -39,7 +38,7 @@ interface ClusterTasksDataProvider {
 	 *
 	 * @param processors data set of all registered processors, that data provider should try to find tasks for
 	 */
-	void retrieveAndDispatchTasks(Map<String, ClusterTasksProcessorDefault> processors);
+	void retrieveAndDispatchTasks(Map<String, ClusterTasksProcessorBase> processors);
 
 	/**
 	 * Retrieves task's body
