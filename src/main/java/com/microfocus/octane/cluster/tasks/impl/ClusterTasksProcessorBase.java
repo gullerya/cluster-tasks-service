@@ -176,7 +176,9 @@ public abstract class ClusterTasksProcessorBase {
 			}
 		}
 
-		threadsUtilizationGauge.labels(getType()).set(availableWorkers.get() / numberOfWorkersPerNode);           //  metric
+		threadsUtilizationGauge
+				.labels(getType())
+				.set((numberOfWorkersPerNode - availableWorkers.get()) / numberOfWorkersPerNode);
 		return takenTasks;
 	}
 
