@@ -178,7 +178,7 @@ public abstract class ClusterTasksProcessorBase {
 
 		threadsUtilizationGauge
 				.labels(getType())
-				.set((numberOfWorkersPerNode - availableWorkers.get()) / numberOfWorkersPerNode);
+				.set(((double) (numberOfWorkersPerNode - availableWorkers.get())) / ((double) numberOfWorkersPerNode));
 		return takenTasks;
 	}
 
