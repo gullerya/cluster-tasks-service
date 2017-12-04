@@ -9,7 +9,7 @@
 - added fairness logic between the concurrency keys
 - added integration with `prometheus` monitoring metrics
 
-#####1.0.8 (current)
+#####1.0.8
 - small improvements in tasks retrieving query
 - fixed potential deadlock while task retrieved in MSSQL use-case
 
