@@ -11,7 +11,7 @@
 	</parent>
 
 	<artifactId>cluster-tasks-service</artifactId>
-	<version>1.0.9-SNAPSHOT</version>
+	<version>1.1.0-SNAPSHOT</version>
 
 	<properties>
 		<spring.version>4.2.5.RELEASE</spring.version>

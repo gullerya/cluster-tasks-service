@@ -1,10 +1,12 @@
 ###Changelog
 
-#####1.1.0 (future)
+#####1.1.0 (current)
 - documentation
-- solve potential task loss due to race when using uniqueness key
+- solve potential task loss due to race when (re-)enqueueing task with uniqueness key
+- move tasks insert to batch
+- add optional probing for new tasks with uniqueness key (optimistic/pessimistic approaches)
 
-#####1.0.9 (current)
+#####1.0.9 (LTS release)
 - added fairness logic between the concurrency keys
 - added integration with `prometheus` monitoring metrics
 
