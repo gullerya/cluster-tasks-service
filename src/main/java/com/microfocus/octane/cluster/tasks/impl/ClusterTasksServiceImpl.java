@@ -9,6 +9,8 @@ import com.microfocus.octane.cluster.tasks.api.ClusterTasksServiceConfigurerSPI;
 import com.microfocus.octane.cluster.tasks.api.dto.ClusterTaskPersistenceResult;
 import com.microfocus.octane.cluster.tasks.api.ClusterTasksService;
 import com.microfocus.octane.cluster.tasks.api.dto.TaskToEnqueue;
+import io.prometheus.client.Counter;
+import io.prometheus.client.Summary;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -208,30 +210,34 @@ public class ClusterTasksServiceImpl implements ClusterTasksService {
 	}
 
 	private final class ClusterTasksDispatcher implements Runnable {
-		private long totalDispatchRounds = 0;
-		private long totalDurations = 0;
-		private long totalFailures = 0;
+		private final Counter dispatchErrors;
+		private final Summary dispatchDurationSummary;
+
+		private ClusterTasksDispatcher() {
+			dispatchErrors = Counter.build()
+					.name("cts_dispatch_errors_total")
+					.help("CTS tasks' dispatch errors counter")
+					.register();
+			dispatchDurationSummary = Summary.build()
+					.name("cts_dispatch_duration_seconds")
+					.help("CTS tasks' dispatch duration summary")
+					.register();
+		}
 
 		@Override
 		public void run() {
-			long dispatchStarted = System.currentTimeMillis();
-			long dispatchDuration;
 
 			//  infallible tasks dispatch round
 			while (true) {
+				//  dispatch round
+				Summary.Timer dispatchTimer = dispatchDurationSummary.startTimer();
 				try {
-					dispatchStarted = System.currentTimeMillis();
 					runDispatch();
 				} catch (Throwable t) {
-					totalFailures++;
-					logger.error("failure within dispatch iteration; total failures: " + totalFailures, t);
+					dispatchErrors.inc();
+					logger.error("failure within dispatch iteration; total failures: " + dispatchErrors.get(), t);
 				} finally {
-					dispatchDuration = System.currentTimeMillis() - dispatchStarted;
-					totalDispatchRounds++;
-					totalDurations += dispatchDuration;
-					if (totalDispatchRounds % 20 == 0) {
-						logger.debug("dispatch round finished in " + dispatchDuration + "ms; total rounds: " + totalDispatchRounds + "; average duration: " + totalDurations / totalDispatchRounds + "ms");
-					}
+					dispatchTimer.observeDuration();
 				}
 
 				//  breathing pause
@@ -263,8 +269,8 @@ public class ClusterTasksServiceImpl implements ClusterTasksService {
 					try {
 						provider.retrieveAndDispatchTasks(availableProcessorsOfDPType);
 					} catch (Throwable t) {
-						totalFailures++;
-						logger.error("failed to dispatch tasks in " + providerType + "; total failures: " + totalFailures, t);
+						dispatchErrors.inc();
+						logger.error("failed to dispatch tasks in " + providerType + "; total failures: " + dispatchErrors.get(), t);
 					}
 				} else {
 					logger.debug("no available processors powered by data provider " + providerType + " found, skipping this dispatch round");
@@ -284,30 +290,33 @@ public class ClusterTasksServiceImpl implements ClusterTasksService {
 	}
 
 	private final class ClusterTasksGC implements Runnable {
-		private long totalGCRounds = 0;
-		private long totalGCDuration = 0;
-		private long totalFailures = 0;
+		private final Counter gcErrors;
+		private final Summary gcDurationSummary;
+
+		private ClusterTasksGC() {
+			gcErrors = Counter.build()
+					.name("cts_gc_errors_total")
+					.help("CTS GC errors counter")
+					.register();
+			gcDurationSummary = Summary.build()
+					.name("cts_gc_duration_seconds")
+					.help("CTS GC duration summary")
+					.register();
+		}
 
 		@Override
 		public void run() {
-			long gcStarted = System.currentTimeMillis();
-			long gcDuration;
 
 			//  infallible GC round
 			while (true) {
+				Summary.Timer gcTimer = gcDurationSummary.startTimer();
 				try {
-					gcStarted = System.currentTimeMillis();
 					dataProvidersMap.forEach((dpType, dataProvider) -> dataProvider.handleGarbageAndStaled());
 				} catch (Throwable t) {
-					totalFailures++;
-					logger.error("failed to perform GC round; total failures: " + totalFailures, t);
+					gcErrors.inc();
+					logger.error("failed to perform GC round; total failures: " + gcErrors.get(), t);
 				} finally {
-					gcDuration = System.currentTimeMillis() - gcStarted;
-					totalGCRounds++;
-					totalGCDuration += gcDuration;
-					if (totalGCRounds % 10 == 0) {
-						logger.debug("GC executed in " + gcDuration + "ms; total GCs: " + totalGCRounds + "; average GC time: " + totalGCDuration / totalGCRounds + "ms");
-					}
+					gcTimer.observeDuration();
 
 					Integer gcInterval = null;
 					try {

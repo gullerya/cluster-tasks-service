@@ -39,7 +39,7 @@ class ClusterTasksWorker implements Runnable {
 				.labelNames("processor_type")
 				.register();
 		tasksPerProcessorDuration = Summary.build()
-				.name("cts_per_processor_task_duration_milliseconds")
+				.name("cts_per_processor_task_duration_seconds")
 				.help("CTS task duration summary (per processor type)")
 				.labelNames("processor_type")
 				.register();
@@ -78,14 +78,14 @@ class ClusterTasksWorker implements Runnable {
 			logger.debug(task + " is bodiless");
 		}
 
+		Summary.Timer timer = tasksPerProcessorDuration.labels(processor.getType()).startTimer();           //  metric
 		try {
-			Summary.Timer timer = tasksPerProcessorDuration.labels(processor.getType()).startTimer();       //  metric
 			processor.processTask(TaskToProcessImpl.from(task));
-			timer.observeDuration();                                                                        //  metric
 		} catch (Exception e) {
 			logger.error("failed processing " + task + ", body: " + task.body, e);
 			errorsPerProcessorCounter.labels(processor.getType(), e.getClass().getSimpleName()).inc();      //  metric
 		} finally {
+			timer.observeDuration();                                                                        //  metric
 			try {
 				if (task.taskType == ClusterTaskType.REGULAR) {
 					dataProvider.updateTaskToFinished(task.id);

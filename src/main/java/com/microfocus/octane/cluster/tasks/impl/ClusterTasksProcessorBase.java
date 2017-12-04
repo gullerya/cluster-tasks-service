@@ -3,6 +3,7 @@ package com.microfocus.octane.cluster.tasks.impl;
 import com.microfocus.octane.cluster.tasks.api.ClusterTasksServiceConfigurerSPI;
 import com.microfocus.octane.cluster.tasks.api.dto.TaskToProcess;
 import com.microfocus.octane.cluster.tasks.api.enums.ClusterTasksDataProviderType;
+import io.prometheus.client.Gauge;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -29,6 +30,7 @@ import java.util.stream.Collectors;
 public abstract class ClusterTasksProcessorBase {
 	private static final Logger logger = LoggerFactory.getLogger(ClusterTasksProcessorBase.class);
 	private static final String NON_CONCURRENT_TASKS_KEY = "NULL";
+	private static final Gauge threadsUtilizationGauge;
 
 	private final String type;
 	private final ClusterTasksDataProviderType dataProviderType;
@@ -38,6 +40,14 @@ public abstract class ClusterTasksProcessorBase {
 	private int minimalTasksTakeInterval;
 	private long lastTaskHandledLocalTime;
 	private ExecutorService workersThreadPool;
+
+	static {
+		threadsUtilizationGauge = Gauge.build()
+				.name("cts_per_processor_threads_utilization_percents")
+				.help("CTS per-processor threads utilization")
+				.labelNames("processor_type")
+				.register();
+	}
 
 	protected ClusterTasksProcessorBase(ClusterTasksDataProviderType dataProviderType, int numberOfWorkersPerNode) {
 		this(dataProviderType, numberOfWorkersPerNode, 0);
@@ -166,6 +176,7 @@ public abstract class ClusterTasksProcessorBase {
 			}
 		}
 
+		threadsUtilizationGauge.labels(getType()).set(availableWorkers.get() / numberOfWorkersPerNode);           //  metric
 		return takenTasks;
 	}
 
