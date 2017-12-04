@@ -16,6 +16,7 @@
 	<properties>
 		<spring.version>4.2.5.RELEASE</spring.version>
 		<flyway.version>4.2.0</flyway.version>
+		<prometheus.version>0.1.0</prometheus.version>
 
 		<!--TESTS-->
 		<tests.db.schema>cts_tests_schema</tests.db.schema>
@@ -33,6 +34,11 @@
 			<artifactId>flyway-core</artifactId>
 			<groupId>org.flywaydb</groupId>
 			<version>${flyway.version}</version>
+		</dependency>
+		<dependency>
+			<artifactId>simpleclient</artifactId>
+			<groupId>io.prometheus</groupId>
+			<version>${prometheus.version}</version>
 		</dependency>
 
 		<!--TESTS-->

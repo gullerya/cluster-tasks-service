@@ -12,8 +12,7 @@ import java.util.List;
  */
 
 public class ClusterTasksProcessorFairness_test_mt extends ClusterTasksProcessorDefault {
-	public static List<String> keysProcessingEventsLog = new LinkedList<>();
-	public static List<Long> nonConcurrentEventsLog = new LinkedList<>();
+	public static final List<String> keysProcessingEventsLog = new LinkedList<>();
 
 	protected ClusterTasksProcessorFairness_test_mt() {
 		super(ClusterTasksDataProviderType.DB, 4);
@@ -21,9 +20,8 @@ public class ClusterTasksProcessorFairness_test_mt extends ClusterTasksProcessor
 
 	@Override
 	public void processTask(TaskToProcess task) {
-		keysProcessingEventsLog.add(String.valueOf(task.getConcurrencyKey()));
-		if (task.getConcurrencyKey() == null) {
-			nonConcurrentEventsLog.add(task.getOrderingFactor());
+		synchronized (keysProcessingEventsLog) {
+			keysProcessingEventsLog.add(String.valueOf(task.getConcurrencyKey()));
 		}
 	}
 }

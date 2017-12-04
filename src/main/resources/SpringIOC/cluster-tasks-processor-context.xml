@@ -8,6 +8,5 @@
 	<bean class="com.microfocus.octane.cluster.tasks.impl.ClusterTasksServiceImpl"/>
 	<bean class="com.microfocus.octane.cluster.tasks.impl.ClusterTasksServiceSchemaManager"/>
 	<bean class="com.microfocus.octane.cluster.tasks.impl.ClusterTasksDbDataProvider"/>
-	<bean class="com.microfocus.octane.cluster.tasks.impl.ClusterTaskWorkersFactory"/>
 
 </beans>

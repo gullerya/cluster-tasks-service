@@ -1,7 +1,9 @@
 ###Changelog
 
 #####1.0.9 (current)
-- documentation
+- added documentation
+- added fairness logic between the concurrency keys
+- added integration with `prometheus` monitoring metrics
 
 #####1.0.8 (current)
 - small improvements in tasks retrieving query
@@ -14,5 +16,5 @@
 - flyway DB management added, achieving independency from hosting application (the only prerequisite left as of now is to get valid DataSource object)
 - API changes - not a single ClusterTask object anymore, but one for enqueue and one (immutable) when given out to processor 
 
-#####1.0.5
+#####1.0.5 (LTS release)
 - initial version

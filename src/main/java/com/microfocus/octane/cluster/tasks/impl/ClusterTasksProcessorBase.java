@@ -5,7 +5,6 @@ import com.microfocus.octane.cluster.tasks.api.dto.TaskToProcess;
 import com.microfocus.octane.cluster.tasks.api.enums.ClusterTasksDataProviderType;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.springframework.beans.factory.annotation.Autowired;
 
 import javax.annotation.PostConstruct;
 import java.util.ArrayList;
@@ -39,9 +38,6 @@ public abstract class ClusterTasksProcessorBase {
 	private int minimalTasksTakeInterval;
 	private long lastTaskHandledLocalTime;
 	private ExecutorService workersThreadPool;
-
-	@Autowired
-	private ClusterTaskWorkersFactory clusterTaskWorkersFactory;
 
 	protected ClusterTasksProcessorBase(ClusterTasksDataProviderType dataProviderType, int numberOfWorkersPerNode) {
 		this(dataProviderType, numberOfWorkersPerNode, 0);
@@ -181,7 +177,7 @@ public abstract class ClusterTasksProcessorBase {
 
 	private boolean handoutTaskToWorker(ClusterTasksDataProvider dataProvider, TaskInternal task) {
 		try {
-			ClusterTasksWorker worker = clusterTaskWorkersFactory.createWorker(dataProvider, this, task);
+			ClusterTasksWorker worker = new ClusterTasksWorker(dataProvider, this, task);
 			workersThreadPool.execute(worker);
 			int aWorkers = availableWorkers.decrementAndGet();
 			if (logger.isDebugEnabled()) {

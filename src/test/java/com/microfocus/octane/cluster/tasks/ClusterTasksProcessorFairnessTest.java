@@ -111,32 +111,20 @@ public class ClusterTasksProcessorFairnessTest extends CTSTestsBase {
 		}
 	}
 
-	//  [YG] ignoring this test since there is no assurance when the tasks pulled from the queue and how the distribution of processing will looks like
-	//  [TODO] un-ignore when batch tasks insert will be supported
+	//  this test is called to ensure, that given more threads than concurrency keys, dispatcher will occupy all available threads with non-concurrent tasks
+	//  due to unpredictable nature of dispatch timing, this test relies only on the fact, that there will be no more than 2 dispatch rounds until for tasks
+	//  when in future tasks creation will be batched - we'll be able to test it more thoroughly
 	@Test
-	@Ignore
 	public void TestA_fairness_resource_for_multi_non_concurrent() {
 		List<TaskToEnqueue> tasks = new LinkedList<>();
 		TaskToEnqueue task;
 
-		//  3 tasks of key '1'
-		task = new TaskToEnqueue();
-		task.setConcurrencyKey("1");
-		tasks.add(task);
-		task = new TaskToEnqueue();
-		task.setConcurrencyKey("1");
-		tasks.add(task);
+		//  1 tasks of key '1'
 		task = new TaskToEnqueue();
 		task.setConcurrencyKey("1");
 		tasks.add(task);
 
-		//  6 tasks without key
-		task = new TaskToEnqueue();
-		tasks.add(task);
-		task = new TaskToEnqueue();
-		tasks.add(task);
-		task = new TaskToEnqueue();
-		tasks.add(task);
+		//  3 tasks without key
 		task = new TaskToEnqueue();
 		tasks.add(task);
 		task = new TaskToEnqueue();
@@ -153,28 +141,14 @@ public class ClusterTasksProcessorFairnessTest extends CTSTestsBase {
 		}
 
 		List<String> eventsLog = ClusterTasksProcessorFairness_test_mt.keysProcessingEventsLog;
-		waitForEndCondition(eventsLog, tasks.size(), tasks.size() * 1000 * 3);
+		waitForEndCondition(eventsLog, tasks.size(), 1000 * 2);
 
 		assertEquals(tasks.size(), eventsLog.size());
-		assertEquals("1", eventsLog.get(0));
-		assertEquals("null", eventsLog.get(1));
-		assertEquals("null", eventsLog.get(2));
-		assertEquals("null", eventsLog.get(3));
-		assertEquals("1", eventsLog.get(4));
-		assertEquals("null", eventsLog.get(5));
-		assertEquals("null", eventsLog.get(6));
-		assertEquals("null", eventsLog.get(7));
-		assertEquals("1", eventsLog.get(8));
-
-		List<Long> nonConcurrentEventsLog = ClusterTasksProcessorFairness_test_mt.nonConcurrentEventsLog;
-		for (int i = 0; i < nonConcurrentEventsLog.size() - 1; i++) {
-			assertTrue(nonConcurrentEventsLog.get(i) <= nonConcurrentEventsLog.get(i + 1));
-		}
 	}
 
 	private void waitForEndCondition(List<String> eventStore, int expectedSize, long maxTimeToWait) {
 		long timePassed = 0;
-		long pauseInterval = 439;
+		long pauseInterval = 300;
 		while (eventStore.size() < expectedSize && timePassed < maxTimeToWait) {
 			ClusterTasksITUtils.sleepSafely(pauseInterval);
 			timePassed += pauseInterval;
