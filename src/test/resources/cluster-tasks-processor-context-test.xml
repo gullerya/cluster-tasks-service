@@ -22,5 +22,7 @@
 
 	<bean class="com.microfocus.octane.cluster.tasks.processors.ClusterTasksProcessorConcurrency_test"/>
 
-	<bean class="com.microfocus.octane.cluster.tasks.processors.ClusterTasksProcessorFairness_test_SingleThread"/>
+	<bean class="com.microfocus.octane.cluster.tasks.processors.ClusterTasksProcessorFairness_test_st"/>
+
+	<bean class="com.microfocus.octane.cluster.tasks.processors.ClusterTasksProcessorFairness_test_mt"/>
 </beans>

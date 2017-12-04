@@ -11,12 +11,12 @@ import java.util.List;
  * Created by gullery on 02/06/2016
  */
 
-public class ClusterTasksProcessorFairness_test_MultiThread extends ClusterTasksProcessorDefault {
+public class ClusterTasksProcessorFairness_test_st extends ClusterTasksProcessorDefault {
 	public static List<String> keysProcessingEventsLog = new LinkedList<>();
 	public static List<Long> nonConcurrentEventsLog = new LinkedList<>();
 
-	protected ClusterTasksProcessorFairness_test_MultiThread() {
-		super(ClusterTasksDataProviderType.DB, 4);
+	protected ClusterTasksProcessorFairness_test_st() {
+		super(ClusterTasksDataProviderType.DB, 1);
 	}
 
 	@Override

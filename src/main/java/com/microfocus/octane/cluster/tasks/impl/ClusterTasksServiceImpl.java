@@ -117,6 +117,9 @@ public class ClusterTasksServiceImpl implements ClusterTasksService {
 		if (processorType == null || processorType.isEmpty()) {
 			throw new IllegalArgumentException("processor type MUST NOT be null nor empty");
 		}
+		if (processorType.length() > 40) {
+			throw new IllegalArgumentException("processor type MAY NOT exceed 40 characters; given " + processorType.length() + " (" + processorType + ")");
+		}
 		if (tasks == null || tasks.length == 0) {
 			throw new IllegalArgumentException("tasks array MUST NOT be null nor empty");
 		}
