@@ -1,7 +1,11 @@
 ###Changelog
 
+#####1.1.0 (future)
+- documentation
+- solve potential task loss due to race when using uniqueness key
+
 #####1.0.9 (current)
-- added documentation
+- documentation
 - added fairness logic between the concurrency keys
 - added integration with `prometheus` monitoring metrics
 
