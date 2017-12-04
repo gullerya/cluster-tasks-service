@@ -5,7 +5,6 @@
 - solve potential task loss due to race when using uniqueness key
 
 #####1.0.9 (current)
-- documentation
 - added fairness logic between the concurrency keys
 - added integration with `prometheus` monitoring metrics
 
