@@ -45,6 +45,30 @@ public class ClusterTasksServiceImpl implements ClusterTasksService {
 	private ClusterTasksServiceConfigurerSPI serviceConfigurer;
 	private ClusterTasksServiceSchemaManager schemaManager;
 
+	private final static Counter dispatchErrors;
+	private final static Summary dispatchDurationSummary;
+	private final static Counter gcErrors;
+	private final static Summary gcDurationSummary;
+
+	static {
+		dispatchErrors = Counter.build()
+				.name("cts_dispatch_errors_total")
+				.help("CTS tasks' dispatch errors counter")
+				.register();
+		dispatchDurationSummary = Summary.build()
+				.name("cts_dispatch_duration_seconds")
+				.help("CTS tasks' dispatch duration summary")
+				.register();
+		gcErrors = Counter.build()
+				.name("cts_gc_errors_total")
+				.help("CTS GC errors counter")
+				.register();
+		gcDurationSummary = Summary.build()
+				.name("cts_gc_duration_seconds")
+				.help("CTS GC duration summary")
+				.register();
+	}
+
 	@Autowired
 	private void registerDataProviders(List<ClusterTasksDataProvider> dataProviders) {
 		dataProviders.forEach(dataProvider -> {
@@ -210,19 +234,6 @@ public class ClusterTasksServiceImpl implements ClusterTasksService {
 	}
 
 	private final class ClusterTasksDispatcher implements Runnable {
-		private final Counter dispatchErrors;
-		private final Summary dispatchDurationSummary;
-
-		private ClusterTasksDispatcher() {
-			dispatchErrors = Counter.build()
-					.name("cts_dispatch_errors_total")
-					.help("CTS tasks' dispatch errors counter")
-					.register();
-			dispatchDurationSummary = Summary.build()
-					.name("cts_dispatch_duration_seconds")
-					.help("CTS tasks' dispatch duration summary")
-					.register();
-		}
 
 		@Override
 		public void run() {
@@ -290,19 +301,6 @@ public class ClusterTasksServiceImpl implements ClusterTasksService {
 	}
 
 	private final class ClusterTasksGC implements Runnable {
-		private final Counter gcErrors;
-		private final Summary gcDurationSummary;
-
-		private ClusterTasksGC() {
-			gcErrors = Counter.build()
-					.name("cts_gc_errors_total")
-					.help("CTS GC errors counter")
-					.register();
-			gcDurationSummary = Summary.build()
-					.name("cts_gc_duration_seconds")
-					.help("CTS GC duration summary")
-					.register();
-		}
 
 		@Override
 		public void run() {
