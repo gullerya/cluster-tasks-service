@@ -3,7 +3,6 @@ package com.microfocus.octane.cluster.tasks.impl;
 import com.microfocus.octane.cluster.tasks.api.dto.ClusterTaskPersistenceResult;
 import com.microfocus.octane.cluster.tasks.api.enums.ClusterTaskStatus;
 import com.microfocus.octane.cluster.tasks.api.enums.ClusterTasksDataProviderType;
-import com.microfocus.octane.cluster.tasks.api.dto.TaskToEnqueue;
 
 import java.util.Map;
 import java.util.Set;
@@ -27,11 +26,10 @@ interface ClusterTasksDataProvider {
 	/**
 	 * Stores task for future retrieval
 	 *
-	 * @param processorType target processor type identification
-	 * @param tasks         one or more tasks content to be pushed into the queue
+	 * @param tasks one or more tasks content to be pushed into the queue
 	 * @return an array of Optionals, corresponding to the array of the tasks, having either the task ID in case of successful push or an exception in case of failure
 	 */
-	ClusterTaskPersistenceResult[] storeTasks(String processorType, TaskToEnqueue... tasks);
+	ClusterTaskPersistenceResult[] storeTasks(TaskInternal... tasks);
 
 	/**
 	 * Attempts to retrieve next valid task per type, marks the retrieved task as running and possible checks is there are more tasks valid to be executed

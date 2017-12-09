@@ -8,7 +8,6 @@ import com.microfocus.octane.cluster.tasks.api.ClusterTasksService;
 import com.microfocus.octane.cluster.tasks.api.ClusterTasksServiceConfigurerSPI;
 import com.microfocus.octane.cluster.tasks.api.errors.CtsGeneralFailure;
 import com.microfocus.octane.cluster.tasks.api.dto.ClusterTaskPersistenceResult;
-import com.microfocus.octane.cluster.tasks.api.dto.TaskToEnqueue;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -49,7 +48,6 @@ class ClusterTasksDbDataProvider implements ClusterTasksDataProvider {
 	private static final Logger logger = LoggerFactory.getLogger(ClusterTasksDbDataProvider.class);
 	private static final String RUNTIME_INSTANCE_ID = UUID.randomUUID().toString();
 	private static final int PARTITIONS_NUMBER = 4;
-	private static final long MAX_TIME_TO_RUN_DEFAULT = 1000 * 60;
 	private ZonedDateTime lastTruncateTime;
 	private JdbcTemplate jdbcTemplate;
 	private TransactionTemplate transactionTemplate;
@@ -66,15 +64,12 @@ class ClusterTasksDbDataProvider implements ClusterTasksDataProvider {
 
 	//  TODO: support bulk insert here
 	@Override
-	public ClusterTaskPersistenceResult[] storeTasks(String processorType, TaskToEnqueue... tasks) {
+	public ClusterTaskPersistenceResult[] storeTasks(TaskInternal... tasks) {
 		if (!clusterTasksService.getReadyPromise().isDone()) {
 			throw new IllegalStateException("cluster tasks service has not yet been initialized; either postpone tasks submission or listen to completion of [clusterTasksService].getReadyPromise()");
 		}
 		if (clusterTasksService.getReadyPromise().isCompletedExceptionally()) {
 			throw new IllegalStateException("cluster tasks service failed to initialize; check prior logs for a root cause");
-		}
-		if (processorType == null || processorType.isEmpty()) {
-			throw new IllegalArgumentException("processor type MUST NOT be null nor empty");
 		}
 		if (tasks == null || tasks.length == 0) {
 			throw new IllegalArgumentException("tasks MUST NOT be null nor empty");
@@ -82,66 +77,61 @@ class ClusterTasksDbDataProvider implements ClusterTasksDataProvider {
 
 		List<ClusterTaskPersistenceResult> result = new ArrayList<>(tasks.length);
 
-		for (TaskToEnqueue originalTask : tasks) {
-			CTPPersistStatus validationStatus = validateTask(originalTask);
-
-			if (validationStatus == CTPPersistStatus.SUCCESS) {
-				getTransactionTemplate().execute(transactionStatus -> {
-					TaskInternal task = convertToInternalTask(originalTask, processorType);
-					try {
-						JdbcTemplate jdbcTemplate = getJdbcTemplate();
-						boolean hasBody = task.body != null;
-
-						//  insert task
-						String insertTaskSql = ClusterTasksDbUtils.buildInsertTaskSQL(serviceConfigurer.getDbType(), task.partitionIndex);
-						Object[] paramValues = new Object[]{
-								task.taskType.getValue(),
-								task.processorType,
-								task.uniquenessKey,
-								task.concurrencyKey,
-								task.delayByMillis,
-								task.maxTimeToRunMillis,
-								task.partitionIndex,
-								task.orderingFactor,
-								task.delayByMillis,
-								task.body
-						};
-						int[] paramTypes = new int[]{
-								Types.BIGINT,               //  task type
-								Types.VARCHAR,              //  processor type
-								Types.VARCHAR,              //  uniqueness key
-								Types.VARCHAR,              //  concurrency key
-								Types.BIGINT,               //  delay by millis
-								Types.BIGINT,               //  max time to run millis
-								Types.BIGINT,               //  partition index
-								Types.BIGINT,               //  ordering factor
-								Types.BIGINT,               //  delay by millis (second time for potential ordering calculation based on creation time when ordering is NULL)
-								Types.CLOB                  //  task body -  will be used only if actually has body
-						};
-
-						jdbcTemplate.update(
-								insertTaskSql,
-								hasBody ? paramValues : Arrays.copyOfRange(paramValues, 0, paramValues.length - 1),
-								hasBody ? paramTypes : Arrays.copyOfRange(paramTypes, 0, paramTypes.length - 1)
-						);
-
-						result.add(new ClusterTaskPersistenceResultImpl(CTPPersistStatus.SUCCESS));
-						logger.debug("successfully created " + task);
-					} catch (DuplicateKeyException dke) {
-						transactionStatus.setRollbackOnly();
-						result.add(new ClusterTaskPersistenceResultImpl(CTPPersistStatus.UNIQUE_CONSTRAINT_FAILURE));
-						logger.info("rejected " + task + " due to uniqueness violation");
-					} catch (Exception e) {
-						transactionStatus.setRollbackOnly();
-						result.add(new ClusterTaskPersistenceResultImpl(CTPPersistStatus.UNEXPECTED_FAILURE));
-						logger.error("failed to persist " + task, e);
+		for (TaskInternal task : tasks) {
+			getTransactionTemplate().execute(transactionStatus -> {
+				try {
+					JdbcTemplate jdbcTemplate = getJdbcTemplate();
+					boolean hasBody = task.body != null;
+					if (hasBody) {
+						task.partitionIndex = resolveBodyTablePartitionIndex();
 					}
-					return null;
-				});
-			} else {
-				result.add(new ClusterTaskPersistenceResultImpl(validationStatus));
-				logger.debug("rejected invalid " + originalTask);
-			}
+
+					//  insert task
+					String insertTaskSql = ClusterTasksDbUtils.buildInsertTaskSQL(serviceConfigurer.getDbType(), task.partitionIndex);
+					Object[] paramValues = new Object[]{
+							task.taskType.getValue(),
+							task.processorType,
+							task.uniquenessKey,
+							task.concurrencyKey,
+							task.delayByMillis,
+							task.maxTimeToRunMillis,
+							task.partitionIndex,
+							task.orderingFactor,
+							task.delayByMillis,
+							task.body
+					};
+					int[] paramTypes = new int[]{
+							Types.BIGINT,               //  task type
+							Types.VARCHAR,              //  processor type
+							Types.VARCHAR,              //  uniqueness key
+							Types.VARCHAR,              //  concurrency key
+							Types.BIGINT,               //  delay by millis
+							Types.BIGINT,               //  max time to run millis
+							Types.BIGINT,               //  partition index
+							Types.BIGINT,               //  ordering factor
+							Types.BIGINT,               //  delay by millis (second time for potential ordering calculation based on creation time when ordering is NULL)
+							Types.CLOB                  //  task body -  will be used only if actually has body
+					};
+
+					jdbcTemplate.update(
+							insertTaskSql,
+							hasBody ? paramValues : Arrays.copyOfRange(paramValues, 0, paramValues.length - 1),
+							hasBody ? paramTypes : Arrays.copyOfRange(paramTypes, 0, paramTypes.length - 1)
+					);
+
+					result.add(new ClusterTaskPersistenceResultImpl(CTPPersistStatus.SUCCESS));
+					logger.debug("successfully created " + task);
+				} catch (DuplicateKeyException dke) {
+					transactionStatus.setRollbackOnly();
+					result.add(new ClusterTaskPersistenceResultImpl(CTPPersistStatus.UNIQUE_CONSTRAINT_FAILURE));
+					logger.info("rejected " + task + " due to uniqueness violation");
+				} catch (Exception e) {
+					transactionStatus.setRollbackOnly();
+					result.add(new ClusterTaskPersistenceResultImpl(CTPPersistStatus.UNEXPECTED_FAILURE));
+					logger.error("failed to persist " + task, e);
+				}
+				return null;
+			});
 		}
 
 		return result.toArray(new ClusterTaskPersistenceResult[result.size()]);
@@ -309,34 +299,6 @@ class ClusterTasksDbDataProvider implements ClusterTasksDataProvider {
 	public int countTasks(String processorType, String concurrencyKey, Set<ClusterTaskStatus> statuses) {
 		String countTasksSQL = ClusterTasksDbUtils.buildCountTasksSQL(processorType, concurrencyKey, statuses);
 		return getJdbcTemplate().queryForObject(countTasksSQL, Integer.class);
-	}
-
-	private CTPPersistStatus validateTask(TaskToEnqueue task) {
-		CTPPersistStatus result = CTPPersistStatus.SUCCESS;
-		if (task == null) {
-			result = CTPPersistStatus.NULL_TASK_FAILURE;
-		} else if (task.getUniquenessKey() != null && task.getUniquenessKey().length() > 40) {
-			result = CTPPersistStatus.UNIQUENESS_KEY_TOO_LONG_FAILURE;
-		} else if (task.getConcurrencyKey() != null && task.getConcurrencyKey().length() > 40) {
-			result = CTPPersistStatus.CONCURRENCY_KEY_TOO_LONG_FAILURE;
-		}
-		return result;
-	}
-
-	private TaskInternal convertToInternalTask(TaskToEnqueue origin, String targetProcessorType) {
-		TaskInternal result = new TaskInternal();
-		result.processorType = targetProcessorType;
-		result.uniquenessKey = origin.getUniquenessKey() == null ? UUID.randomUUID().toString() : origin.getUniquenessKey();
-		result.concurrencyKey = origin.getConcurrencyKey();
-		result.orderingFactor = origin.getOrderingFactor();
-		result.delayByMillis = origin.getDelayByMillis() == null ? 0L : origin.getDelayByMillis();
-		result.maxTimeToRunMillis = origin.getMaxTimeToRunMillis() == null || origin.getMaxTimeToRunMillis() == 0 ? MAX_TIME_TO_RUN_DEFAULT : origin.getMaxTimeToRunMillis();
-		result.body = origin.getBody() == null || origin.getBody().isEmpty() ? null : origin.getBody();
-		if (result.body != null) {
-			result.partitionIndex = resolveBodyTablePartitionIndex();
-		}
-		result.taskType = origin.getTaskType();
-		return result;
 	}
 
 	private DBType getDBType() {

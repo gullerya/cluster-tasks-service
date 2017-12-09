@@ -1,6 +1,6 @@
 package com.microfocus.octane.cluster.tasks.processors;
 
-import com.microfocus.octane.cluster.tasks.api.dto.TaskToProcess;
+import com.microfocus.octane.cluster.tasks.api.dto.ClusterTask;
 import com.microfocus.octane.cluster.tasks.api.enums.ClusterTasksDataProviderType;
 import com.microfocus.octane.cluster.tasks.api.ClusterTasksProcessorDefault;
 
@@ -19,6 +19,6 @@ public class ClusterTasksProcessorE_test_na extends ClusterTasksProcessorDefault
 	}
 
 	@Override
-	public void processTask(TaskToProcess task) {
+	public void processTask(ClusterTask task) {
 	}
 }

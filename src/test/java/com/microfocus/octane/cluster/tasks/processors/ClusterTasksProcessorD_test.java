@@ -1,6 +1,6 @@
 package com.microfocus.octane.cluster.tasks.processors;
 
-import com.microfocus.octane.cluster.tasks.api.dto.TaskToProcess;
+import com.microfocus.octane.cluster.tasks.api.dto.ClusterTask;
 import com.microfocus.octane.cluster.tasks.api.enums.ClusterTasksDataProviderType;
 import com.microfocus.octane.cluster.tasks.api.ClusterTasksProcessorDefault;
 
@@ -20,7 +20,7 @@ public class ClusterTasksProcessorD_test extends ClusterTasksProcessorDefault {
 	}
 
 	@Override
-	public void processTask(TaskToProcess task) throws Exception {
+	public void processTask(ClusterTask task) throws Exception {
 		if (tasksProcessed.isEmpty()) {
 			Thread.sleep(4000L);
 		}

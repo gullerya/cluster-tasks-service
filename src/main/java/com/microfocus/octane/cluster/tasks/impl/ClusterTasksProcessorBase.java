@@ -1,7 +1,7 @@
 package com.microfocus.octane.cluster.tasks.impl;
 
 import com.microfocus.octane.cluster.tasks.api.ClusterTasksServiceConfigurerSPI;
-import com.microfocus.octane.cluster.tasks.api.dto.TaskToProcess;
+import com.microfocus.octane.cluster.tasks.api.dto.ClusterTask;
 import com.microfocus.octane.cluster.tasks.api.enums.ClusterTasksDataProviderType;
 import io.prometheus.client.Gauge;
 import org.slf4j.Logger;
@@ -112,7 +112,7 @@ public abstract class ClusterTasksProcessorBase {
 	 * @param task task that is to be processed
 	 * @throws Exception processor MAY throw Exception and the service will manage it (catch, log, metrics)
 	 */
-	abstract public void processTask(TaskToProcess task) throws Exception;
+	abstract public void processTask(ClusterTask task) throws Exception;
 
 	//
 	//  INTERNAL STUFF FROM HERE

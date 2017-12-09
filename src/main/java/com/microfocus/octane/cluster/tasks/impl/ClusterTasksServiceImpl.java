@@ -1,5 +1,6 @@
 package com.microfocus.octane.cluster.tasks.impl;
 
+import com.microfocus.octane.cluster.tasks.api.dto.ClusterTask;
 import com.microfocus.octane.cluster.tasks.api.enums.CTPPersistStatus;
 import com.microfocus.octane.cluster.tasks.api.enums.ClusterTaskStatus;
 import com.microfocus.octane.cluster.tasks.api.enums.ClusterTaskType;
@@ -8,7 +9,6 @@ import com.microfocus.octane.cluster.tasks.api.ClusterTasksProcessorScheduled;
 import com.microfocus.octane.cluster.tasks.api.ClusterTasksServiceConfigurerSPI;
 import com.microfocus.octane.cluster.tasks.api.dto.ClusterTaskPersistenceResult;
 import com.microfocus.octane.cluster.tasks.api.ClusterTasksService;
-import com.microfocus.octane.cluster.tasks.api.dto.TaskToEnqueue;
 import io.prometheus.client.Counter;
 import io.prometheus.client.Summary;
 import org.slf4j.Logger;
@@ -20,6 +20,7 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.UUID;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
@@ -68,6 +69,8 @@ public class ClusterTasksServiceImpl implements ClusterTasksService {
 				.help("CTS GC duration summary")
 				.register();
 	}
+
+	private static final long MAX_TIME_TO_RUN_DEFAULT = 1000 * 60;
 
 	@Autowired
 	private void registerDataProviders(List<ClusterTasksDataProvider> dataProviders) {
@@ -136,7 +139,7 @@ public class ClusterTasksServiceImpl implements ClusterTasksService {
 	}
 
 	@Override
-	public ClusterTaskPersistenceResult[] enqueueTasks(ClusterTasksDataProviderType dataProviderType, String processorType, TaskToEnqueue... tasks) {
+	public ClusterTaskPersistenceResult[] enqueueTasks(ClusterTasksDataProviderType dataProviderType, String processorType, ClusterTask... tasks) {
 		if (dataProviderType == null) {
 			throw new IllegalArgumentException("data provider type MUST NOT be null");
 		}
@@ -152,7 +155,8 @@ public class ClusterTasksServiceImpl implements ClusterTasksService {
 
 		ClusterTasksDataProvider dataProvider = dataProvidersMap.get(dataProviderType);
 		if (dataProvider != null) {
-			return dataProvidersMap.get(dataProviderType).storeTasks(processorType, tasks);
+			TaskInternal[] taskInternals = convertTasks(tasks, processorType);
+			return dataProvidersMap.get(dataProviderType).storeTasks(taskInternals);
 		} else {
 			throw new IllegalArgumentException("unknown data provider of type '" + processorType + "'");
 		}
@@ -195,15 +199,17 @@ public class ClusterTasksServiceImpl implements ClusterTasksService {
 		processorsMap.forEach((type, processor) -> {
 			if (processor instanceof ClusterTasksProcessorScheduled) {
 				logger.info("performing initial scheduled task upsert for the first-ever-run case on behalf of " + type);
+				ClusterTasksDataProvider dataProvider = dataProvidersMap.get(processor.getDataProviderType());
 				ClusterTaskPersistenceResult enqueueResult;
 				int maxEnqueueAttempts = 20, enqueueAttemptsCount = 0;
-				TaskToEnqueue scheduledTask = new TaskToEnqueue();
-				scheduledTask.setTaskType(ClusterTaskType.SCHEDULED);
-				scheduledTask.setUniquenessKey(type);
-				scheduledTask.setMaxTimeToRunMillis(((ClusterTasksProcessorScheduled) processor).getMaxTimeToRun());
+				TaskInternal scheduledTask = new TaskInternal();
+				scheduledTask.taskType = ClusterTaskType.SCHEDULED;
+				scheduledTask.processorType = type;
+				scheduledTask.uniquenessKey = type;
+				scheduledTask.maxTimeToRunMillis = ((ClusterTasksProcessorScheduled) processor).getMaxTimeToRun();
 				do {
 					enqueueAttemptsCount++;
-					enqueueResult = enqueueTasks(processor.getDataProviderType(), type, scheduledTask)[0];
+					enqueueResult = dataProvider.storeTasks(scheduledTask)[0];
 					if (enqueueResult.getStatus() == CTPPersistStatus.SUCCESS) {
 						logger.info("initial task for " + type + " created");
 						break;
@@ -223,6 +229,42 @@ public class ClusterTasksServiceImpl implements ClusterTasksService {
 		});
 	}
 
+	private TaskInternal[] convertTasks(ClusterTask[] sourceTasks, String targetProcessorType) {
+		TaskInternal[] result = new TaskInternal[sourceTasks.length];
+		for (int i = 0; i < sourceTasks.length; i++) {
+			ClusterTask source = sourceTasks[i];
+			if (source == null) {
+				throw new IllegalArgumentException("of the submitted tasks NONE SHOULD BE NULL");
+			}
+
+			TaskInternal target = new TaskInternal();
+
+			if (source.getUniquenessKey() != null) {
+				target.uniquenessKey = source.getUniquenessKey();
+				target.concurrencyKey = source.getUniquenessKey();
+				if (source.getConcurrencyKey() != null) {
+					logger.warn("concurrency key MUST NOT be used along with uniqueness key, falling back to uniqueness key as concurrency key");
+				}
+			} else {
+				target.uniquenessKey = UUID.randomUUID().toString();
+				target.concurrencyKey = source.getConcurrencyKey();
+			}
+
+			target.processorType = targetProcessorType;
+			target.orderingFactor = null;
+			target.delayByMillis = source.getDelayByMillis() == null ? 0L : source.getDelayByMillis();
+			target.maxTimeToRunMillis = source.getMaxTimeToRunMillis() == null || source.getMaxTimeToRunMillis() == 0 ? MAX_TIME_TO_RUN_DEFAULT : source.getMaxTimeToRunMillis();
+			target.body = source.getBody() == null || source.getBody().isEmpty() ? null : source.getBody();
+			target.taskType = ClusterTaskType.REGULAR;
+
+			result[i] = target;
+		}
+
+		return result;
+	}
+
+	//  INTERNAL WORKERS: DISPATCHER AND GC
+	//
 	private final static class ClusterTasksDispatcherThreadFactory implements ThreadFactory {
 		@Override
 		public Thread newThread(Runnable runnable) {

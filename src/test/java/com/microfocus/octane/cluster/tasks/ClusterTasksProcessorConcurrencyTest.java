@@ -1,6 +1,7 @@
 package com.microfocus.octane.cluster.tasks;
 
-import com.microfocus.octane.cluster.tasks.api.dto.TaskToEnqueue;
+import com.microfocus.octane.cluster.tasks.api.builders.TaskBuilders;
+import com.microfocus.octane.cluster.tasks.api.dto.ClusterTask;
 import com.microfocus.octane.cluster.tasks.api.enums.ClusterTasksDataProviderType;
 import com.microfocus.octane.cluster.tasks.processors.ClusterTasksProcessorConcurrency_test;
 import org.junit.Test;
@@ -34,11 +35,13 @@ public class ClusterTasksProcessorConcurrencyTest extends CTSTestsBase {
 
 	@Test
 	public void TestA_concurrency_value_all_null() {
-		TaskToEnqueue[] tasks = new TaskToEnqueue[2];
-		tasks[0] = new TaskToEnqueue();
-		tasks[0].setBody("test A - task 1 - concurrency value is NULL");
-		tasks[1] = new TaskToEnqueue();
-		tasks[1].setBody("test A - task 2 - concurrency value is NULL");
+		ClusterTask[] tasks = new ClusterTask[2];
+		tasks[0] = TaskBuilders.simpleTask()
+				.setBody("test A - task 1 - concurrency value is NULL")
+				.build();
+		tasks[1] = TaskBuilders.simpleTask()
+				.setBody("test A - task 2 - concurrency value is NULL")
+				.build();
 
 		clusterTasksProcessorConcurrency_test.tasksProcessed = 0;
 		clusterTasksService.enqueueTasks(ClusterTasksDataProviderType.DB, "ClusterTasksProcessorConcurrency_test", tasks);
@@ -51,23 +54,29 @@ public class ClusterTasksProcessorConcurrencyTest extends CTSTestsBase {
 	public void TestB_concurrency_value_some_null() {
 		String concurrencyKeyA = UUID.randomUUID().toString();
 		String concurrencyKeyB = UUID.randomUUID().toString();
-		TaskToEnqueue[] tasks = new TaskToEnqueue[6];
-		tasks[0] = new TaskToEnqueue();
-		tasks[0].setConcurrencyKey(concurrencyKeyA);
-		tasks[0].setBody("test B - task 1 - concurrency value is " + concurrencyKeyA);
-		tasks[1] = new TaskToEnqueue();
-		tasks[1].setBody("test B - task 2 - concurrency value is NULL");
-		tasks[2] = new TaskToEnqueue();
-		tasks[2].setConcurrencyKey(concurrencyKeyB);
-		tasks[2].setBody("test B - task 3 - concurrency value in " + concurrencyKeyB);
-		tasks[3] = new TaskToEnqueue();
-		tasks[3].setConcurrencyKey(concurrencyKeyA);
-		tasks[3].setBody("test B - task 4 - concurrency value is " + concurrencyKeyA);
-		tasks[4] = new TaskToEnqueue();
-		tasks[4].setBody("test B - task 5 - concurrency value is NULL");
-		tasks[5] = new TaskToEnqueue();
-		tasks[5].setConcurrencyKey(concurrencyKeyB);
-		tasks[5].setBody("test B - task 6 - concurrency value in " + concurrencyKeyB);
+		ClusterTask[] tasks = new ClusterTask[6];
+		tasks[0] = TaskBuilders.channeledTask()
+				.setConcurrencyKey(concurrencyKeyA)
+				.setBody("test B - task 1 - concurrency value is " + concurrencyKeyA)
+				.build();
+		tasks[1] = TaskBuilders.simpleTask()
+				.setBody("test B - task 2 - concurrency value is NULL")
+				.build();
+		tasks[2] = TaskBuilders.channeledTask()
+				.setConcurrencyKey(concurrencyKeyB)
+				.setBody("test B - task 3 - concurrency value in " + concurrencyKeyB)
+				.build();
+		tasks[3] = TaskBuilders.channeledTask()
+				.setConcurrencyKey(concurrencyKeyA)
+				.setBody("test B - task 4 - concurrency value is " + concurrencyKeyA)
+				.build();
+		tasks[4] = TaskBuilders.simpleTask()
+				.setBody("test B - task 5 - concurrency value is NULL")
+				.build();
+		tasks[5] = TaskBuilders.channeledTask()
+				.setConcurrencyKey(concurrencyKeyB)
+				.setBody("test B - task 6 - concurrency value in " + concurrencyKeyB)
+				.build();
 
 		clusterTasksProcessorConcurrency_test.tasksProcessed = 0;
 		clusterTasksService.enqueueTasks(ClusterTasksDataProviderType.DB, "ClusterTasksProcessorConcurrency_test", tasks);
@@ -78,7 +87,7 @@ public class ClusterTasksProcessorConcurrencyTest extends CTSTestsBase {
 
 	private void waitForEndCondition(int expectedSize, long maxTimeToWait) {
 		long timePassed = 0;
-		long pauseInterval = 439;
+		long pauseInterval = 100;
 		while (clusterTasksProcessorConcurrency_test.tasksProcessed != expectedSize && timePassed < maxTimeToWait) {
 			ClusterTasksITUtils.sleepSafely(pauseInterval);
 			timePassed += pauseInterval;

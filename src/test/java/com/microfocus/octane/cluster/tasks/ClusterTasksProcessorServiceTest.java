@@ -1,6 +1,7 @@
 package com.microfocus.octane.cluster.tasks;
 
-import com.microfocus.octane.cluster.tasks.api.dto.TaskToEnqueue;
+import com.microfocus.octane.cluster.tasks.api.builders.TaskBuilders;
+import com.microfocus.octane.cluster.tasks.api.dto.ClusterTask;
 import com.microfocus.octane.cluster.tasks.api.enums.CTPPersistStatus;
 import com.microfocus.octane.cluster.tasks.api.dto.ClusterTaskPersistenceResult;
 import com.microfocus.octane.cluster.tasks.api.enums.ClusterTasksDataProviderType;
@@ -60,17 +61,18 @@ public class ClusterTasksProcessorServiceTest extends CTSTestsBase {
 		clusterTasksProcessorA_test.tasksProcessed.clear();
 
 		String concurrencyKey = "testA";
-		List<TaskToEnqueue> tasks = new LinkedList<>();
-		TaskToEnqueue tmp;
+		List<ClusterTask> tasks = new LinkedList<>();
+		ClusterTask tmp;
 
 		for (int i = 0; i < 3; i++) {
-			tmp = new TaskToEnqueue();
-			tmp.setConcurrencyKey(concurrencyKey);
-			tmp.setBody(String.valueOf(i));
+			tmp = TaskBuilders.channeledTask()
+					.setConcurrencyKey(concurrencyKey)
+					.setBody(String.valueOf(i))
+					.build();
 			tasks.add(tmp);
 		}
 
-		ClusterTaskPersistenceResult[] result = clusterTasksService.enqueueTasks(ClusterTasksDataProviderType.DB, "ClusterTasksProcessorA_test", tasks.toArray(new TaskToEnqueue[tasks.size()]));
+		ClusterTaskPersistenceResult[] result = clusterTasksService.enqueueTasks(ClusterTasksDataProviderType.DB, "ClusterTasksProcessorA_test", tasks.toArray(new ClusterTask[tasks.size()]));
 		for (ClusterTaskPersistenceResult r : result) {
 			assertEquals(CTPPersistStatus.SUCCESS, r.getStatus());
 		}
@@ -93,14 +95,15 @@ public class ClusterTasksProcessorServiceTest extends CTSTestsBase {
 		clusterTasksProcessorC_test.tasksProcessed.clear();
 
 		String concurrencyKey = "testB";
-		List<TaskToEnqueue> tasks = new LinkedList<>();
+		List<ClusterTask> tasks = new LinkedList<>();
 		List<ClusterTaskPersistenceResult> results = new LinkedList<>();
-		TaskToEnqueue tmp;
+		ClusterTask tmp;
 
 		for (int i = 0; i < 5; i++) {
-			tmp = new TaskToEnqueue();
-			tmp.setConcurrencyKey(concurrencyKey);
-			tmp.setBody(String.valueOf(i));
+			tmp = TaskBuilders.channeledTask()
+					.setConcurrencyKey(concurrencyKey)
+					.setBody(String.valueOf(i))
+					.build();
 			tasks.add(tmp);
 		}
 
@@ -132,53 +135,50 @@ public class ClusterTasksProcessorServiceTest extends CTSTestsBase {
 
 	@Test
 	public void TestC_processor_custom_dispatch_interval() {
-		List<TaskToEnqueue> tasks = new LinkedList<>();
-		TaskToEnqueue tmp;
+		List<ClusterTask> tasks = new LinkedList<>();
+		ClusterTask tmp;
 		String concurrencyKey = UUID.randomUUID().toString();
 		ClusterTaskPersistenceResult[] results;
-		long doneInInterval;
 
 		clusterTasksProcessorD_test.tasksProcessed.clear();
 
 		//  2 tasks for customized interval behavior check
-		tmp = new TaskToEnqueue();
-		tmp.setConcurrencyKey(concurrencyKey);
-		tmp.setBody("nonsense1");
+		tmp = TaskBuilders.channeledTask()
+				.setConcurrencyKey(concurrencyKey)
+				.setBody("nonsense1")
+				.build();
 		tasks.add(tmp);
-		tmp = new TaskToEnqueue();
-		tmp.setConcurrencyKey(concurrencyKey);
-		tmp.setBody("nonsense2");
+		tmp = TaskBuilders.channeledTask()
+				.setConcurrencyKey(concurrencyKey)
+				.setBody("nonsense2")
+				.build();
 		tasks.add(tmp);
-		results = clusterTasksService.enqueueTasks(ClusterTasksDataProviderType.DB, "ClusterTasksProcessorD_test", tasks.toArray(new TaskToEnqueue[tasks.size()]));
+		results = clusterTasksService.enqueueTasks(ClusterTasksDataProviderType.DB, "ClusterTasksProcessorD_test", tasks.toArray(new ClusterTask[tasks.size()]));
 		for (ClusterTaskPersistenceResult r : results) {
 			assertEquals(CTPPersistStatus.SUCCESS, r.getStatus());
 		}
-		doneInInterval = waitResultsContainerComplete(clusterTasksProcessorD_test.tasksProcessed, 2, 15000);
+		waitResultsContainerComplete(clusterTasksProcessorD_test.tasksProcessed, 2, 15000);
 		assertEquals(2, clusterTasksProcessorD_test.tasksProcessed.size());
 		assertTrue(clusterTasksProcessorD_test.tasksProcessed.get("nonsense2").getTime() - clusterTasksProcessorD_test.tasksProcessed.get("nonsense1").getTime() > 7000);
 	}
 
 	@Test
 	public void TestD_tasks_with_uniqueness_keys() {
-		List<TaskToEnqueue> tasks = new LinkedList<>();
-		TaskToEnqueue tmp;
+		List<ClusterTask> tasks = new LinkedList<>();
+		ClusterTask tmp;
 		ClusterTaskPersistenceResult[] results;
 		String uniqueKey = UUID.randomUUID().toString();
 		clusterTasksProcessorA_test.tasksProcessed.clear();
 
 		//  task 1 with the same unique key
-		tmp = new TaskToEnqueue();
-		tmp.setUniquenessKey(uniqueKey);
-		tmp.setConcurrencyKey(UUID.randomUUID().toString());
+		tmp = TaskBuilders.uniqueTask().setUniquenessKey(uniqueKey).build();
 		tasks.add(tmp);
 
 		//  task 2 with the same unique key
-		tmp = new TaskToEnqueue();
-		tmp.setUniquenessKey(uniqueKey);
-		tmp.setConcurrencyKey(UUID.randomUUID().toString());
+		tmp = TaskBuilders.uniqueTask().setUniquenessKey(uniqueKey).build();
 		tasks.add(tmp);
 
-		results = clusterTasksService.enqueueTasks(ClusterTasksDataProviderType.DB, "ClusterTasksProcessorA_test", tasks.toArray(new TaskToEnqueue[tasks.size()]));
+		results = clusterTasksService.enqueueTasks(ClusterTasksDataProviderType.DB, "ClusterTasksProcessorA_test", tasks.toArray(new ClusterTask[tasks.size()]));
 		assertEquals(CTPPersistStatus.SUCCESS, results[0].getStatus());
 		assertEquals(CTPPersistStatus.UNIQUE_CONSTRAINT_FAILURE, results[1].getStatus());
 		waitResultsContainerComplete(clusterTasksProcessorA_test.tasksProcessed, 1, 3000);
@@ -186,24 +186,26 @@ public class ClusterTasksProcessorServiceTest extends CTSTestsBase {
 
 	@Test
 	public void TestE_delayed_tasks() {
-		TaskToEnqueue tmp;
+		ClusterTask tmp;
 		String concurrencyKey = UUID.randomUUID().toString();
 		long delay = 6000L;
 		ClusterTaskPersistenceResult[] results;
 		clusterTasksProcessorA_test.tasksProcessed.clear();
 
 		//  task 1 with the same concurrency key
-		tmp = new TaskToEnqueue();
-		tmp.setConcurrencyKey(concurrencyKey);
-		tmp.setDelayByMillis(delay);
-		tmp.setBody("delayed");
+		tmp = TaskBuilders.channeledTask()
+				.setConcurrencyKey(concurrencyKey)
+				.setDelayByMillis(delay)
+				.setBody("delayed")
+				.build();
 		results = clusterTasksService.enqueueTasks(ClusterTasksDataProviderType.DB, "ClusterTasksProcessorA_test", tmp);
 		assertEquals(CTPPersistStatus.SUCCESS, results[0].getStatus());
 
 		//  task 2 with the same concurrency key
-		tmp = new TaskToEnqueue();
-		tmp.setConcurrencyKey(concurrencyKey);
-		tmp.setBody("first_to_run");
+		tmp = TaskBuilders.channeledTask()
+				.setConcurrencyKey(concurrencyKey)
+				.setBody("first_to_run")
+				.build();
 		results = clusterTasksService.enqueueTasks(ClusterTasksDataProviderType.DB, "ClusterTasksProcessorA_test", tmp);
 		assertEquals(CTPPersistStatus.SUCCESS, results[0].getStatus());
 
@@ -216,21 +218,21 @@ public class ClusterTasksProcessorServiceTest extends CTSTestsBase {
 
 	@Test
 	public void TestF_non_available_task_holding_concurrency_key() {
-		TaskToEnqueue tmp;
+		ClusterTask tmp;
 		ClusterTaskPersistenceResult[] results;
 		String concurrencyKey = UUID.randomUUID().toString();
 		String taskBodyToCheck = "visited here";
 
 		//  enqueue first task to an ever-non-available processor
-		tmp = new TaskToEnqueue();
-		tmp.setConcurrencyKey(concurrencyKey);
+		tmp = TaskBuilders.channeledTask().setConcurrencyKey(concurrencyKey).build();
 		results = clusterTasksService.enqueueTasks(ClusterTasksDataProviderType.DB, "ClusterTasksProcessorE_test_na", tmp);
 		assertEquals(CTPPersistStatus.SUCCESS, results[0].getStatus());
 
 		//  enqueue second task to an available processor with the same concurrency key
-		tmp = new TaskToEnqueue();
-		tmp.setConcurrencyKey(concurrencyKey);
-		tmp.setBody(taskBodyToCheck);
+		tmp = TaskBuilders.channeledTask()
+				.setConcurrencyKey(concurrencyKey)
+				.setBody(taskBodyToCheck)
+				.build();
 		results = clusterTasksService.enqueueTasks(ClusterTasksDataProviderType.DB, "ClusterTasksProcessorF_test_cna", tmp);
 		assertEquals(CTPPersistStatus.SUCCESS, results[0].getStatus());
 
@@ -241,7 +243,7 @@ public class ClusterTasksProcessorServiceTest extends CTSTestsBase {
 
 	private <K, V> long waitResultsContainerComplete(Map<K, V> container, int expectedSize, long maxTimeToWait) {
 		long timePassed = 0;
-		long pauseInterval = 437;
+		long pauseInterval = 100;
 		while (container.size() != expectedSize && timePassed < maxTimeToWait) {
 			ClusterTasksITUtils.sleepSafely(pauseInterval);
 			timePassed += pauseInterval;

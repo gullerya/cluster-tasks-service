@@ -1,23 +1,25 @@
 package com.microfocus.octane.cluster.tasks.impl;
 
-import com.microfocus.octane.cluster.tasks.api.dto.TaskToProcess;
+import com.microfocus.octane.cluster.tasks.api.dto.ClusterTask;
 
 /**
  * Created by gullery on 26/05/2016.
  * <p>
- * DTO bearing the task's information when handed over to processor
+ * DTO bearing the task's information and used in consumer's oriented flows:
+ * - when the tasks are submitted for enqueue, immutable ClusterTask interface exposed to the consumer having this implementation under the hood
+ * - when the tasks are handed over to the processor, same as above is happening
  */
 
-class TaskToProcessImpl implements TaskToProcess {
-	private Long id;
-	private String uniquenessKey;
-	private String concurrencyKey;
-	private Long orderingFactor;
-	private Long delayByMillis;
-	private Long maxTimeToRunMillis;
-	private String body;
+class ClusterTaskImpl implements ClusterTask {
+	Long id;
+	String uniquenessKey;
+	String concurrencyKey;
+	Long orderingFactor;
+	Long delayByMillis;
+	Long maxTimeToRunMillis;
+	String body;
 
-	private TaskToProcessImpl() {
+	ClusterTaskImpl() {
 	}
 
 	@Override
@@ -55,8 +57,8 @@ class TaskToProcessImpl implements TaskToProcess {
 		return body;
 	}
 
-	static TaskToProcess from(TaskInternal origin) {
-		TaskToProcessImpl result = new TaskToProcessImpl();
+	static ClusterTask from(TaskInternal origin) {
+		ClusterTaskImpl result = new ClusterTaskImpl();
 		result.id = origin.id;
 		result.uniquenessKey = origin.uniquenessKey;
 		result.concurrencyKey = origin.concurrencyKey;

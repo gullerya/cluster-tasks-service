@@ -1,12 +1,12 @@
 package com.microfocus.octane.cluster.tasks;
 
+import com.microfocus.octane.cluster.tasks.api.builders.TaskBuilders;
+import com.microfocus.octane.cluster.tasks.api.dto.ClusterTask;
 import com.microfocus.octane.cluster.tasks.api.dto.ClusterTaskPersistenceResult;
-import com.microfocus.octane.cluster.tasks.api.dto.TaskToEnqueue;
 import com.microfocus.octane.cluster.tasks.api.enums.CTPPersistStatus;
 import com.microfocus.octane.cluster.tasks.api.enums.ClusterTasksDataProviderType;
 import com.microfocus.octane.cluster.tasks.processors.ClusterTasksProcessorFairness_test_mt;
 import com.microfocus.octane.cluster.tasks.processors.ClusterTasksProcessorFairness_test_st;
-import org.junit.Ignore;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.slf4j.Logger;
@@ -19,7 +19,6 @@ import java.util.List;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
-import static org.junit.Assert.fail;
 
 /**
  * Created by gullery on 02/06/2016.
@@ -39,51 +38,59 @@ public class ClusterTasksProcessorFairnessTest extends CTSTestsBase {
 
 	@Test
 	public void TestA_fairness_limited_resource() {
-		List<TaskToEnqueue> tasks = new LinkedList<>();
-		TaskToEnqueue task;
+		List<ClusterTask> tasks = new LinkedList<>();
+		ClusterTask task;
 
 		//  5 tasks of key '1'
-		task = new TaskToEnqueue();
-		task.setConcurrencyKey("1");
+		task = TaskBuilders.channeledTask()
+				.setConcurrencyKey("1")
+				.build();
 		tasks.add(task);
-		task = new TaskToEnqueue();
-		task.setConcurrencyKey("1");
+		task = TaskBuilders.channeledTask()
+				.setConcurrencyKey("1")
+				.build();
 		tasks.add(task);
-		task = new TaskToEnqueue();
-		task.setConcurrencyKey("1");
+		task = TaskBuilders.channeledTask()
+				.setConcurrencyKey("1")
+				.build();
 		tasks.add(task);
-		task = new TaskToEnqueue();
-		task.setConcurrencyKey("1");
+		task = TaskBuilders.channeledTask()
+				.setConcurrencyKey("1")
+				.build();
 		tasks.add(task);
-		task = new TaskToEnqueue();
-		task.setConcurrencyKey("1");
+		task = TaskBuilders.channeledTask()
+				.setConcurrencyKey("1")
+				.build();
 		tasks.add(task);
 
 		//  3 tasks of key '2'
-		task = new TaskToEnqueue();
-		task.setConcurrencyKey("2");
+		task = TaskBuilders.channeledTask()
+				.setConcurrencyKey("2")
+				.build();
 		tasks.add(task);
-		task = new TaskToEnqueue();
-		task.setConcurrencyKey("2");
+		task = TaskBuilders.channeledTask()
+				.setConcurrencyKey("2")
+				.build();
 		tasks.add(task);
-		task = new TaskToEnqueue();
-		task.setConcurrencyKey("2");
+		task = TaskBuilders.channeledTask()
+				.setConcurrencyKey("2")
+				.build();
 		tasks.add(task);
 
 		//  4 tasks without key
-		task = new TaskToEnqueue();
+		task = TaskBuilders.simpleTask().build();
 		tasks.add(task);
-		task = new TaskToEnqueue();
+		task = TaskBuilders.simpleTask().build();
 		tasks.add(task);
-		task = new TaskToEnqueue();
+		task = TaskBuilders.simpleTask().build();
 		tasks.add(task);
-		task = new TaskToEnqueue();
+		task = TaskBuilders.simpleTask().build();
 		tasks.add(task);
 
 		ClusterTaskPersistenceResult[] enqueueResults = clusterTasksService.enqueueTasks(
 				ClusterTasksDataProviderType.DB,
 				ClusterTasksProcessorFairness_test_st.class.getSimpleName(),
-				tasks.toArray(new TaskToEnqueue[tasks.size()]));
+				tasks.toArray(new ClusterTask[tasks.size()]));
 		for (ClusterTaskPersistenceResult result : enqueueResults) {
 			assertEquals(CTPPersistStatus.SUCCESS, result.getStatus());
 		}
@@ -116,26 +123,27 @@ public class ClusterTasksProcessorFairnessTest extends CTSTestsBase {
 	//  when in future tasks creation will be batched - we'll be able to test it more thoroughly
 	@Test
 	public void TestA_fairness_resource_for_multi_non_concurrent() {
-		List<TaskToEnqueue> tasks = new LinkedList<>();
-		TaskToEnqueue task;
+		List<ClusterTask> tasks = new LinkedList<>();
+		ClusterTask task;
 
 		//  1 tasks of key '1'
-		task = new TaskToEnqueue();
-		task.setConcurrencyKey("1");
+		task = TaskBuilders.channeledTask()
+				.setConcurrencyKey("1")
+				.build();
 		tasks.add(task);
 
 		//  3 tasks without key
-		task = new TaskToEnqueue();
+		task = TaskBuilders.simpleTask().build();
 		tasks.add(task);
-		task = new TaskToEnqueue();
+		task = TaskBuilders.simpleTask().build();
 		tasks.add(task);
-		task = new TaskToEnqueue();
+		task = TaskBuilders.simpleTask().build();
 		tasks.add(task);
 
 		ClusterTaskPersistenceResult[] enqueueResults = clusterTasksService.enqueueTasks(
 				ClusterTasksDataProviderType.DB,
 				ClusterTasksProcessorFairness_test_mt.class.getSimpleName(),
-				tasks.toArray(new TaskToEnqueue[tasks.size()]));
+				tasks.toArray(new ClusterTask[tasks.size()]));
 		for (ClusterTaskPersistenceResult result : enqueueResults) {
 			assertEquals(CTPPersistStatus.SUCCESS, result.getStatus());
 		}
@@ -148,7 +156,7 @@ public class ClusterTasksProcessorFairnessTest extends CTSTestsBase {
 
 	private void waitForEndCondition(List<String> eventStore, int expectedSize, long maxTimeToWait) {
 		long timePassed = 0;
-		long pauseInterval = 300;
+		long pauseInterval = 100;
 		while (eventStore.size() < expectedSize && timePassed < maxTimeToWait) {
 			ClusterTasksITUtils.sleepSafely(pauseInterval);
 			timePassed += pauseInterval;

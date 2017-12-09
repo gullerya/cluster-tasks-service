@@ -1,7 +1,7 @@
 package com.microfocus.octane.cluster.tasks.processors;
 
 import com.microfocus.octane.cluster.tasks.api.ClusterTasksProcessorDefault;
-import com.microfocus.octane.cluster.tasks.api.dto.TaskToProcess;
+import com.microfocus.octane.cluster.tasks.api.dto.ClusterTask;
 import com.microfocus.octane.cluster.tasks.api.enums.ClusterTasksDataProviderType;
 
 import java.util.LinkedList;
@@ -20,7 +20,7 @@ public class ClusterTasksProcessorFairness_test_st extends ClusterTasksProcessor
 	}
 
 	@Override
-	public void processTask(TaskToProcess task) {
+	public void processTask(ClusterTask task) {
 		keysProcessingEventsLog.add(String.valueOf(task.getConcurrencyKey()));
 		if (task.getConcurrencyKey() == null) {
 			nonConcurrentEventsLog.add(task.getOrderingFactor());

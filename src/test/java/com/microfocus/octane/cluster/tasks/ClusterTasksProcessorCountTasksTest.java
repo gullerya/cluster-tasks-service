@@ -1,6 +1,7 @@
 package com.microfocus.octane.cluster.tasks;
 
-import com.microfocus.octane.cluster.tasks.api.dto.TaskToEnqueue;
+import com.microfocus.octane.cluster.tasks.api.builders.TaskBuilders;
+import com.microfocus.octane.cluster.tasks.api.dto.ClusterTask;
 import com.microfocus.octane.cluster.tasks.api.enums.CTPPersistStatus;
 import com.microfocus.octane.cluster.tasks.api.dto.ClusterTaskPersistenceResult;
 import com.microfocus.octane.cluster.tasks.api.enums.ClusterTasksDataProviderType;
@@ -50,28 +51,23 @@ public class ClusterTasksProcessorCountTasksTest extends CTSTestsBase {
 	public void TestE_with_tasks() {
 		drainOutOldTasks();
 
-		TaskToEnqueue[] tasks;
+		ClusterTask[] tasks;
 		String concurrencyKeyA = UUID.randomUUID().toString();
 		String concurrencyKeyB = UUID.randomUUID().toString();
 
 		//  create 6 tasks
 		//      1 without concurrency key
-		tasks = new TaskToEnqueue[6];
-		tasks[0] = new TaskToEnqueue();
+		tasks = new ClusterTask[6];
+		tasks[0] = TaskBuilders.simpleTask().build();
 
 		//      2 with concurrency key A
-		tasks[1] = new TaskToEnqueue();
-		tasks[1].setConcurrencyKey(concurrencyKeyA);
-		tasks[2] = new TaskToEnqueue();
-		tasks[2].setConcurrencyKey(concurrencyKeyA);
+		tasks[1] = TaskBuilders.channeledTask().setConcurrencyKey(concurrencyKeyA).build();
+		tasks[2] = TaskBuilders.channeledTask().setConcurrencyKey(concurrencyKeyA).build();
 
 		//      3 with concurrency key B
-		tasks[3] = new TaskToEnqueue();
-		tasks[3].setConcurrencyKey(concurrencyKeyB);
-		tasks[4] = new TaskToEnqueue();
-		tasks[4].setConcurrencyKey(concurrencyKeyB);
-		tasks[5] = new TaskToEnqueue();
-		tasks[5].setConcurrencyKey(concurrencyKeyB);
+		tasks[3] = TaskBuilders.channeledTask().setConcurrencyKey(concurrencyKeyB).build();
+		tasks[4] = TaskBuilders.channeledTask().setConcurrencyKey(concurrencyKeyB).build();
+		tasks[5] = TaskBuilders.channeledTask().setConcurrencyKey(concurrencyKeyB).build();
 
 		ClusterTaskPersistenceResult[] results = clusterTasksService.enqueueTasks(ClusterTasksDataProviderType.DB, "ClusterTasksProcessorCount_test", tasks);
 		Arrays.stream(results).forEach(result ->
@@ -98,17 +94,14 @@ public class ClusterTasksProcessorCountTasksTest extends CTSTestsBase {
 	public void TestF_count_tasks_with_concurr_key() {
 		drainOutOldTasks();
 
-		TaskToEnqueue[] tasks;
+		ClusterTask[] tasks;
 		String concurrencyKey = UUID.randomUUID().toString();
 
 		//  create 3 tasks with concurrency key
-		tasks = new TaskToEnqueue[3];
-		tasks[0] = new TaskToEnqueue();
-		tasks[0].setConcurrencyKey(concurrencyKey);
-		tasks[1] = new TaskToEnqueue();
-		tasks[1].setConcurrencyKey(concurrencyKey);
-		tasks[2] = new TaskToEnqueue();
-		tasks[2].setConcurrencyKey(concurrencyKey);
+		tasks = new ClusterTask[3];
+		tasks[0] = TaskBuilders.channeledTask().setConcurrencyKey(concurrencyKey).build();
+		tasks[1] = TaskBuilders.channeledTask().setConcurrencyKey(concurrencyKey).build();
+		tasks[2] = TaskBuilders.channeledTask().setConcurrencyKey(concurrencyKey).build();
 
 		ClusterTaskPersistenceResult[] results = clusterTasksService.enqueueTasks(ClusterTasksDataProviderType.DB, "ClusterTasksProcessorCount_test", tasks);
 		Arrays.stream(results).forEach(result ->
@@ -141,13 +134,13 @@ public class ClusterTasksProcessorCountTasksTest extends CTSTestsBase {
 	public void TestF_count_tasks_without_concurr_key() {
 		drainOutOldTasks();
 
-		TaskToEnqueue[] tasks;
+		ClusterTask[] tasks;
 
 		//  create 3 tasks without concurrency key
-		tasks = new TaskToEnqueue[3];
-		tasks[0] = new TaskToEnqueue();
-		tasks[1] = new TaskToEnqueue();
-		tasks[2] = new TaskToEnqueue();
+		tasks = new ClusterTask[3];
+		tasks[0] = TaskBuilders.simpleTask().build();
+		tasks[1] = TaskBuilders.simpleTask().build();
+		tasks[2] = TaskBuilders.simpleTask().build();
 
 		ClusterTaskPersistenceResult[] results = clusterTasksService.enqueueTasks(ClusterTasksDataProviderType.DB, "ClusterTasksProcessorCount_test", tasks);
 		Arrays.stream(results).forEach(result ->

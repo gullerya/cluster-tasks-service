@@ -25,4 +25,6 @@
 	<bean class="com.microfocus.octane.cluster.tasks.processors.ClusterTasksProcessorFairness_test_st"/>
 
 	<bean class="com.microfocus.octane.cluster.tasks.processors.ClusterTasksProcessorFairness_test_mt"/>
+
+	<bean class="com.microfocus.octane.cluster.tasks.processors.ClusterTasksProcessorUniqueness_test"/>
 </beans>

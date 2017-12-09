@@ -80,7 +80,7 @@ class ClusterTasksWorker implements Runnable {
 
 		Summary.Timer timer = tasksPerProcessorDuration.labels(processor.getType()).startTimer();           //  metric
 		try {
-			processor.processTask(TaskToProcessImpl.from(task));
+			processor.processTask(ClusterTaskImpl.from(task));
 		} catch (Exception e) {
 			logger.error("failed processing " + task + ", body: " + task.body, e);
 			errorsPerProcessorCounter.labels(processor.getType(), e.getClass().getSimpleName()).inc();      //  metric

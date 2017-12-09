@@ -14,6 +14,7 @@ import java.util.Collections;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Set;
+import java.util.UUID;
 import java.util.stream.Collectors;
 
 import com.microfocus.octane.cluster.tasks.api.ClusterTasksServiceConfigurerSPI.DBType;
@@ -158,7 +159,12 @@ final class ClusterTasksDbUtils {
 	}
 
 	static String buildUpdateTaskFinishedSQL() {
-		return "UPDATE " + META_TABLE_NAME + " SET " + STATUS + " = " + ClusterTaskStatus.FINISHED.value + " WHERE " + META_ID + " = ?";
+		return "UPDATE " + META_TABLE_NAME + " SET " +
+				String.join(",",
+						STATUS + " = " + ClusterTaskStatus.FINISHED.value,
+						UNIQUENESS_KEY + " = '" + UUID.randomUUID().toString() + "'"
+				) +
+				" WHERE " + META_ID + " = ?";
 	}
 
 	static String buildUpdateTaskReenqueueSQL(int numberOfTasks) {
