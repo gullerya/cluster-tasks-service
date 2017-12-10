@@ -3,8 +3,7 @@
 #####1.1.0 (current)
 - documentation
 - solve potential task loss due to race when (re-)enqueueing task with uniqueness key
-- move tasks insert to batch
-- add optional probing for new tasks with uniqueness key (optimistic/pessimistic approaches)
+- tasks creation refactored, now providing builders for convenience, early validation and coding-time restrictions enforcement
 
 #####1.0.9 (LTS release)
 - added fairness logic between the concurrency keys

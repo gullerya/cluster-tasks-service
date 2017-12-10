@@ -38,16 +38,19 @@ Detailed info on __service__'s APIs available [here](cts-service-api.md).
 Next, you'd like to drop you actual logic for some task processing. To do that, you'll need to implement on of the task processor's base classes and expose them as a Spring beans.
 Your processor typically would look like this:
 ```
-public class ClusterTasksProcessorA_test extends ClusterTasksProcessorDefault {
-	public final Map<String, Timestamp> tasksProcessed = new LinkedHashMap<>();
+@Component
+public class HeavyRecalcAsyncCTP extends ClusterTasksProcessorDefault {
+	private static List<Long> numbers;      //  caution, statics are not thread/scope safe
+	private List<String> strings;           //  caution, CTPs are singletons, so this is not thread/scope sage too
 
-	protected ClusterTasksProcessorA_test() {
+	protected HeavyRecalcAsyncCTP() {
 		super(ClusterTasksDataProviderType.DB, 3);
 	}
 
 	@Override
 	public void processTask(ClusterTask task) {
-		tasksProcessed.put(task.getBody(), new Timestamp(System.currentTimeMillis()));
+		//  TODO: write your logic here
 	}
 }
 ```
+Best practice would be to have all your logic encapsulated within the `processTask` method and any helper methods that are called from it, while all of the data sets from both, an original task and of intermediate calculations/transformation/processing - rolling around as local variables/method parameters (pay attention to the thread/scope safety remarks in the example above).
