@@ -55,7 +55,9 @@ public class HeavyRecalcAsyncCTP extends ClusterTasksProcessorDefault {
 }
 ```
 
+<sup><sub>
 - Best practice would be to have all your logic encapsulated within the `processTask` method and any helper methods that are called from it, while all of the data sets from both, an original task and of intermediate calculations/transformation/processing - rolling around as local variables/method parameters (pay attention to the thread/scope safety remarks in the example above).
+</sub></sup>
 
 
 To see your __processor__ taking the task, is to enqueue it:
@@ -80,4 +82,6 @@ private void doRecalcOfNewContent(String newContentSerialized) {
 }
 ```
 
-<sup><sub>Obviously, tasks should be submitted to the specific __processor__. To achieve that, you need to specify __processor__'s type (second parameter). By default __processor__'s type is its simple class name, but you can change it overriding `getType` method in your __processor__'s implementation.</sub><sup>
+<sup><sub>
+- Obviously, tasks should be submitted to the specific __processor__. To achieve that, you need to specify __processor__'s type (second parameter). By default __processor__'s type is its simple class name, but you can change it overriding `getType` method in your __processor__'s implementation.
+</sub></sup>
