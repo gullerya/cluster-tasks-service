@@ -37,6 +37,7 @@ Detailed info on __service__'s API available [here](cts-service-api.md).
 
 Next, you'd like to drop you actual logic for some task processing. To do that, you'll need to implement on of the task processor's base classes and expose them as a Spring beans.
 Your processor typically would look like this:
+
 ```
 @Component
 public class HeavyRecalcAsyncCTP extends ClusterTasksProcessorDefault {
@@ -78,4 +79,5 @@ private void doRecalcOfNewContent(String newContentSerialized) {
     ...
 }
 ```
+
 Obviously, tasks should be submitted to the specific __processor__. To achieve that, you need to specify __processor__'s type (second parameter). By default __processor__'s type is its simple class name, but you can change it overriding `getType` method in your __processor__'s implementation.
