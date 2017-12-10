@@ -33,7 +33,7 @@ The world of `CTS` may roughly be separated into two:
 - a __processors__, implemented by consumer extending appropriate base abstract classes, are the actual tasks processor with custom business logic, almost completely transparent to the framework.
 
 In order to obtain the __service__, wire into your Spring eco-system the interface `ClusterTasksService`. It is a singleton, so the best practice would be to (auto)wire it as a private member of any of your services/components using it.
-Detailed info on __service__'s APIs available [here](cts-service-api.md).
+Detailed info on __service__'s API available [here](cts-service-api.md).
 
 Next, you'd like to drop you actual logic for some task processing. To do that, you'll need to implement on of the task processor's base classes and expose them as a Spring beans.
 Your processor typically would look like this:
@@ -53,7 +53,7 @@ public class HeavyRecalcAsyncCTP extends ClusterTasksProcessorDefault {
 	}
 }
 ```
-<sup><sub>Best practice would be to have all your logic encapsulated within the `processTask` method and any helper methods that are called from it, while all of the data sets from both, an original task and of intermediate calculations/transformation/processing - rolling around as local variables/method parameters (pay attention to the thread/scope safety remarks in the example above).</sub></sup>
+- Best practice would be to have all your logic encapsulated within the `processTask` method and any helper methods that are called from it, while all of the data sets from both, an original task and of intermediate calculations/transformation/processing - rolling around as local variables/method parameters (pay attention to the thread/scope safety remarks in the example above).
 
 To see your __processor__ taking the task, is to enqueue it:
 ```
@@ -75,4 +75,4 @@ private void doRecalcOfNewContent(String newContentSerialized) {
     ...
 }
 ```
-<sup><sub>Obviously, tasks should be submitted to the specific __processor__. To achieve that, you need to specify __processor__'s type (second parameter). By default __processor__'s type is its simple class name, but you can change it overriding `getType` method in your __processor__'s implementation.</sub></sup>
+- Obviously, tasks should be submitted to the specific __processor__. To achieve that, you need to specify __processor__'s type (second parameter). By default __processor__'s type is its simple class name, but you can change it overriding `getType` method in your __processor__'s implementation.

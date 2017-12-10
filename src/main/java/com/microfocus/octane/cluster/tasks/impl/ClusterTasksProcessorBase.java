@@ -69,7 +69,7 @@ public abstract class ClusterTasksProcessorBase {
 	}
 
 	//
-	//  EXPOSED APIs / EXTENSIBILITY POINTS
+	//  EXPOSED API / EXTENSIBILITY POINTS
 	//
 
 	/**

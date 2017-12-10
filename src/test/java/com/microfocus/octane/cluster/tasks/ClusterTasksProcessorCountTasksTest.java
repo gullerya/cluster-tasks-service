@@ -22,7 +22,7 @@ import static org.junit.Assert.assertEquals;
 /**
  * Created by gullery on 02/06/2016.
  * <p>
- * Main collection of integration tests for Cluster Tasks Processor - Count Tasks APIs
+ * Main collection of integration tests for Cluster Tasks Processor - Count Tasks API
  */
 
 @RunWith(SpringJUnit4ClassRunner.class)
