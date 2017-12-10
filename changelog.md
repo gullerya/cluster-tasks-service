@@ -1,6 +1,8 @@
 ###Changelog
 
-#####1.1.0 (current)
+#####1.1.1 (current)
+
+#####1.1.0
 - documentation
 - solve potential task loss due to race when (re-)enqueueing task with uniqueness key
 - tasks creation refactored, now providing builders for convenience, early validation and coding-time restrictions enforcement
