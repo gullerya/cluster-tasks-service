@@ -206,6 +206,8 @@ public class ClusterTasksServiceImpl implements ClusterTasksService {
 				scheduledTask.taskType = ClusterTaskType.SCHEDULED;
 				scheduledTask.processorType = type;
 				scheduledTask.uniquenessKey = type;
+				scheduledTask.orderingFactor = null;
+				scheduledTask.delayByMillis = 0L;
 				scheduledTask.maxTimeToRunMillis = ((ClusterTasksProcessorScheduled) processor).getMaxTimeToRun();
 				do {
 					enqueueAttemptsCount++;
