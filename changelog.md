@@ -1,6 +1,8 @@
 ###Changelog
 
-#####1.1.2 (current)
+#####1.1.3 (current)
+
+#####1.1.2
 - GC improvements
 - better scheduled tasks handling and recovery
 
