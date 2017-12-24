@@ -101,7 +101,7 @@ final class ClusterTasksDbUtils {
 	//  PROCESS TASKS - including select, update running and retrieve content
 	//
 	static String buildSelectForUpdateTasksSQL(DBType dbType, int maxProcessorTypes) {
-		String selectFields = String.join(",", META_ID, TASK_TYPE, PROCESSOR_TYPE, UNIQUENESS_KEY, CONCURRENCY_KEY, ORDERING_FACTOR, BODY_PARTITION);
+		String selectFields = String.join(",", META_ID, TASK_TYPE, PROCESSOR_TYPE, UNIQUENESS_KEY, CONCURRENCY_KEY, ORDERING_FACTOR, DELAY_BY_MILLIS, MAX_TIME_TO_RUN, BODY_PARTITION);
 		String processorTypesInParameter = String.join(",", Collections.nCopies(maxProcessorTypes, "?"));
 
 		if (DBType.ORACLE == dbType) {
@@ -134,18 +134,17 @@ final class ClusterTasksDbUtils {
 		}
 	}
 
-	static String buildUpdateTaskStartedSQL(DBType dbType, int numberOfTasks) {
-		String inParameter = String.join(",", Collections.nCopies(numberOfTasks, "?"));
+	static String buildUpdateTaskStartedSQL(DBType dbType) {
 		if (DBType.ORACLE == dbType) {
 			return "UPDATE " + META_TABLE_NAME + " SET " +
 					STATUS + " = " + ClusterTaskStatus.RUNNING.value + ", " +
 					STARTED + " = SYSDATE, " +
-					RUNTIME_INSTANCE + " = ? WHERE " + META_ID + " IN (" + inParameter + ")";
+					RUNTIME_INSTANCE + " = ? WHERE " + META_ID + " = ?";
 		} else if (DBType.MSSQL == dbType) {
 			return "UPDATE " + META_TABLE_NAME + " SET " +
 					STATUS + " = " + ClusterTaskStatus.RUNNING.value + ", " +
 					STARTED + " = GETDATE(), " +
-					RUNTIME_INSTANCE + " = ? WHERE " + META_ID + " IN (" + inParameter + ")";
+					RUNTIME_INSTANCE + " = ? WHERE " + META_ID + " = ?";
 		} else {
 			throw new CtsDBTypeNotSupported("DB type " + dbType + " is not supported");
 		}
@@ -167,26 +166,18 @@ final class ClusterTasksDbUtils {
 				" WHERE " + META_ID + " = ?";
 	}
 
-	static String buildUpdateTaskReenqueueSQL(int numberOfTasks) {
-		String inParameter = String.join(",", Collections.nCopies(numberOfTasks, "?"));
-		return "UPDATE " + META_TABLE_NAME +
-				" SET " + STATUS + " = " + ClusterTaskStatus.PENDING.value +
-				", " + STARTED + " = NULL " +
-				", " + RUNTIME_INSTANCE + " = NULL " +
-				" WHERE " + META_ID + " IN (" + inParameter + ")";
-	}
-
 	//
 	//  DELETE TASKS - garbage collection flow
 	//
 	static String buildSelectGCValidTasksSQL(DBType dbType) {
-		String selectedFields = String.join(",", META_ID, BODY_PARTITION, TASK_TYPE);
+		String selectedFields = String.join(",", META_ID, BODY_PARTITION, TASK_TYPE, PROCESSOR_TYPE, MAX_TIME_TO_RUN);
 		if (DBType.ORACLE == dbType) {
 			return "SELECT " + selectedFields + " FROM " + META_TABLE_NAME +
 					" WHERE " + STATUS + " = " + ClusterTaskStatus.FINISHED.value +
-					" OR (" + STATUS + " = " + ClusterTaskStatus.RUNNING.value + " AND " + STARTED + " < SYSDATE - NUMTODSINTERVAL(" + MAX_TIME_TO_RUN + " / 1000, 'SECOND'))";
+					" OR (" + STATUS + " = " + ClusterTaskStatus.RUNNING.value + " AND " + STARTED + " < SYSDATE - NUMTODSINTERVAL(" + MAX_TIME_TO_RUN + " / 1000, 'SECOND'))" +
+					" FOR UPDATE";
 		} else if (DBType.MSSQL == dbType) {
-			return "SELECT " + selectedFields + " FROM " + META_TABLE_NAME +
+			return "SELECT " + selectedFields + " FROM " + META_TABLE_NAME + " WITH (UPDLOCK,INDEX(CTSKM_IDX_3))" +
 					" WHERE " + STATUS + " = " + ClusterTaskStatus.FINISHED.value +
 					" OR (" + STATUS + " = " + ClusterTaskStatus.RUNNING.value + " AND DATEDIFF(MILLISECOND, " + STARTED + ", GETDATE()) > " + MAX_TIME_TO_RUN + ")";
 		} else {
@@ -194,17 +185,15 @@ final class ClusterTasksDbUtils {
 		}
 	}
 
-	static String buildDeleteTaskMetaSQL(int deleteBulkSize) {
-		String inParam = String.join(",", Collections.nCopies(deleteBulkSize, "?"));
-		return "DELETE FROM " + META_TABLE_NAME + " WHERE " + META_ID + " IN (" + inParam + ")";
+	static String buildDeleteTaskMetaSQL() {
+		return "DELETE FROM " + META_TABLE_NAME + " WHERE " + META_ID + " = ?";
 	}
 
-	static String buildDeleteTaskBodySQL(Long partitionIndex, int deleteBulkSize) {
+	static String buildDeleteTaskBodySQL(Long partitionIndex) {
 		if (partitionIndex == null) {
 			throw new IllegalArgumentException("partition index MUST NOT be null");
 		}
-		String inParam = String.join(",", Collections.nCopies(deleteBulkSize, "?"));
-		return "DELETE FROM " + BODY_TABLE_NAME + partitionIndex + " WHERE " + BODY_ID + " IN (" + inParam + ")";
+		return "DELETE FROM " + BODY_TABLE_NAME + partitionIndex + " WHERE " + BODY_ID + " = ?";
 	}
 
 	static String buildSelectVerifyBodyTableSQL(Long partitionIndex) {
@@ -279,6 +268,8 @@ final class ClusterTasksDbUtils {
 					if (!resultSet.wasNull()) {
 						tmpTask.orderingFactor = tmpLong;
 					}
+					tmpTask.delayByMillis = resultSet.getLong(DELAY_BY_MILLIS);
+					tmpTask.maxTimeToRunMillis = resultSet.getLong(MAX_TIME_TO_RUN);
 					tmpLong = resultSet.getLong(BODY_PARTITION);
 					if (!resultSet.wasNull()) {
 						tmpTask.partitionIndex = tmpLong;
@@ -325,7 +316,12 @@ final class ClusterTasksDbUtils {
 					TaskInternal task = new TaskInternal();
 					task.id = resultSet.getLong(META_ID);
 					task.taskType = ClusterTaskType.byValue(resultSet.getLong(TASK_TYPE));
-					task.partitionIndex = resultSet.getLong(BODY_PARTITION);
+					Long tmpLong = resultSet.getLong(BODY_PARTITION);
+					if (!resultSet.wasNull()) {
+						task.partitionIndex = tmpLong;
+					}
+					task.processorType = resultSet.getString(PROCESSOR_TYPE);
+					task.maxTimeToRunMillis = resultSet.getLong(MAX_TIME_TO_RUN);
 					result.add(task);
 				} catch (SQLException sqle) {
 					logger.error("failed to read cluster task body", sqle);

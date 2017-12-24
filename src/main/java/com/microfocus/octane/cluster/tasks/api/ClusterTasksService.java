@@ -15,6 +15,16 @@ import java.util.concurrent.CompletableFuture;
 
 public interface ClusterTasksService {
 
+	/**
+	 * returns instance ID that the current CTS runtime signed with
+	 * - instance ID has a runtime retention, its lifespan is the same as the one CTS' main service object (the singleton implementing this interface)
+	 * - instance ID is a random UUID, generated anew each time the service object is being created
+	 * - instance ID serves internal needs of the library
+	 *
+	 * @return UUID string
+	 */
+	String getInstanceID();
+
 	CompletableFuture<Boolean> getReadyPromise();
 
 	/**

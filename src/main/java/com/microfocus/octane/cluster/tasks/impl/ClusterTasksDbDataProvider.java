@@ -29,7 +29,6 @@ import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
-import java.util.UUID;
 import java.util.stream.Collectors;
 
 import com.microfocus.octane.cluster.tasks.api.ClusterTasksServiceConfigurerSPI.DBType;
@@ -37,6 +36,7 @@ import com.microfocus.octane.cluster.tasks.api.ClusterTasksServiceConfigurerSPI.
 import javax.sql.DataSource;
 
 import static java.sql.Types.BIGINT;
+import static java.sql.Types.VARCHAR;
 
 /**
  * Created by gullery on 08/05/2016.
@@ -46,8 +46,7 @@ import static java.sql.Types.BIGINT;
 
 class ClusterTasksDbDataProvider implements ClusterTasksDataProvider {
 	private static final Logger logger = LoggerFactory.getLogger(ClusterTasksDbDataProvider.class);
-	private static final String RUNTIME_INSTANCE_ID = UUID.randomUUID().toString();
-	private static final int PARTITIONS_NUMBER = 4;
+	private final int PARTITIONS_NUMBER = 4;
 	private ZonedDateTime lastTruncateTime;
 	private JdbcTemplate jdbcTemplate;
 	private TransactionTemplate transactionTemplate;
@@ -140,57 +139,55 @@ class ClusterTasksDbDataProvider implements ClusterTasksDataProvider {
 	@Override
 	public void retrieveAndDispatchTasks(Map<String, ClusterTasksProcessorBase> availableProcessors) {
 		getTransactionTemplate().execute(transactionStatus -> {
+			JdbcTemplate jdbcTemplate = getJdbcTemplate();
+			String selectForUpdateSql = ClusterTasksDbUtils.buildSelectForUpdateTasksSQL(getDBType(), 500);
+			String[] availableProcessorTypes = availableProcessors.keySet().toArray(new String[availableProcessors.size()]);
+			int paramsTotal = 500;
+
+			//  prepare params
+			Object[] params = new Object[paramsTotal];
+			System.arraycopy(availableProcessorTypes, 0, params, 0, availableProcessorTypes.length);
+			for (int i = availableProcessorTypes.length; i < paramsTotal; i++) params[i] = null;
+
+			//  prepare param types
+			int[] paramTypes = new int[paramsTotal];
+			for (int i = 0; i < paramsTotal; i++) paramTypes[i] = Types.NVARCHAR;
+
+			List<TaskInternal> tasks;
 			try {
-				JdbcTemplate jdbcTemplate = getJdbcTemplate();
-				String selectForUpdateSql = ClusterTasksDbUtils.buildSelectForUpdateTasksSQL(getDBType(), 500);
-				String[] availableProcessorTypes = availableProcessors.keySet().toArray(new String[availableProcessors.size()]);
-				int paramsTotal = 500;
-
-				//  prepare params
-				Object[] params = new Object[paramsTotal];
-				System.arraycopy(availableProcessorTypes, 0, params, 0, availableProcessorTypes.length);
-				for (int i = availableProcessorTypes.length; i < paramsTotal; i++) params[i] = null;
-
-				//  prepare param types
-				int[] paramTypes = new int[paramsTotal];
-				for (int i = 0; i < paramsTotal; i++) paramTypes[i] = Types.NVARCHAR;
-
-				List<TaskInternal> tasks = jdbcTemplate.query(selectForUpdateSql, params, paramTypes, ClusterTasksDbUtils::tasksMetadataReader);
-				if (!tasks.isEmpty()) {
-					List<Long> startedTasksIDs = new LinkedList<>();
-					Map<String, List<TaskInternal>> tasksByProcessor = tasks.stream().collect(Collectors.groupingBy(ti -> ti.processorType));
-
-					//  dispatch tasks where relevant
-					//
-					tasksByProcessor.forEach((processorType, processorTasks) -> {
-						ClusterTasksProcessorBase processor = availableProcessors.get(processorType);
-						startedTasksIDs.addAll(processor.handleTasks(processorTasks, this));
-					});
-
-					//  update started tasks in DB within the same transaction
-					//
-					if (!startedTasksIDs.isEmpty()) {
-						try {
-							String updateTasksStartedSQL = ClusterTasksDbUtils.buildUpdateTaskStartedSQL(serviceConfigurer.getDbType(), startedTasksIDs.size());
-							Object[] updateParams = new Object[1 + startedTasksIDs.size()];
-							int[] updateParamTypes = new int[1 + startedTasksIDs.size()];
-							updateParams[0] = RUNTIME_INSTANCE_ID;
-							updateParamTypes[0] = Types.VARCHAR;
-							for (int i = 0; i < startedTasksIDs.size(); i++) {
-								updateParams[i + 1] = startedTasksIDs.get(i);
-								updateParamTypes[i + 1] = BIGINT;
-							}
-							jdbcTemplate.update(updateTasksStartedSQL, updateParams, updateParamTypes);
-						} catch (DataAccessException dae) {
-							throw new CtsGeneralFailure("failed to update tasks to started", dae);
-						}
-						logger.debug("from a total of " + tasks.size() + " available tasks " + startedTasksIDs.size() + " has been started");
-					} else {
-						logger.warn("from a total of " + tasks.size() + " available tasks none has been started");
-					}
-				}
+				tasks = jdbcTemplate.query(selectForUpdateSql, params, paramTypes, ClusterTasksDbUtils::tasksMetadataReader);
 			} catch (Exception e) {
-				logger.error("failed to retrieve/dispatch/start cluster task/s", e);
+				logger.error("failed to retrieve tasks, will reattempt one more time", e);
+				tasks = jdbcTemplate.query(selectForUpdateSql, params, paramTypes, ClusterTasksDbUtils::tasksMetadataReader);
+			}
+			if (!tasks.isEmpty()) {
+				List<Long> startedTasksIDs = new LinkedList<>();
+				Map<String, List<TaskInternal>> tasksByProcessor = tasks.stream().collect(Collectors.groupingBy(ti -> ti.processorType));
+
+				//  dispatch tasks where relevant
+				//
+				tasksByProcessor.forEach((processorType, processorTasks) -> {
+					ClusterTasksProcessorBase processor = availableProcessors.get(processorType);
+					startedTasksIDs.addAll(processor.handleTasks(processorTasks, this));
+				});
+
+				//  update started tasks in DB within the same transaction
+				//
+				if (!startedTasksIDs.isEmpty()) {
+					try {
+						String updateTasksStartedSQL = ClusterTasksDbUtils.buildUpdateTaskStartedSQL(serviceConfigurer.getDbType());
+						String runtimeInstanceID = clusterTasksService.getInstanceID();
+						List<Object[]> updateParams = startedTasksIDs.stream()
+								.map(id -> new Object[]{runtimeInstanceID, id})
+								.collect(Collectors.toList());
+						int[] updateResults = jdbcTemplate.batchUpdate(updateTasksStartedSQL, updateParams, new int[]{VARCHAR, BIGINT});
+					} catch (DataAccessException dae) {
+						throw new CtsGeneralFailure("failed to update tasks to started", dae);
+					}
+					logger.debug("from a total of " + tasks.size() + " available tasks " + startedTasksIDs.size() + " has been started");
+				} else {
+					logger.warn("from a total of " + tasks.size() + " available tasks none has been started");
+				}
 			}
 
 			return null;
@@ -239,25 +236,8 @@ class ClusterTasksDbDataProvider implements ClusterTasksDataProvider {
 	}
 
 	@Override
-	public void updateTaskToReenqueued(Long taskId) {
-		if (taskId == null) {
-			throw new IllegalArgumentException("task ID MUST NOT be null");
-		}
-
-		try {
-			JdbcTemplate jdbcTemplate = getJdbcTemplate();
-			String updateTaskFinishedSQL = ClusterTasksDbUtils.buildUpdateTaskReenqueueSQL(1);
-			jdbcTemplate.update(
-					updateTaskFinishedSQL,
-					new Object[]{taskId},
-					new int[]{BIGINT});
-		} catch (DataAccessException dae) {
-			logger.error("failed to update task finished", dae);
-		}
-	}
-
-	@Override
 	public void handleGarbageAndStaled() {
+		List<TaskInternal> dataSetToReschedule = new LinkedList<>();
 		getTransactionTemplate().execute(transactionStatus -> {
 			try {
 				JdbcTemplate jdbcTemplate = getJdbcTemplate();
@@ -265,21 +245,16 @@ class ClusterTasksDbDataProvider implements ClusterTasksDataProvider {
 				List<TaskInternal> gcCandidates = jdbcTemplate.query(selectGCValidTasksSQL, ClusterTasksDbUtils::gcCandidatesReader);
 
 				//  delete garbage tasks data
-				Map<Long, Long> dataSetToDelete = gcCandidates.stream()
-						.filter(task -> task.taskType == ClusterTaskType.REGULAR)
-						.collect(Collectors.toMap(t -> t.id, t -> t.partitionIndex));
+				Map<Long, Long> dataSetToDelete = new LinkedHashMap<>();
+				gcCandidates.forEach(candidate -> dataSetToDelete.put(candidate.id, candidate.partitionIndex));
 				if (!dataSetToDelete.isEmpty()) {
 					deleteGarbageTasksData(jdbcTemplate, dataSetToDelete);
 				}
 
-				//  update tasks valid for re-enqueue
-				List<Long> dataSetToUpdate = gcCandidates.stream()
+				//  collect tasks for rescheduling
+				gcCandidates.stream()
 						.filter(task -> task.taskType == ClusterTaskType.SCHEDULED)
-						.map(t -> t.id)
-						.collect(Collectors.toList());
-				if (!dataSetToUpdate.isEmpty()) {
-					updateReenqueueTasks(jdbcTemplate, dataSetToUpdate);
-				}
+						.forEach(dataSetToReschedule::add);
 			} catch (Exception e) {
 				logger.error("failed to cleanup cluster tasks", e);
 				throw new CtsGeneralFailure("failed to cleanup cluster tasks", e);
@@ -287,6 +262,11 @@ class ClusterTasksDbDataProvider implements ClusterTasksDataProvider {
 
 			return null;
 		});
+
+		//  reschedule tasks of SCHEDULED type
+		if (!dataSetToReschedule.isEmpty()) {
+			rescheduleTasks(dataSetToReschedule);
+		}
 	}
 
 	@Override
@@ -353,44 +333,30 @@ class ClusterTasksDbDataProvider implements ClusterTasksDataProvider {
 
 	private void deleteGarbageTasksData(JdbcTemplate jdbcTemplate, Map<Long, Long> taskIDsBodyPartitionsMap) {
 		try {
-			int deleteBulkSize = 1000;
-			int tPointer = 0;
-			String deleteTimedoutMetaSQL = ClusterTasksDbUtils.buildDeleteTaskMetaSQL(deleteBulkSize);
-			Object[] params = new Object[deleteBulkSize];
-
-			//  prepare param types
-			int[] paramTypes = new int[deleteBulkSize];
-			for (int i = 0; i < paramTypes.length; i++) paramTypes[i] = BIGINT;
-
 			//  delete metas
-			Long[] taskIDs = taskIDsBodyPartitionsMap.keySet().toArray(new Long[taskIDsBodyPartitionsMap.size()]);
-			while (tPointer < taskIDs.length) {
-				int subListSize = Math.min(deleteBulkSize, taskIDs.length - tPointer);
-				System.arraycopy(taskIDs, tPointer, params, 0, subListSize);
-				for (int i = subListSize; i < deleteBulkSize; i++) params[i] = null;
-				int deletedMetas = jdbcTemplate.update(deleteTimedoutMetaSQL, params, paramTypes);
-				logger.debug("deleted " + deletedMetas + " task/s (metadata)");
-				tPointer += deleteBulkSize;
-			}
+			String deleteTimedoutMetaSQL = ClusterTasksDbUtils.buildDeleteTaskMetaSQL();
+			List<Object[]> mParams = taskIDsBodyPartitionsMap.keySet().stream()
+					.map(id -> new Object[]{id})
+					.collect(Collectors.toList());
+			int[] deletedMetas = jdbcTemplate.batchUpdate(deleteTimedoutMetaSQL, mParams, new int[]{BIGINT});
+			logger.debug("deleted " + deletedMetas.length + " task/s (metadata)");
 
 			//  delete bodies
 			Map<Long, Set<Long>> partitionsToIdsMap = new LinkedHashMap<>();
-			taskIDsBodyPartitionsMap.forEach((taskId, partitionIndex) -> partitionsToIdsMap
-					.computeIfAbsent(partitionIndex, pId -> new LinkedHashSet<>())
-					.add(taskId));
-			partitionsToIdsMap.forEach((partitionId, taskIDsInPartition) -> {
-				int bPointer = 0;
-				String deleteTimedoutBodySQL = ClusterTasksDbUtils.buildDeleteTaskBodySQL(partitionId, deleteBulkSize);
-
-				Long[] itemIDs = taskIDsInPartition.toArray(new Long[taskIDsInPartition.size()]);
-				while (bPointer < itemIDs.length) {
-					int subListSize = Math.min(deleteBulkSize, itemIDs.length - bPointer);
-					System.arraycopy(itemIDs, bPointer, params, 0, subListSize);
-					for (int i = subListSize; i < deleteBulkSize; i++) params[i] = null;
-					int deletedBodies = jdbcTemplate.update(deleteTimedoutBodySQL, params, paramTypes);
-					logger.debug("deleted " + deletedBodies + " task/s (content)");
-					bPointer += deleteBulkSize;
+			taskIDsBodyPartitionsMap.forEach((taskId, partitionIndex) -> {
+				if (partitionIndex != null) {
+					partitionsToIdsMap
+							.computeIfAbsent(partitionIndex, pId -> new LinkedHashSet<>())
+							.add(taskId);
 				}
+			});
+			partitionsToIdsMap.forEach((partitionId, taskIDsInPartition) -> {
+				String deleteTimedoutBodySQL = ClusterTasksDbUtils.buildDeleteTaskBodySQL(partitionId);
+				List<Object[]> bParams = taskIDsInPartition.stream()
+						.map(id -> new Object[]{id})
+						.collect(Collectors.toList());
+				int[] deletedBodies = jdbcTemplate.batchUpdate(deleteTimedoutBodySQL, bParams, new int[]{BIGINT});
+				logger.debug("deleted " + deletedBodies.length + " task/s (content)");
 			});
 
 			//  truncate currently non-active body tables (that are safe to truncate)
@@ -400,19 +366,13 @@ class ClusterTasksDbDataProvider implements ClusterTasksDataProvider {
 		}
 	}
 
-	private void updateReenqueueTasks(JdbcTemplate jdbcTemplate, List<Long> taskIDsToReenqueue) {
-		try {
-			String updateReenqueueTasks = ClusterTasksDbUtils.buildUpdateTaskReenqueueSQL(taskIDsToReenqueue.size());
-			Object[] params = new Object[taskIDsToReenqueue.size()];
-			int[] paramTypes = new int[taskIDsToReenqueue.size()];
-			for (int i = 0; i < taskIDsToReenqueue.size(); i++) {
-				params[i] = taskIDsToReenqueue.get(i);
-				paramTypes[i] = BIGINT;
-			}
-			jdbcTemplate.update(updateReenqueueTasks, params, paramTypes);
-		} catch (Exception e) {
-			logger.error("failed to update Reenqueue tasks data", e);
-		}
+	private void rescheduleTasks(List<TaskInternal> tasksToReschedule) {
+		tasksToReschedule.forEach(task -> {
+			task.uniquenessKey = task.processorType;
+			task.concurrencyKey = task.processorType;
+			task.delayByMillis = 0L;
+		});
+		storeTasks(tasksToReschedule.toArray(new TaskInternal[tasksToReschedule.size()]));
 	}
 
 	private void checkAndTruncateBodyTables() {

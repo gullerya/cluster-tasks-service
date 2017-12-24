@@ -37,10 +37,11 @@ class ClusterTasksServiceSchemaManager {
 				try {
 					flyway.repair();
 					logger.error("DB repair after migration failure has SUCCEED", me);
+					result = true;
 				} catch (Exception re) {
 					logger.error("DB repair after migration failure has FAILED", re);
+					result = false;
 				}
-				result = false;
 			}
 		}
 		return result;

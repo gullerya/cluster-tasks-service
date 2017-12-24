@@ -55,13 +55,6 @@ interface ClusterTasksDataProvider {
 	void updateTaskToFinished(Long taskId);
 
 	/**
-	 * Updates task as PENDING, thus releasing the processor to take next task and make this task valid for renewed run (scheduled tasks, for example)
-	 *
-	 * @param taskId the value that was assigned to a task in process of creation
-	 */
-	void updateTaskToReenqueued(Long taskId);
-
-	/**
 	 * Implementation should perform a clean up of an items in storage that may be considered as 'garbage'
 	 * Items that found to be 'staled' but are not considered to be 'garbage' should be handled accordingly to each own specific logic
 	 */

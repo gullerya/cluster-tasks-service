@@ -87,11 +87,11 @@ class ClusterTasksWorker implements Runnable {
 		} finally {
 			timer.observeDuration();                                                                        //  metric
 			try {
-				if (task.taskType == ClusterTaskType.REGULAR) {
-					dataProvider.updateTaskToFinished(task.id);
-				} else if (task.taskType == ClusterTaskType.SCHEDULED) {
-					dataProvider.updateTaskToReenqueued(task.id);
+				if (task.taskType == ClusterTaskType.SCHEDULED) {
+					TaskInternal newTask = new TaskInternal(task);
+					dataProvider.storeTasks(newTask);
 				}
+				dataProvider.updateTaskToFinished(task.id);
 			} catch (Exception e) {
 				logger.error("failed to update finished on " + task, e);
 				ctsOwnErrorsCounter.labels(TASK_FINALIZATION_PHASE, e.getClass().getSimpleName()).inc();   //  metric

@@ -1,5 +1,6 @@
 package com.microfocus.octane.cluster.tasks.impl;
 
+import com.microfocus.octane.cluster.tasks.api.builders.TaskBuilders;
 import com.microfocus.octane.cluster.tasks.api.dto.ClusterTask;
 import com.microfocus.octane.cluster.tasks.api.enums.CTPPersistStatus;
 import com.microfocus.octane.cluster.tasks.api.enums.ClusterTaskStatus;
@@ -36,6 +37,7 @@ import java.util.stream.Collectors;
 public class ClusterTasksServiceImpl implements ClusterTasksService {
 	private final Logger logger = LoggerFactory.getLogger(ClusterTasksServiceImpl.class);
 
+	private final String RUNTIME_INSTANCE_ID = UUID.randomUUID().toString();
 	private final CompletableFuture<Boolean> readyPromise = new CompletableFuture<>();
 	private final Map<ClusterTasksDataProviderType, ClusterTasksDataProvider> dataProvidersMap = new LinkedHashMap<>();
 	private final Map<String, ClusterTasksProcessorBase> processorsMap = new LinkedHashMap<>();
@@ -46,10 +48,10 @@ public class ClusterTasksServiceImpl implements ClusterTasksService {
 	private ClusterTasksServiceConfigurerSPI serviceConfigurer;
 	private ClusterTasksServiceSchemaManager schemaManager;
 
-	private final static Counter dispatchErrors;
-	private final static Summary dispatchDurationSummary;
-	private final static Counter gcErrors;
-	private final static Summary gcDurationSummary;
+	private static final Counter dispatchErrors;
+	private static final Summary dispatchDurationSummary;
+	private static final Counter gcErrors;
+	private static final Summary gcDurationSummary;
 
 	static {
 		dispatchErrors = Counter.build()
@@ -70,7 +72,7 @@ public class ClusterTasksServiceImpl implements ClusterTasksService {
 				.register();
 	}
 
-	private static final long MAX_TIME_TO_RUN_DEFAULT = 1000 * 60;
+	private final long MAX_TIME_TO_RUN_DEFAULT = 1000 * 60;
 
 	@Autowired
 	private void registerDataProviders(List<ClusterTasksDataProvider> dataProviders) {
@@ -134,6 +136,11 @@ public class ClusterTasksServiceImpl implements ClusterTasksService {
 	}
 
 	@Override
+	public String getInstanceID() {
+		return RUNTIME_INSTANCE_ID;
+	}
+
+	@Override
 	public CompletableFuture<Boolean> getReadyPromise() {
 		return readyPromise;
 	}
@@ -184,7 +191,7 @@ public class ClusterTasksServiceImpl implements ClusterTasksService {
 			gcExecutor.execute(gc);
 			logger.info("local tasks dispatcher initialized");
 
-			logger.info("CTS is configured & initialized");
+			logger.info("CTS is configured & initialized, instance ID: " + RUNTIME_INSTANCE_ID);
 			readyPromise.complete(true);
 
 			ensureScheduledTasksInitialized();
@@ -202,16 +209,15 @@ public class ClusterTasksServiceImpl implements ClusterTasksService {
 				ClusterTasksDataProvider dataProvider = dataProvidersMap.get(processor.getDataProviderType());
 				ClusterTaskPersistenceResult enqueueResult;
 				int maxEnqueueAttempts = 20, enqueueAttemptsCount = 0;
-				TaskInternal scheduledTask = new TaskInternal();
-				scheduledTask.taskType = ClusterTaskType.SCHEDULED;
-				scheduledTask.processorType = type;
-				scheduledTask.uniquenessKey = type;
-				scheduledTask.orderingFactor = null;
-				scheduledTask.delayByMillis = 0L;
-				scheduledTask.maxTimeToRunMillis = ((ClusterTasksProcessorScheduled) processor).getMaxTimeToRun();
+				ClusterTask clusterTask = TaskBuilders.uniqueTask()
+						.setUniquenessKey(type)
+						.setMaxTimeToRunMillis(((ClusterTasksProcessorScheduled) processor).getMaxTimeToRun())
+						.build();
+				TaskInternal[] scheduledTasks = convertTasks(new ClusterTask[]{clusterTask}, type);
+				scheduledTasks[0].taskType = ClusterTaskType.SCHEDULED;
 				do {
 					enqueueAttemptsCount++;
-					enqueueResult = dataProvider.storeTasks(scheduledTask)[0];
+					enqueueResult = dataProvider.storeTasks(scheduledTasks[0])[0];
 					if (enqueueResult.getStatus() == CTPPersistStatus.SUCCESS) {
 						logger.info("initial task for " + type + " created");
 						break;

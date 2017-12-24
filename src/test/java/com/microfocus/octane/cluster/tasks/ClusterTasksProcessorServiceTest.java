@@ -188,7 +188,7 @@ public class ClusterTasksProcessorServiceTest extends CTSTestsBase {
 	public void TestE_delayed_tasks() {
 		ClusterTask tmp;
 		String concurrencyKey = UUID.randomUUID().toString();
-		long delay = 6000L;
+		long delay = 7000L;
 		ClusterTaskPersistenceResult[] results;
 		clusterTasksProcessorA_test.tasksProcessed.clear();
 
@@ -210,7 +210,10 @@ public class ClusterTasksProcessorServiceTest extends CTSTestsBase {
 		assertEquals(CTPPersistStatus.SUCCESS, results[0].getStatus());
 
 		long passedTime = waitResultsContainerComplete(clusterTasksProcessorA_test.tasksProcessed, 2, 10000);
-		assertTrue(passedTime >= delay);
+		logger.info("delay: " + delay + "; passed: " + passedTime);
+		//  precision of seconds is enough, since we are storing the time data as date and not timestamp
+		//  and it is possible that delay would be fulfilled withing up to 1 second less
+		assertTrue(passedTime / 1000 >= delay / 1000 - 1);
 		assertEquals("first_to_run", new ArrayList<>(clusterTasksProcessorA_test.tasksProcessed.keySet()).get(0));
 		assertEquals("delayed", new ArrayList<>(clusterTasksProcessorA_test.tasksProcessed.keySet()).get(1));
 		assertTrue(clusterTasksProcessorA_test.tasksProcessed.get("delayed").after(clusterTasksProcessorA_test.tasksProcessed.get("first_to_run")));
@@ -243,7 +246,7 @@ public class ClusterTasksProcessorServiceTest extends CTSTestsBase {
 
 	private <K, V> long waitResultsContainerComplete(Map<K, V> container, int expectedSize, long maxTimeToWait) {
 		long timePassed = 0;
-		long pauseInterval = 100;
+		long pauseInterval = 50;
 		while (container.size() != expectedSize && timePassed < maxTimeToWait) {
 			ClusterTasksITUtils.sleepSafely(pauseInterval);
 			timePassed += pauseInterval;
