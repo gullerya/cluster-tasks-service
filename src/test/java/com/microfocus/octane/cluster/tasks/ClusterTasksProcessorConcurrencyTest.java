@@ -45,7 +45,7 @@ public class ClusterTasksProcessorConcurrencyTest extends CTSTestsBase {
 
 		clusterTasksProcessorConcurrency_test.tasksProcessed = 0;
 		clusterTasksService.enqueueTasks(ClusterTasksDataProviderType.DB, "ClusterTasksProcessorConcurrency_test", tasks);
-		waitForEndCondition(2, 7000);
+		waitForEndCondition(2, 8000);
 
 		assertEquals(2, clusterTasksProcessorConcurrency_test.tasksProcessed);
 	}

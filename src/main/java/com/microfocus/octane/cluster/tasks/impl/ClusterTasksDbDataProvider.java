@@ -29,6 +29,7 @@ import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.function.Function;
 import java.util.stream.Collectors;
 
 import com.microfocus.octane.cluster.tasks.api.ClusterTasksServiceConfigurerSPI.DBType;
@@ -123,7 +124,7 @@ class ClusterTasksDbDataProvider implements ClusterTasksDataProvider {
 				} catch (DuplicateKeyException dke) {
 					transactionStatus.setRollbackOnly();
 					result.add(new ClusterTaskPersistenceResultImpl(CTPPersistStatus.UNIQUE_CONSTRAINT_FAILURE));
-					logger.info("rejected " + task + " due to uniqueness violation");
+					logger.info("rejected " + task + " due to uniqueness violation; specifically: " + dke.getMostSpecificCause().getMessage());
 				} catch (Exception e) {
 					transactionStatus.setRollbackOnly();
 					result.add(new ClusterTaskPersistenceResultImpl(CTPPersistStatus.UNEXPECTED_FAILURE));
@@ -252,9 +253,11 @@ class ClusterTasksDbDataProvider implements ClusterTasksDataProvider {
 				}
 
 				//  collect tasks for rescheduling
-				gcCandidates.stream()
+				dataSetToReschedule.addAll(gcCandidates.stream()
 						.filter(task -> task.taskType == ClusterTaskType.SCHEDULED)
-						.forEach(dataSetToReschedule::add);
+						.collect(Collectors.toMap(task -> task.processorType, Function.identity(), (t1, t2) -> t2))
+						.values()
+				);
 			} catch (Exception e) {
 				logger.error("failed to cleanup cluster tasks", e);
 				throw new CtsGeneralFailure("failed to cleanup cluster tasks", e);
