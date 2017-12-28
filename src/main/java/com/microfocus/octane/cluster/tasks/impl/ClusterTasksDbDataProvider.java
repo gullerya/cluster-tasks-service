@@ -147,55 +147,60 @@ class ClusterTasksDbDataProvider implements ClusterTasksDataProvider {
 		//  - LET processors to pick up the tasks that will actually run
 		//  - UPDATE those tasks as RUNNING
 		getTransactionTemplate().execute(transactionStatus -> {
-			JdbcTemplate jdbcTemplate = getJdbcTemplate();
-			String selectForUpdateSql = ClusterTasksDbUtils.buildSelectForUpdateTasksSQL(getDBType(), 500);
-			String[] availableProcessorTypes = availableProcessors.keySet().toArray(new String[availableProcessors.size()]);
-			int paramsTotal = 100;
+			try {
+				JdbcTemplate jdbcTemplate = getJdbcTemplate();
+				String selectForUpdateSql = ClusterTasksDbUtils.buildSelectForUpdateTasksSQL(getDBType(), 500);
+				String[] availableProcessorTypes = availableProcessors.keySet().toArray(new String[availableProcessors.size()]);
+				int paramsTotal = 500;
 
-			//  prepare params
-			Object[] params = new Object[paramsTotal];
-			System.arraycopy(availableProcessorTypes, 0, params, 0, availableProcessorTypes.length);
-			for (int i = availableProcessorTypes.length; i < paramsTotal; i++) params[i] = null;
+				//  prepare params
+				Object[] params = new Object[paramsTotal];
+				System.arraycopy(availableProcessorTypes, 0, params, 0, availableProcessorTypes.length);
+				for (int i = availableProcessorTypes.length; i < paramsTotal; i++) params[i] = null;
 
-			//  prepare param types
-			int[] paramTypes = new int[paramsTotal];
-			for (int i = 0; i < paramsTotal; i++) paramTypes[i] = Types.NVARCHAR;
+				//  prepare param types
+				int[] paramTypes = new int[paramsTotal];
+				for (int i = 0; i < paramsTotal; i++) paramTypes[i] = Types.NVARCHAR;
 
-			List<TaskInternal> tasks;
-			tasks = jdbcTemplate.query(selectForUpdateSql, params, paramTypes, ClusterTasksDbUtils::tasksMetadataReader);
-			if (!tasks.isEmpty()) {
-				Map<String, List<TaskInternal>> tasksByProcessor = tasks.stream().collect(Collectors.groupingBy(ti -> ti.processorType));
-				Set<Long> tasksToRunIDs = new LinkedHashSet<>();
+				List<TaskInternal> tasks;
+				tasks = jdbcTemplate.query(selectForUpdateSql, params, paramTypes, ClusterTasksDbUtils::tasksMetadataReader);
+				System.out.println("Beg" + Thread.currentThread() + " - " + System.currentTimeMillis());
+				if (!tasks.isEmpty()) {
+					Map<String, List<TaskInternal>> tasksByProcessor = tasks.stream().collect(Collectors.groupingBy(ti -> ti.processorType));
+					Set<Long> tasksToRunIDs = new LinkedHashSet<>();
 
-				//  let processors decide which tasks will be processed from all available
-				tasksByProcessor.forEach((processorType, processorTasks) -> {
-					ClusterTasksProcessorBase processor = availableProcessors.get(processorType);
-					List<TaskInternal> tmpTasks = processor.selectTasksToRun(processorTasks);
-					tasksToRun.put(processor, tmpTasks);
-					tasksToRunIDs.addAll(tmpTasks.stream().map(task -> task.id).collect(Collectors.toList()));
-				});
+					//  let processors decide which tasks will be processed from all available
+					tasksByProcessor.forEach((processorType, processorTasks) -> {
+						ClusterTasksProcessorBase processor = availableProcessors.get(processorType);
+						List<TaskInternal> tmpTasks = processor.selectTasksToRun(processorTasks);
+						tasksToRun.put(processor, tmpTasks);
+						tasksToRunIDs.addAll(tmpTasks.stream().map(task -> task.id).collect(Collectors.toList()));
+					});
 
-				//  update selected tasks to RUNNING
-				if (!tasksToRunIDs.isEmpty()) {
-					try {
+					//  update selected tasks to RUNNING
+					if (!tasksToRunIDs.isEmpty()) {
 						String updateTasksStartedSQL = ClusterTasksDbUtils.buildUpdateTaskStartedSQL(serviceConfigurer.getDbType());
 						String runtimeInstanceID = clusterTasksService.getInstanceID();
+						System.out.println(String.join(" ", tasksToRunIDs.stream().map(String::valueOf).collect(Collectors.toList())));
 						List<Object[]> updateParams = tasksToRunIDs.stream()
+								.sorted()
 								.map(id -> new Object[]{runtimeInstanceID, id})
 								.collect(Collectors.toList());
 						int[] updateResults = jdbcTemplate.batchUpdate(updateTasksStartedSQL, updateParams, new int[]{VARCHAR, BIGINT});
-						logger.debug("update tasks to RUNNING result: [" +
-								String.join(", ", Stream.of(updateResults).map(String::valueOf).collect(Collectors.toList())) +
-								"]");
-					} catch (DataAccessException dae) {
-						throw new CtsGeneralFailure("failed to update tasks to started", dae);
+						logger.debug("update tasks to RUNNING result: [" + String.join(", ", Stream.of(updateResults).map(String::valueOf).collect(Collectors.toList())) + "]");
+						logger.debug("from a total of " + tasks.size() + " available tasks " + tasksToRunIDs.size() + " has been started");
+					} else {
+						logger.warn("from a total of " + tasks.size() + " available tasks none has been started");
 					}
-					logger.debug("from a total of " + tasks.size() + " available tasks " + tasksToRunIDs.size() + " has been started");
-				} else {
-					logger.warn("from a total of " + tasks.size() + " available tasks none has been started");
 				}
+			} catch (Exception e) {
+				transactionStatus.setRollbackOnly();
+				tasksToRun.clear();
+				logger.error("failed to retrieve and execute tasks", e);
 			}
 
+			System.out.println("End" + Thread.currentThread() + " - " + System.currentTimeMillis());
+			System.out.println("");
 			return null;
 		});
 
@@ -234,7 +239,7 @@ class ClusterTasksDbDataProvider implements ClusterTasksDataProvider {
 
 		try {
 			JdbcTemplate jdbcTemplate = getJdbcTemplate();
-			String updateTaskFinishedSQL = ClusterTasksDbUtils.buildUpdateTaskFinishedSQL();
+			String updateTaskFinishedSQL = ClusterTasksDbUtils.buildUpdateTaskFinishedSQL(getDBType());
 			jdbcTemplate.update(
 					updateTaskFinishedSQL,
 					new Object[]{taskId},
@@ -267,6 +272,7 @@ class ClusterTasksDbDataProvider implements ClusterTasksDataProvider {
 						.values()
 				);
 			} catch (Exception e) {
+				transactionStatus.setRollbackOnly();
 				logger.error("failed to cleanup cluster tasks", e);
 				throw new CtsGeneralFailure("failed to cleanup cluster tasks", e);
 			}
@@ -347,6 +353,7 @@ class ClusterTasksDbDataProvider implements ClusterTasksDataProvider {
 			//  delete metas
 			String deleteTimedoutMetaSQL = ClusterTasksDbUtils.buildDeleteTaskMetaSQL();
 			List<Object[]> mParams = taskIDsBodyPartitionsMap.keySet().stream()
+					.sorted()
 					.map(id -> new Object[]{id})
 					.collect(Collectors.toList());
 			int[] deletedMetas = jdbcTemplate.batchUpdate(deleteTimedoutMetaSQL, mParams, new int[]{BIGINT});

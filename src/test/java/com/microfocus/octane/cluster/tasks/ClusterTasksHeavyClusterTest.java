@@ -39,7 +39,7 @@ import static org.junit.Assert.assertEquals;
 public class ClusterTasksHeavyClusterTest {
 	private static final Logger logger = LoggerFactory.getLogger(ClusterTasksHeavyClusterTest.class);
 	private int numberOfNodes = 4;
-	private int numberOfTasks = 200;
+	private int numberOfTasks = 50;
 
 	@Test
 	public void TestA_heavy_cluster() throws InterruptedException {
@@ -95,13 +95,9 @@ public class ClusterTasksHeavyClusterTest {
 						ClusterTasksService clusterTasksService = c.getBean(ClusterTasksService.class);
 						ClusterTask task = TaskBuilders.simpleTask().build();
 						clusterTasksService.enqueueTasks(ClusterTasksDataProviderType.DB, ClusterTasksHC_A_test.class.getSimpleName(), task);
-						task = TaskBuilders.simpleTask().build();
 						clusterTasksService.enqueueTasks(ClusterTasksDataProviderType.DB, ClusterTasksHC_B_test.class.getSimpleName(), task);
-						task = TaskBuilders.simpleTask().build();
 						clusterTasksService.enqueueTasks(ClusterTasksDataProviderType.DB, ClusterTasksHC_C_test.class.getSimpleName(), task);
-						task = TaskBuilders.simpleTask().build();
 						clusterTasksService.enqueueTasks(ClusterTasksDataProviderType.DB, ClusterTasksHC_D_test.class.getSimpleName(), task);
-						task = TaskBuilders.simpleTask().build();
 						clusterTasksService.enqueueTasks(ClusterTasksDataProviderType.DB, ClusterTasksHC_E_test.class.getSimpleName(), task);
 					}
 				} catch (Exception e) {

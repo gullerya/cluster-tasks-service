@@ -14,7 +14,6 @@ import java.util.Collections;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Set;
-import java.util.UUID;
 import java.util.stream.Collectors;
 
 import com.microfocus.octane.cluster.tasks.api.ClusterTasksServiceConfigurerSPI.DBType;
@@ -119,12 +118,12 @@ final class ClusterTasksDbUtils {
 					" FOR UPDATE";
 		} else if (DBType.MSSQL == dbType) {
 			return "SELECT " + selectFields +
-					" FROM " + META_TABLE_NAME + " WITH (UPDLOCK,INDEX(CTSKM_IDX_2)) WHERE " + META_ID + " IN " +
+					" FROM " + META_TABLE_NAME + " WHERE " + META_ID + " IN " +
 					"   (SELECT " + META_ID + " FROM" +
 					"       (SELECT " + META_ID + "," +
 					"               ROW_NUMBER() OVER (PARTITION BY COALESCE(" + CONCURRENCY_KEY + ",CAST(NEWID() AS VARCHAR(64))) ORDER BY " + ORDERING_FACTOR + "," + CREATED + " ASC) AS row_index," +
 					"               COUNT(CASE WHEN " + STATUS + " = " + ClusterTaskStatus.RUNNING.value + " THEN 1 ELSE NULL END) OVER (PARTITION BY COALESCE(" + CONCURRENCY_KEY + ",CAST(NEWID() AS VARCHAR(64)))) AS running_count" +
-					"       FROM " + META_TABLE_NAME +
+					"       FROM " + META_TABLE_NAME + " WITH (UPDLOCK,INDEX(CTSKM_IDX_2))" +
 					"       WHERE " + PROCESSOR_TYPE + " IN(" + processorTypesInParameter + ")" +
 					"           AND " + STATUS + " < " + ClusterTaskStatus.FINISHED.value +
 					"           AND " + CREATED + " <= DATEADD(MILLISECOND, -" + DELAY_BY_MILLIS + ", GETDATE())) meta" +
@@ -157,13 +156,22 @@ final class ClusterTasksDbUtils {
 		return "SELECT " + BODY + " FROM " + BODY_TABLE_NAME + partitionIndex + " WHERE " + BODY_ID + " = ?";
 	}
 
-	static String buildUpdateTaskFinishedSQL() {
-		return "UPDATE " + META_TABLE_NAME + " SET " +
-				String.join(",",
-						STATUS + " = " + ClusterTaskStatus.FINISHED.value,
-						UNIQUENESS_KEY + " = '" + UUID.randomUUID().toString() + "'"
-				) +
-				" WHERE " + META_ID + " = ?";
+	static String buildUpdateTaskFinishedSQL(DBType dbType) {
+		if (DBType.ORACLE == dbType) {
+			return "UPDATE " + META_TABLE_NAME + " SET " +
+					String.join(",",
+							STATUS + " = " + ClusterTaskStatus.FINISHED.value,
+							UNIQUENESS_KEY + " = RAWTOHEX(SYS_GUID())") +
+					" WHERE " + META_ID + " = ?";
+		} else if (DBType.MSSQL == dbType) {
+			return "UPDATE " + META_TABLE_NAME + " SET " +
+					String.join(",",
+							STATUS + " = " + ClusterTaskStatus.FINISHED.value,
+							UNIQUENESS_KEY + " = CAST(NEWID() AS VARCHAR(64))") +
+					" WHERE " + META_ID + " = ?";
+		} else {
+			throw new CtsDBTypeNotSupported("DB type " + dbType + " is not supported");
+		}
 	}
 
 	//
