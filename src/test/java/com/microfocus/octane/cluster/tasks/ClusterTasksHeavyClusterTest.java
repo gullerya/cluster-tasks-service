@@ -24,7 +24,6 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
 import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertTrue;
 
 /**
  * Created by gullery on 02/06/2016.
@@ -39,7 +38,7 @@ import static org.junit.Assert.assertTrue;
 
 public class ClusterTasksHeavyClusterTest {
 	private static final Logger logger = LoggerFactory.getLogger(ClusterTasksHeavyClusterTest.class);
-	private int numberOfNodes = 8;
+	private int numberOfNodes = 4;
 	private int numberOfTasks = 200;
 
 	@Test
@@ -94,11 +93,15 @@ public class ClusterTasksHeavyClusterTest {
 				try {
 					for (int j = 0; j < numberOfTasks; j++) {
 						ClusterTasksService clusterTasksService = c.getBean(ClusterTasksService.class);
-						ClusterTask task = TaskBuilders.simpleTask().setBody(String.valueOf(tmp.getValue() * numberOfTasks + j)).build();
+						ClusterTask task = TaskBuilders.simpleTask().build();
 						clusterTasksService.enqueueTasks(ClusterTasksDataProviderType.DB, ClusterTasksHC_A_test.class.getSimpleName(), task);
+						task = TaskBuilders.simpleTask().build();
 						clusterTasksService.enqueueTasks(ClusterTasksDataProviderType.DB, ClusterTasksHC_B_test.class.getSimpleName(), task);
+						task = TaskBuilders.simpleTask().build();
 						clusterTasksService.enqueueTasks(ClusterTasksDataProviderType.DB, ClusterTasksHC_C_test.class.getSimpleName(), task);
+						task = TaskBuilders.simpleTask().build();
 						clusterTasksService.enqueueTasks(ClusterTasksDataProviderType.DB, ClusterTasksHC_D_test.class.getSimpleName(), task);
+						task = TaskBuilders.simpleTask().build();
 						clusterTasksService.enqueueTasks(ClusterTasksDataProviderType.DB, ClusterTasksHC_E_test.class.getSimpleName(), task);
 					}
 				} catch (Exception e) {
@@ -121,6 +124,7 @@ public class ClusterTasksHeavyClusterTest {
 				ClusterTasksITUtils.sleepSafely(100);
 			}
 			ClusterTasksITUtils.sleepSafely(300);
+			System.out.println(String.join(",", ClusterTasksHC_A_test.tasksProcessed));
 			assertEquals(numberOfNodes * numberOfTasks, ClusterTasksHC_A_test.tasksProcessed.size());
 			waitForAllTasksDone.countDown();
 		});

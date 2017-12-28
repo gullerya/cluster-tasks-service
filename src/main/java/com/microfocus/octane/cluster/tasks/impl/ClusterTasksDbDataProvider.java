@@ -150,7 +150,7 @@ class ClusterTasksDbDataProvider implements ClusterTasksDataProvider {
 			JdbcTemplate jdbcTemplate = getJdbcTemplate();
 			String selectForUpdateSql = ClusterTasksDbUtils.buildSelectForUpdateTasksSQL(getDBType(), 500);
 			String[] availableProcessorTypes = availableProcessors.keySet().toArray(new String[availableProcessors.size()]);
-			int paramsTotal = 500;
+			int paramsTotal = 100;
 
 			//  prepare params
 			Object[] params = new Object[paramsTotal];
@@ -162,12 +162,7 @@ class ClusterTasksDbDataProvider implements ClusterTasksDataProvider {
 			for (int i = 0; i < paramsTotal; i++) paramTypes[i] = Types.NVARCHAR;
 
 			List<TaskInternal> tasks;
-			try {
-				tasks = jdbcTemplate.query(selectForUpdateSql, params, paramTypes, ClusterTasksDbUtils::tasksMetadataReader);
-			} catch (Exception e) {
-				logger.error("failed to retrieve tasks, will reattempt one more time", e);
-				tasks = jdbcTemplate.query(selectForUpdateSql, params, paramTypes, ClusterTasksDbUtils::tasksMetadataReader);
-			}
+			tasks = jdbcTemplate.query(selectForUpdateSql, params, paramTypes, ClusterTasksDbUtils::tasksMetadataReader);
 			if (!tasks.isEmpty()) {
 				Map<String, List<TaskInternal>> tasksByProcessor = tasks.stream().collect(Collectors.groupingBy(ti -> ti.processorType));
 				Set<Long> tasksToRunIDs = new LinkedHashSet<>();
@@ -178,10 +173,6 @@ class ClusterTasksDbDataProvider implements ClusterTasksDataProvider {
 					List<TaskInternal> tmpTasks = processor.selectTasksToRun(processorTasks);
 					tasksToRun.put(processor, tmpTasks);
 					tasksToRunIDs.addAll(tmpTasks.stream().map(task -> task.id).collect(Collectors.toList()));
-
-					if (tmpTasks.size() != tmpTasks.stream().map(task -> task.id).count()) {
-						throw new IllegalStateException("===============");
-					}
 				});
 
 				//  update selected tasks to RUNNING
