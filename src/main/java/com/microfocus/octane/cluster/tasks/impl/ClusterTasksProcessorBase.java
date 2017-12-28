@@ -153,10 +153,8 @@ public abstract class ClusterTasksProcessorBase {
 		for (String concurrencyKey : orderedRelevantKeys) {
 			if (availableWorkersTmp <= 0) break;
 			List<TaskInternal> channeledTasksGroup = tasksGroupedByConcurrencyKeys.get(concurrencyKey);
-			if (channeledTasksGroup != null && !channeledTasksGroup.isEmpty()) {
-				tasksToRun.add(channeledTasksGroup.get(0));
-				availableWorkersTmp--;
-			}
+			tasksToRun.add(channeledTasksGroup.get(0));
+			availableWorkersTmp--;
 		}
 
 		//  second - if there are still available threads and non-concurrent tasks, select the rest as much as possible

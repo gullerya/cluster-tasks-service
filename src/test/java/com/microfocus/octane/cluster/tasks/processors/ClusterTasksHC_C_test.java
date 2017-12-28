@@ -9,7 +9,9 @@ import com.microfocus.octane.cluster.tasks.api.enums.ClusterTasksDataProviderTyp
  */
 
 public class ClusterTasksHC_C_test extends ClusterTasksProcessorDefault {
+	private static final Object COUNT_LOCK = new Object();
 	public static volatile int tasksProcessed = 0;
+	public static volatile boolean count = false;
 
 	protected ClusterTasksHC_C_test() {
 		super(ClusterTasksDataProviderType.DB, 5);
@@ -17,8 +19,10 @@ public class ClusterTasksHC_C_test extends ClusterTasksProcessorDefault {
 
 	@Override
 	public void processTask(ClusterTask task) {
-		synchronized (this) {
-			tasksProcessed++;
+		if (count) {
+			synchronized (COUNT_LOCK) {
+				tasksProcessed++;
+			}
 		}
 	}
 }

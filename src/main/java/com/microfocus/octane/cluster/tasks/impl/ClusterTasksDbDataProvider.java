@@ -178,6 +178,10 @@ class ClusterTasksDbDataProvider implements ClusterTasksDataProvider {
 					List<TaskInternal> tmpTasks = processor.selectTasksToRun(processorTasks);
 					tasksToRun.put(processor, tmpTasks);
 					tasksToRunIDs.addAll(tmpTasks.stream().map(task -> task.id).collect(Collectors.toList()));
+
+					if (tmpTasks.size() != tmpTasks.stream().map(task -> task.id).count()) {
+						throw new IllegalStateException("===============");
+					}
 				});
 
 				//  update selected tasks to RUNNING

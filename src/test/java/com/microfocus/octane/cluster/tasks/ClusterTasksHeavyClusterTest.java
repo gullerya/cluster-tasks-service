@@ -15,12 +15,15 @@ import org.slf4j.LoggerFactory;
 import org.springframework.context.ApplicationContext;
 import org.springframework.context.support.ClassPathXmlApplicationContext;
 
+import java.util.AbstractMap;
 import java.util.LinkedList;
 import java.util.List;
+import java.util.Map;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
+import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
 
 /**
@@ -36,8 +39,8 @@ import static org.junit.Assert.assertTrue;
 
 public class ClusterTasksHeavyClusterTest {
 	private static final Logger logger = LoggerFactory.getLogger(ClusterTasksHeavyClusterTest.class);
-	private int numberOfNodes = 4;
-	private int numberOfTasks = 100;
+	private int numberOfNodes = 8;
+	private int numberOfTasks = 200;
 
 	@Test
 	public void TestA_heavy_cluster() throws InterruptedException {
@@ -65,66 +68,92 @@ public class ClusterTasksHeavyClusterTest {
 		waitForAllInit.await();
 		logger.info(numberOfNodes + " nodes initialized successfully");
 
+		//  let's drain out any old tasks if present
+		ClusterTasksITUtils.sleepSafely(2000);
+
+		assertEquals(0, ClusterTasksHC_A_test.tasksProcessed.size());
+		assertEquals(0, ClusterTasksHC_B_test.tasksProcessed);
+		assertEquals(0, ClusterTasksHC_C_test.tasksProcessed);
+		assertEquals(0, ClusterTasksHC_D_test.tasksProcessed);
+		assertEquals(0, ClusterTasksHC_E_test.tasksProcessed);
+		ClusterTasksHC_A_test.count = true;
+		ClusterTasksHC_B_test.count = true;
+		ClusterTasksHC_C_test.count = true;
+		ClusterTasksHC_D_test.count = true;
+		ClusterTasksHC_E_test.count = true;
 		long startTime = System.currentTimeMillis();
 
 		//  enqueue tasks for all of the contexts
 		CountDownLatch waitForAllTasksPush = new CountDownLatch(numberOfNodes);
+		Map.Entry<Integer, Integer> tmp = new AbstractMap.SimpleEntry<>(0, 0);
 		ExecutorService tasksPushPool = Executors.newFixedThreadPool(numberOfNodes);
-		contexts.forEach(c ->
-				tasksPushPool.execute(() -> {
-					try {
-						for (int j = 0; j < numberOfTasks / 5; j++) {
-							ClusterTasksService clusterTasksService = c.getBean(ClusterTasksService.class);
-							ClusterTask task = TaskBuilders.simpleTask().build();
-							clusterTasksService.enqueueTasks(ClusterTasksDataProviderType.DB, ClusterTasksHC_A_test.class.getSimpleName(), task);
-							clusterTasksService.enqueueTasks(ClusterTasksDataProviderType.DB, ClusterTasksHC_B_test.class.getSimpleName(), task);
-							clusterTasksService.enqueueTasks(ClusterTasksDataProviderType.DB, ClusterTasksHC_C_test.class.getSimpleName(), task);
-							clusterTasksService.enqueueTasks(ClusterTasksDataProviderType.DB, ClusterTasksHC_D_test.class.getSimpleName(), task);
-							clusterTasksService.enqueueTasks(ClusterTasksDataProviderType.DB, ClusterTasksHC_E_test.class.getSimpleName(), task);
-						}
-					} catch (Exception e) {
-						logger.error("one of the nodes' task push failed", e);
-					} finally {
-						logger.info("one of the nodes done with tasks push");
-						waitForAllTasksPush.countDown();
+		for (int i = 0; i < contexts.size(); i++) {
+			ApplicationContext c = contexts.get(i);
+			tmp.setValue(i);
+			tasksPushPool.execute(() -> {
+				try {
+					for (int j = 0; j < numberOfTasks; j++) {
+						ClusterTasksService clusterTasksService = c.getBean(ClusterTasksService.class);
+						ClusterTask task = TaskBuilders.simpleTask().setBody(String.valueOf(tmp.getValue() * numberOfTasks + j)).build();
+						clusterTasksService.enqueueTasks(ClusterTasksDataProviderType.DB, ClusterTasksHC_A_test.class.getSimpleName(), task);
+						clusterTasksService.enqueueTasks(ClusterTasksDataProviderType.DB, ClusterTasksHC_B_test.class.getSimpleName(), task);
+						clusterTasksService.enqueueTasks(ClusterTasksDataProviderType.DB, ClusterTasksHC_C_test.class.getSimpleName(), task);
+						clusterTasksService.enqueueTasks(ClusterTasksDataProviderType.DB, ClusterTasksHC_D_test.class.getSimpleName(), task);
+						clusterTasksService.enqueueTasks(ClusterTasksDataProviderType.DB, ClusterTasksHC_E_test.class.getSimpleName(), task);
 					}
-				})
-		);
+				} catch (Exception e) {
+					logger.error("one of the nodes' task push failed", e);
+				} finally {
+					logger.info("one of the nodes done with tasks push");
+					waitForAllTasksPush.countDown();
+				}
+			});
+		}
 		waitForAllTasksPush.await();
 		long timeToPush = System.currentTimeMillis() - startTime;
-		logger.info(numberOfNodes * numberOfTasks + " tasks has been pushed in " + timeToPush + "ms; average of " + (timeToPush / (numberOfNodes * numberOfTasks)) + "ms for task");
+		logger.info(numberOfNodes * numberOfTasks * 5 + " tasks has been pushed in " + timeToPush + "ms; average of " + (timeToPush / (numberOfNodes * numberOfTasks * 5)) + "ms for task");
 
 		//  wait for all tasks to be drained
 		CountDownLatch waitForAllTasksDone = new CountDownLatch(5);
 		ExecutorService tasksDonePool = Executors.newFixedThreadPool(5);
 		tasksDonePool.execute(() -> {
-			while (ClusterTasksHC_A_test.tasksProcessed < numberOfNodes * numberOfTasks / 5) {
+			while (ClusterTasksHC_A_test.tasksProcessed.size() != numberOfNodes * numberOfTasks) {
 				ClusterTasksITUtils.sleepSafely(100);
 			}
+			ClusterTasksITUtils.sleepSafely(300);
+			assertEquals(numberOfNodes * numberOfTasks, ClusterTasksHC_A_test.tasksProcessed.size());
 			waitForAllTasksDone.countDown();
 		});
 		tasksDonePool.execute(() -> {
-			while (ClusterTasksHC_B_test.tasksProcessed < numberOfNodes * numberOfTasks / 5) {
+			while (ClusterTasksHC_B_test.tasksProcessed != numberOfNodes * numberOfTasks) {
 				ClusterTasksITUtils.sleepSafely(100);
 			}
+			ClusterTasksITUtils.sleepSafely(300);
+			assertEquals(numberOfNodes * numberOfTasks, ClusterTasksHC_B_test.tasksProcessed);
 			waitForAllTasksDone.countDown();
 		});
 		tasksDonePool.execute(() -> {
-			while (ClusterTasksHC_C_test.tasksProcessed < numberOfNodes * numberOfTasks / 5) {
+			while (ClusterTasksHC_C_test.tasksProcessed != numberOfNodes * numberOfTasks) {
 				ClusterTasksITUtils.sleepSafely(100);
 			}
+			ClusterTasksITUtils.sleepSafely(300);
+			assertEquals(numberOfNodes * numberOfTasks, ClusterTasksHC_C_test.tasksProcessed);
 			waitForAllTasksDone.countDown();
 		});
 		tasksDonePool.execute(() -> {
-			while (ClusterTasksHC_D_test.tasksProcessed < numberOfNodes * numberOfTasks / 5) {
+			while (ClusterTasksHC_D_test.tasksProcessed != numberOfNodes * numberOfTasks) {
 				ClusterTasksITUtils.sleepSafely(100);
 			}
+			ClusterTasksITUtils.sleepSafely(300);
+			assertEquals(numberOfNodes * numberOfTasks, ClusterTasksHC_D_test.tasksProcessed);
 			waitForAllTasksDone.countDown();
 		});
 		tasksDonePool.execute(() -> {
-			while (ClusterTasksHC_E_test.tasksProcessed < numberOfNodes * numberOfTasks / 5) {
+			while (ClusterTasksHC_E_test.tasksProcessed != numberOfNodes * numberOfTasks) {
 				ClusterTasksITUtils.sleepSafely(100);
 			}
+			ClusterTasksITUtils.sleepSafely(300);
+			assertEquals(numberOfNodes * numberOfTasks, ClusterTasksHC_E_test.tasksProcessed);
 			waitForAllTasksDone.countDown();
 		});
 		waitForAllTasksDone.await();
