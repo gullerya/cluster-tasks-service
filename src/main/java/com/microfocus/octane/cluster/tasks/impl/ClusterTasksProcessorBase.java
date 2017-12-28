@@ -131,12 +131,14 @@ public abstract class ClusterTasksProcessorBase {
 		return internalResult && isReadyToHandleTask();
 	}
 
-	final List<Long> handleTasks(List<TaskInternal> tasks, ClusterTasksDataProvider dataProvider) {
-		List<Long> takenTasks = new LinkedList<>();
-		tasks.sort(Comparator.comparing(t -> t.orderingFactor));
+	final List<TaskInternal> selectTasksToRun(List<TaskInternal> candidates) {
+		List<TaskInternal> tasksToRun = new LinkedList<>();
+		int availableWorkersTmp = availableWorkers.get();
+
+		candidates.sort(Comparator.comparing(t -> t.orderingFactor));
 
 		//  group tasks by concurrency key
-		Map<String, List<TaskInternal>> tasksGroupedByConcurrencyKeys = tasks.stream()
+		Map<String, List<TaskInternal>> tasksGroupedByConcurrencyKeys = candidates.stream()
 				.collect(Collectors.groupingBy(ti -> ti.concurrencyKey != null ? ti.concurrencyKey : NON_CONCURRENT_TASKS_KEY));
 
 		//  order relevant concurrency keys by fairness logic
@@ -147,39 +149,42 @@ public abstract class ClusterTasksProcessorBase {
 			return Long.compare(keyALastTouch, keyBLastTouch);
 		});
 
-		//  first - dispatch tasks fairly
+		//  first - select tasks fairly - including CONCURRENCY as NULL
 		for (String concurrencyKey : orderedRelevantKeys) {
-			if (availableWorkers.get() > 0) {
-				List<TaskInternal> tasksGroup = tasksGroupedByConcurrencyKeys.get(concurrencyKey);
-				if (tasksGroup != null && !tasksGroup.isEmpty()) {
-					if (handoutTaskToWorker(dataProvider, tasksGroup.get(0))) {
-						takenTasks.add(tasksGroup.get(0).id);
-						concurrencyKeysFairnessMap.put(concurrencyKey, System.currentTimeMillis());
-					}
-				}
-			} else {
-				break;
+			if (availableWorkersTmp <= 0) break;
+			List<TaskInternal> channeledTasksGroup = tasksGroupedByConcurrencyKeys.get(concurrencyKey);
+			if (channeledTasksGroup != null && !channeledTasksGroup.isEmpty()) {
+				tasksToRun.add(channeledTasksGroup.get(0));
+				availableWorkersTmp--;
 			}
 		}
 
-		//  second - if there are still available threads and non-concurrent tasks, dispatch accordingly
+		//  second - if there are still available threads and non-concurrent tasks, select the rest as much as possible
 		List<TaskInternal> nonConcurrentTasks = tasksGroupedByConcurrencyKeys.getOrDefault(NON_CONCURRENT_TASKS_KEY, Collections.emptyList());
 		for (TaskInternal task : nonConcurrentTasks) {
-			if (takenTasks.contains(task.id)) continue;
-			if (availableWorkers.get() > 0) {
-				if (handoutTaskToWorker(dataProvider, task)) {
-					takenTasks.add(task.id);
-					concurrencyKeysFairnessMap.put(NON_CONCURRENT_TASKS_KEY, System.currentTimeMillis());
-				}
-			} else {
-				break;
-			}
+			if (tasksToRun.contains(task)) continue;
+			if (availableWorkersTmp <= 0) break;
+			tasksToRun.add(task);
+			availableWorkersTmp--;
 		}
+
+		return tasksToRun;
+	}
+
+	final void handleTasks(List<TaskInternal> tasks, ClusterTasksDataProvider dataProvider) {
+		tasks.forEach(task -> {
+			if (handoutTaskToWorker(dataProvider, task)) {
+				concurrencyKeysFairnessMap.put(
+						task.concurrencyKey != null ? task.concurrencyKey : NON_CONCURRENT_TASKS_KEY,
+						System.currentTimeMillis());
+			} else {
+				logger.error("failed to hand out " + task + " (task is already marked as RUNNING)");
+			}
+		});
 
 		threadsUtilizationGauge
 				.labels(getType())
 				.set(((double) (numberOfWorkersPerNode - availableWorkers.get())) / ((double) numberOfWorkersPerNode));
-		return takenTasks;
 	}
 
 	final void notifyTaskWorkerFinished() {

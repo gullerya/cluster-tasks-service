@@ -31,6 +31,7 @@ import java.util.Map;
 import java.util.Set;
 import java.util.function.Function;
 import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
 import com.microfocus.octane.cluster.tasks.api.ClusterTasksServiceConfigurerSPI.DBType;
 
@@ -139,6 +140,12 @@ class ClusterTasksDbDataProvider implements ClusterTasksDataProvider {
 
 	@Override
 	public void retrieveAndDispatchTasks(Map<String, ClusterTasksProcessorBase> availableProcessors) {
+		Map<ClusterTasksProcessorBase, List<TaskInternal>> tasksToRun = new LinkedHashMap<>();
+
+		//  within the same transaction do:
+		//  - SELECT candidate tasks to be run
+		//  - LET processors to pick up the tasks that will actually run
+		//  - UPDATE those tasks as RUNNING
 		getTransactionTemplate().execute(transactionStatus -> {
 			JdbcTemplate jdbcTemplate = getJdbcTemplate();
 			String selectForUpdateSql = ClusterTasksDbUtils.buildSelectForUpdateTasksSQL(getDBType(), 500);
@@ -162,30 +169,33 @@ class ClusterTasksDbDataProvider implements ClusterTasksDataProvider {
 				tasks = jdbcTemplate.query(selectForUpdateSql, params, paramTypes, ClusterTasksDbUtils::tasksMetadataReader);
 			}
 			if (!tasks.isEmpty()) {
-				List<Long> startedTasksIDs = new LinkedList<>();
 				Map<String, List<TaskInternal>> tasksByProcessor = tasks.stream().collect(Collectors.groupingBy(ti -> ti.processorType));
+				Set<Long> tasksToRunIDs = new LinkedHashSet<>();
 
-				//  dispatch tasks where relevant
-				//
+				//  let processors decide which tasks will be processed from all available
 				tasksByProcessor.forEach((processorType, processorTasks) -> {
 					ClusterTasksProcessorBase processor = availableProcessors.get(processorType);
-					startedTasksIDs.addAll(processor.handleTasks(processorTasks, this));
+					List<TaskInternal> tmpTasks = processor.selectTasksToRun(processorTasks);
+					tasksToRun.put(processor, tmpTasks);
+					tasksToRunIDs.addAll(tmpTasks.stream().map(task -> task.id).collect(Collectors.toList()));
 				});
 
-				//  update started tasks in DB within the same transaction
-				//
-				if (!startedTasksIDs.isEmpty()) {
+				//  update selected tasks to RUNNING
+				if (!tasksToRunIDs.isEmpty()) {
 					try {
 						String updateTasksStartedSQL = ClusterTasksDbUtils.buildUpdateTaskStartedSQL(serviceConfigurer.getDbType());
 						String runtimeInstanceID = clusterTasksService.getInstanceID();
-						List<Object[]> updateParams = startedTasksIDs.stream()
+						List<Object[]> updateParams = tasksToRunIDs.stream()
 								.map(id -> new Object[]{runtimeInstanceID, id})
 								.collect(Collectors.toList());
 						int[] updateResults = jdbcTemplate.batchUpdate(updateTasksStartedSQL, updateParams, new int[]{VARCHAR, BIGINT});
+						logger.debug("update tasks to RUNNING result: [" +
+								String.join(", ", Stream.of(updateResults).map(String::valueOf).collect(Collectors.toList())) +
+								"]");
 					} catch (DataAccessException dae) {
 						throw new CtsGeneralFailure("failed to update tasks to started", dae);
 					}
-					logger.debug("from a total of " + tasks.size() + " available tasks " + startedTasksIDs.size() + " has been started");
+					logger.debug("from a total of " + tasks.size() + " available tasks " + tasksToRunIDs.size() + " has been started");
 				} else {
 					logger.warn("from a total of " + tasks.size() + " available tasks none has been started");
 				}
@@ -193,6 +203,9 @@ class ClusterTasksDbDataProvider implements ClusterTasksDataProvider {
 
 			return null;
 		});
+
+		//  actually deliver tasks to processors
+		tasksToRun.forEach((processor, tasks) -> processor.handleTasks(tasks, this));
 	}
 
 	@Override
