@@ -9,6 +9,7 @@ import org.slf4j.LoggerFactory;
 
 import javax.annotation.PostConstruct;
 import java.util.ArrayList;
+import java.util.Collection;
 import java.util.Collections;
 import java.util.Comparator;
 import java.util.LinkedHashMap;
@@ -131,8 +132,8 @@ public abstract class ClusterTasksProcessorBase {
 		return internalResult && isReadyToHandleTask();
 	}
 
-	final List<TaskInternal> selectTasksToRun(List<TaskInternal> candidates) {
-		List<TaskInternal> tasksToRun = new LinkedList<>();
+	final Collection<TaskInternal> selectTasksToRun(List<TaskInternal> candidates) {
+		Map<Long, TaskInternal> tasksToRunByID = new LinkedHashMap<>();
 		int availableWorkersTmp = availableWorkers.get();
 
 		candidates.sort(Comparator.comparing(t -> t.orderingFactor));
@@ -149,27 +150,29 @@ public abstract class ClusterTasksProcessorBase {
 			return Long.compare(keyALastTouch, keyBLastTouch);
 		});
 
-		//  first - select tasks fairly - including CONCURRENCY as NULL
+		//  first - select tasks fairly - including NON_CONCURRENT_TASKS_GROUP to let them chance to run as well
+		//  here we taking a single (first) task from each CONCURRENT CHANNEL
 		for (String concurrencyKey : orderedRelevantKeys) {
 			if (availableWorkersTmp <= 0) break;
 			List<TaskInternal> channeledTasksGroup = tasksGroupedByConcurrencyKeys.get(concurrencyKey);
-			tasksToRun.add(channeledTasksGroup.get(0));
+			tasksToRunByID.put(channeledTasksGroup.get(0).id, channeledTasksGroup.get(0));
 			availableWorkersTmp--;
 		}
 
-		//  second - if there are still available threads and non-concurrent tasks, select the rest as much as possible
+		//  second - if there are still available threads, give'em to the rest of the NON_CONCURRENT_TASKS_GROUP
 		List<TaskInternal> nonConcurrentTasks = tasksGroupedByConcurrencyKeys.getOrDefault(NON_CONCURRENT_TASKS_GROUP_KEY, Collections.emptyList());
 		for (TaskInternal task : nonConcurrentTasks) {
-			if (tasksToRun.contains(task)) continue;
 			if (availableWorkersTmp <= 0) break;
-			tasksToRun.add(task);
-			availableWorkersTmp--;
+			if (!tasksToRunByID.containsKey(task.id)) {
+				tasksToRunByID.put(task.id, task);
+				availableWorkersTmp--;
+			}
 		}
 
-		return tasksToRun;
+		return tasksToRunByID.values();
 	}
 
-	final void handleTasks(List<TaskInternal> tasks, ClusterTasksDataProvider dataProvider) {
+	final void handleTasks(Collection<TaskInternal> tasks, ClusterTasksDataProvider dataProvider) {
 		tasks.forEach(task -> {
 			if (handoutTaskToWorker(dataProvider, task)) {
 				concurrencyKeysFairnessMap.put(

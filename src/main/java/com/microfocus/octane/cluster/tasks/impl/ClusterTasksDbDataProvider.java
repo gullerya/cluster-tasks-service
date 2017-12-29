@@ -23,6 +23,7 @@ import java.time.ZoneOffset;
 import java.time.ZonedDateTime;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Collection;
 import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
 import java.util.LinkedList;
@@ -140,7 +141,7 @@ class ClusterTasksDbDataProvider implements ClusterTasksDataProvider {
 
 	@Override
 	public void retrieveAndDispatchTasks(Map<String, ClusterTasksProcessorBase> availableProcessors) {
-		Map<ClusterTasksProcessorBase, List<TaskInternal>> tasksToRun = new LinkedHashMap<>();
+		Map<ClusterTasksProcessorBase, Collection<TaskInternal>> tasksToRun = new LinkedHashMap<>();
 
 		//  within the same transaction do:
 		//  - SELECT candidate tasks to be run
@@ -171,7 +172,7 @@ class ClusterTasksDbDataProvider implements ClusterTasksDataProvider {
 					//  let processors decide which tasks will be processed from all available
 					tasksByProcessor.forEach((processorType, processorTasks) -> {
 						ClusterTasksProcessorBase processor = availableProcessors.get(processorType);
-						List<TaskInternal> tmpTasks = processor.selectTasksToRun(processorTasks);
+						Collection<TaskInternal> tmpTasks = processor.selectTasksToRun(processorTasks);
 						tasksToRun.put(processor, tmpTasks);
 						tasksToRunIDs.addAll(tmpTasks.stream().map(task -> task.id).collect(Collectors.toList()));
 					});
