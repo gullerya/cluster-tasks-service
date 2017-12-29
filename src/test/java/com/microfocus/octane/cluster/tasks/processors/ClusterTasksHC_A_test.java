@@ -18,7 +18,6 @@ import java.util.Set;
 
 public class ClusterTasksHC_A_test extends ClusterTasksProcessorDefault {
 	private static final Object COUNT_LOCK = new Object();
-	public static final List<String> tasksProcessed = new LinkedList<>();
 	public static final Map<Long, Long> taskIDs = new LinkedHashMap<>();
 	public static volatile boolean count = false;
 

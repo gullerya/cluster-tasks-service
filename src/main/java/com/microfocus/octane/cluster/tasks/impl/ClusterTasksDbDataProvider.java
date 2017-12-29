@@ -164,7 +164,6 @@ class ClusterTasksDbDataProvider implements ClusterTasksDataProvider {
 
 				List<TaskInternal> tasks;
 				tasks = jdbcTemplate.query(selectForUpdateSql, params, paramTypes, ClusterTasksDbUtils::tasksMetadataReader);
-				System.out.println("Beg" + Thread.currentThread() + " - " + System.currentTimeMillis());
 				if (!tasks.isEmpty()) {
 					Map<String, List<TaskInternal>> tasksByProcessor = tasks.stream().collect(Collectors.groupingBy(ti -> ti.processorType));
 					Set<Long> tasksToRunIDs = new LinkedHashSet<>();
@@ -181,7 +180,6 @@ class ClusterTasksDbDataProvider implements ClusterTasksDataProvider {
 					if (!tasksToRunIDs.isEmpty()) {
 						String updateTasksStartedSQL = ClusterTasksDbUtils.buildUpdateTaskStartedSQL(serviceConfigurer.getDbType());
 						String runtimeInstanceID = clusterTasksService.getInstanceID();
-						System.out.println(String.join(" ", tasksToRunIDs.stream().map(String::valueOf).collect(Collectors.toList())));
 						List<Object[]> updateParams = tasksToRunIDs.stream()
 								.sorted()
 								.map(id -> new Object[]{runtimeInstanceID, id})
@@ -199,8 +197,6 @@ class ClusterTasksDbDataProvider implements ClusterTasksDataProvider {
 				logger.error("failed to retrieve and execute tasks", e);
 			}
 
-			System.out.println("End" + Thread.currentThread() + " - " + System.currentTimeMillis());
-			System.out.println("");
 			return null;
 		});
 

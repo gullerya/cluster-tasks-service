@@ -2,6 +2,7 @@ package com.microfocus.octane.cluster.tasks.impl;
 
 import com.microfocus.octane.cluster.tasks.api.dto.ClusterTaskPersistenceResult;
 import com.microfocus.octane.cluster.tasks.api.enums.ClusterTaskStatus;
+import com.microfocus.octane.cluster.tasks.api.enums.ClusterTaskType;
 import com.microfocus.octane.cluster.tasks.api.enums.ClusterTasksDataProviderType;
 
 import java.util.Map;

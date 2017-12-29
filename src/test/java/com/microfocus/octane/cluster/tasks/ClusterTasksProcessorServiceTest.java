@@ -60,11 +60,12 @@ public class ClusterTasksProcessorServiceTest extends CTSTestsBase {
 	public void TestA_single_processor() {
 		clusterTasksProcessorA_test.tasksProcessed.clear();
 
+		int tasksNumber = 5;
 		String concurrencyKey = "testA";
 		List<ClusterTask> tasks = new LinkedList<>();
 		ClusterTask tmp;
 
-		for (int i = 0; i < 3; i++) {
+		for (int i = 0; i < tasksNumber; i++) {
 			tmp = TaskBuilders.channeledTask()
 					.setConcurrencyKey(concurrencyKey)
 					.setBody(String.valueOf(i))
@@ -77,13 +78,13 @@ public class ClusterTasksProcessorServiceTest extends CTSTestsBase {
 			assertEquals(CTPPersistStatus.SUCCESS, r.getStatus());
 		}
 
-		waitResultsContainerComplete(clusterTasksProcessorA_test.tasksProcessed, 3, 1000 * 15);
+		waitResultsContainerComplete(clusterTasksProcessorA_test.tasksProcessed, tasksNumber, 1000 * 4 * tasksNumber);
 
-		assertEquals(3, clusterTasksProcessorA_test.tasksProcessed.size());
+		assertEquals(tasksNumber, clusterTasksProcessorA_test.tasksProcessed.size());
 
-		assertEquals("0", new ArrayList<>(clusterTasksProcessorA_test.tasksProcessed.keySet()).get(0));
-		assertEquals("1", new ArrayList<>(clusterTasksProcessorA_test.tasksProcessed.keySet()).get(1));
-		assertEquals("2", new ArrayList<>(clusterTasksProcessorA_test.tasksProcessed.keySet()).get(2));
+		for (int i = 0; i < tasksNumber; i++) {
+			assertEquals(String.valueOf(i), new ArrayList<>(clusterTasksProcessorA_test.tasksProcessed.keySet()).get(i));
+		}
 
 		assertTrue(clusterTasksProcessorA_test.tasksProcessed.get("1").after(clusterTasksProcessorA_test.tasksProcessed.get("0")));
 		assertTrue(clusterTasksProcessorA_test.tasksProcessed.get("2").after(clusterTasksProcessorA_test.tasksProcessed.get("1")));

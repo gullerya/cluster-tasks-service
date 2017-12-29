@@ -9,6 +9,7 @@ import com.microfocus.octane.cluster.tasks.processors.ClusterTasksHC_B_test;
 import com.microfocus.octane.cluster.tasks.processors.ClusterTasksHC_C_test;
 import com.microfocus.octane.cluster.tasks.processors.ClusterTasksHC_D_test;
 import com.microfocus.octane.cluster.tasks.processors.ClusterTasksHC_E_test;
+import org.junit.Ignore;
 import org.junit.Test;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -39,7 +40,7 @@ import static org.junit.Assert.assertEquals;
 public class ClusterTasksHeavyClusterTest {
 	private static final Logger logger = LoggerFactory.getLogger(ClusterTasksHeavyClusterTest.class);
 	private int numberOfNodes = 4;
-	private int numberOfTasks = 50;
+	private int numberOfTasks = 100;
 
 	@Test
 	public void TestA_heavy_cluster() throws InterruptedException {
@@ -70,11 +71,11 @@ public class ClusterTasksHeavyClusterTest {
 		//  let's drain out any old tasks if present
 		ClusterTasksITUtils.sleepSafely(2000);
 
-		assertEquals(0, ClusterTasksHC_A_test.tasksProcessed.size());
-		assertEquals(0, ClusterTasksHC_B_test.tasksProcessed);
-		assertEquals(0, ClusterTasksHC_C_test.tasksProcessed);
-		assertEquals(0, ClusterTasksHC_D_test.tasksProcessed);
-		assertEquals(0, ClusterTasksHC_E_test.tasksProcessed);
+		assertEquals(0, ClusterTasksHC_A_test.taskIDs.size());
+		assertEquals(0, ClusterTasksHC_B_test.taskIDs.size());
+		assertEquals(0, ClusterTasksHC_C_test.taskIDs.size());
+		assertEquals(0, ClusterTasksHC_D_test.taskIDs.size());
+		assertEquals(0, ClusterTasksHC_E_test.taskIDs.size());
 		ClusterTasksHC_A_test.count = true;
 		ClusterTasksHC_B_test.count = true;
 		ClusterTasksHC_C_test.count = true;
@@ -116,44 +117,43 @@ public class ClusterTasksHeavyClusterTest {
 		CountDownLatch waitForAllTasksDone = new CountDownLatch(5);
 		ExecutorService tasksDonePool = Executors.newFixedThreadPool(5);
 		tasksDonePool.execute(() -> {
-			while (ClusterTasksHC_A_test.tasksProcessed.size() != numberOfNodes * numberOfTasks) {
+			while (ClusterTasksHC_A_test.taskIDs.size() != numberOfNodes * numberOfTasks) {
 				ClusterTasksITUtils.sleepSafely(100);
 			}
 			ClusterTasksITUtils.sleepSafely(300);
-			System.out.println(String.join(",", ClusterTasksHC_A_test.tasksProcessed));
-			assertEquals(numberOfNodes * numberOfTasks, ClusterTasksHC_A_test.tasksProcessed.size());
+			assertEquals(numberOfNodes * numberOfTasks, ClusterTasksHC_A_test.taskIDs.size());
 			waitForAllTasksDone.countDown();
 		});
 		tasksDonePool.execute(() -> {
-			while (ClusterTasksHC_B_test.tasksProcessed != numberOfNodes * numberOfTasks) {
+			while (ClusterTasksHC_B_test.taskIDs.size() != numberOfNodes * numberOfTasks) {
 				ClusterTasksITUtils.sleepSafely(100);
 			}
 			ClusterTasksITUtils.sleepSafely(300);
-			assertEquals(numberOfNodes * numberOfTasks, ClusterTasksHC_B_test.tasksProcessed);
+			assertEquals(numberOfNodes * numberOfTasks, ClusterTasksHC_B_test.taskIDs.size());
 			waitForAllTasksDone.countDown();
 		});
 		tasksDonePool.execute(() -> {
-			while (ClusterTasksHC_C_test.tasksProcessed != numberOfNodes * numberOfTasks) {
+			while (ClusterTasksHC_C_test.taskIDs.size() != numberOfNodes * numberOfTasks) {
 				ClusterTasksITUtils.sleepSafely(100);
 			}
 			ClusterTasksITUtils.sleepSafely(300);
-			assertEquals(numberOfNodes * numberOfTasks, ClusterTasksHC_C_test.tasksProcessed);
+			assertEquals(numberOfNodes * numberOfTasks, ClusterTasksHC_C_test.taskIDs.size());
 			waitForAllTasksDone.countDown();
 		});
 		tasksDonePool.execute(() -> {
-			while (ClusterTasksHC_D_test.tasksProcessed != numberOfNodes * numberOfTasks) {
+			while (ClusterTasksHC_D_test.taskIDs.size() != numberOfNodes * numberOfTasks) {
 				ClusterTasksITUtils.sleepSafely(100);
 			}
 			ClusterTasksITUtils.sleepSafely(300);
-			assertEquals(numberOfNodes * numberOfTasks, ClusterTasksHC_D_test.tasksProcessed);
+			assertEquals(numberOfNodes * numberOfTasks, ClusterTasksHC_D_test.taskIDs.size());
 			waitForAllTasksDone.countDown();
 		});
 		tasksDonePool.execute(() -> {
-			while (ClusterTasksHC_E_test.tasksProcessed != numberOfNodes * numberOfTasks) {
+			while (ClusterTasksHC_E_test.taskIDs.size() != numberOfNodes * numberOfTasks) {
 				ClusterTasksITUtils.sleepSafely(100);
 			}
 			ClusterTasksITUtils.sleepSafely(300);
-			assertEquals(numberOfNodes * numberOfTasks, ClusterTasksHC_E_test.tasksProcessed);
+			assertEquals(numberOfNodes * numberOfTasks, ClusterTasksHC_E_test.taskIDs.size());
 			waitForAllTasksDone.countDown();
 		});
 		waitForAllTasksDone.await();
