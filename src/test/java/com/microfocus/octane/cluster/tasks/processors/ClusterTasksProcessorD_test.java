@@ -20,10 +20,7 @@ public class ClusterTasksProcessorD_test extends ClusterTasksProcessorDefault {
 	}
 
 	@Override
-	public void processTask(ClusterTask task) throws Exception {
-		if (tasksProcessed.isEmpty()) {
-			Thread.sleep(4000L);
-		}
+	public void processTask(ClusterTask task) {
 		tasksProcessed.put(task.getBody(), new Timestamp(System.currentTimeMillis()));
 	}
 }

@@ -24,6 +24,7 @@ import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
+import java.util.stream.Collectors;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
@@ -82,6 +83,8 @@ public class ClusterTasksProcessorServiceTest extends CTSTestsBase {
 
 		assertEquals(tasksNumber, clusterTasksProcessorA_test.tasksProcessed.size());
 
+		System.out.println("TestA_single_processor: " + String.join(", ", clusterTasksProcessorA_test.tasksProcessed.keySet()));
+		System.out.println("TestA_single_processor: " + String.join(", ", clusterTasksProcessorA_test.tasksProcessed.values().stream().map(String::valueOf).collect(Collectors.toList())));
 		for (int i = 0; i < tasksNumber; i++) {
 			assertEquals(String.valueOf(i), new ArrayList<>(clusterTasksProcessorA_test.tasksProcessed.keySet()).get(i));
 		}
@@ -158,7 +161,7 @@ public class ClusterTasksProcessorServiceTest extends CTSTestsBase {
 		for (ClusterTaskPersistenceResult r : results) {
 			assertEquals(CTPPersistStatus.SUCCESS, r.getStatus());
 		}
-		waitResultsContainerComplete(clusterTasksProcessorD_test.tasksProcessed, 2, 15000);
+		waitResultsContainerComplete(clusterTasksProcessorD_test.tasksProcessed, 2, 10000);
 		assertEquals(2, clusterTasksProcessorD_test.tasksProcessed.size());
 		assertTrue(clusterTasksProcessorD_test.tasksProcessed.get("nonsense2").getTime() - clusterTasksProcessorD_test.tasksProcessed.get("nonsense1").getTime() > 7000);
 	}
