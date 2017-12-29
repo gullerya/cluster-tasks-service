@@ -100,7 +100,7 @@ final class ClusterTasksDbUtils {
 	//  PROCESS TASKS - including select, update running and retrieve content
 	//
 	static String buildSelectForUpdateTasksSQL(DBType dbType, int maxProcessorTypes) {
-		String selectFields = String.join(",", META_ID, TASK_TYPE, PROCESSOR_TYPE, UNIQUENESS_KEY, CONCURRENCY_KEY, ORDERING_FACTOR, DELAY_BY_MILLIS, MAX_TIME_TO_RUN, BODY_PARTITION);
+		String selectFields = String.join(",", META_ID, TASK_TYPE, PROCESSOR_TYPE, UNIQUENESS_KEY, CONCURRENCY_KEY, ORDERING_FACTOR, DELAY_BY_MILLIS, MAX_TIME_TO_RUN, BODY_PARTITION, STATUS);
 		String processorTypesInParameter = String.join(",", Collections.nCopies(maxProcessorTypes, "?"));
 
 		if (DBType.ORACLE == dbType) {

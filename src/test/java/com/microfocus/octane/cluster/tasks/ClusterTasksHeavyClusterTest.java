@@ -158,6 +158,6 @@ public class ClusterTasksHeavyClusterTest {
 		});
 		waitForAllTasksDone.await();
 		long timeToDone = System.currentTimeMillis() - startTime - timeToPush;
-		logger.info(numberOfNodes * numberOfTasks + " tasks has been processed in " + timeToDone + "ms; average of " + (timeToDone / (numberOfNodes * numberOfTasks)) + "ms for task");
+		logger.info(numberOfNodes * numberOfTasks * 5 + " tasks has been processed in " + timeToDone + "ms; average of " + (timeToDone / (numberOfNodes * numberOfTasks)) + "ms for task");
 	}
 }
