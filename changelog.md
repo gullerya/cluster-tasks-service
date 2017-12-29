@@ -1,6 +1,10 @@
 ###Changelog
 
-#####1.1.3 (current)
+#####1.1.4 (current)
+
+#####1.1.3 (LTS release)
+- fixed rare race condition that may have caused duplicate tasks runs in Oracle
+- dispatching/GC logic improvements
 
 #####1.1.2
 - GC improvements
