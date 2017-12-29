@@ -83,8 +83,6 @@ public class ClusterTasksProcessorServiceTest extends CTSTestsBase {
 
 		assertEquals(tasksNumber, clusterTasksProcessorA_test.tasksProcessed.size());
 
-		System.out.println("TestA_single_processor: " + String.join(", ", clusterTasksProcessorA_test.tasksProcessed.keySet()));
-		System.out.println("TestA_single_processor: " + String.join(", ", clusterTasksProcessorA_test.tasksProcessed.values().stream().map(String::valueOf).collect(Collectors.toList())));
 		for (int i = 0; i < tasksNumber; i++) {
 			assertEquals(String.valueOf(i), new ArrayList<>(clusterTasksProcessorA_test.tasksProcessed.keySet()).get(i));
 		}
