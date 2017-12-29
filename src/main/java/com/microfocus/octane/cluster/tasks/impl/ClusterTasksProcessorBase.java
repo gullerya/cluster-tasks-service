@@ -29,7 +29,7 @@ import java.util.stream.Collectors;
 
 public abstract class ClusterTasksProcessorBase {
 	private static final Logger logger = LoggerFactory.getLogger(ClusterTasksProcessorBase.class);
-	private static final String NON_CONCURRENT_TASKS_KEY = "NULL";
+	private static final String NON_CONCURRENT_TASKS_GROUP_KEY = "NULL";
 	private static final Gauge threadsUtilizationGauge;
 
 	private final String type;
@@ -139,7 +139,7 @@ public abstract class ClusterTasksProcessorBase {
 
 		//  group tasks by concurrency key
 		Map<String, List<TaskInternal>> tasksGroupedByConcurrencyKeys = candidates.stream()
-				.collect(Collectors.groupingBy(ti -> ti.concurrencyKey != null ? ti.concurrencyKey : NON_CONCURRENT_TASKS_KEY));
+				.collect(Collectors.groupingBy(t -> t.concurrencyKey != null ? t.concurrencyKey : NON_CONCURRENT_TASKS_GROUP_KEY));
 
 		//  order relevant concurrency keys by fairness logic
 		List<String> orderedRelevantKeys = new ArrayList<>(tasksGroupedByConcurrencyKeys.keySet());
@@ -158,7 +158,7 @@ public abstract class ClusterTasksProcessorBase {
 		}
 
 		//  second - if there are still available threads and non-concurrent tasks, select the rest as much as possible
-		List<TaskInternal> nonConcurrentTasks = tasksGroupedByConcurrencyKeys.getOrDefault(NON_CONCURRENT_TASKS_KEY, Collections.emptyList());
+		List<TaskInternal> nonConcurrentTasks = tasksGroupedByConcurrencyKeys.getOrDefault(NON_CONCURRENT_TASKS_GROUP_KEY, Collections.emptyList());
 		for (TaskInternal task : nonConcurrentTasks) {
 			if (tasksToRun.contains(task)) continue;
 			if (availableWorkersTmp <= 0) break;
@@ -173,7 +173,7 @@ public abstract class ClusterTasksProcessorBase {
 		tasks.forEach(task -> {
 			if (handoutTaskToWorker(dataProvider, task)) {
 				concurrencyKeysFairnessMap.put(
-						task.concurrencyKey != null ? task.concurrencyKey : NON_CONCURRENT_TASKS_KEY,
+						task.concurrencyKey != null ? task.concurrencyKey : NON_CONCURRENT_TASKS_GROUP_KEY,
 						System.currentTimeMillis());
 			} else {
 				logger.error("failed to hand out " + task + " (task is already marked as RUNNING)");
