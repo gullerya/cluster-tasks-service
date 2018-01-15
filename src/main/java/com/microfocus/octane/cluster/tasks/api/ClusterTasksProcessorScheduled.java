@@ -8,7 +8,7 @@ import com.microfocus.octane.cluster.tasks.api.enums.ClusterTasksDataProviderTyp
  * API definition and base implementation of SCHEDULED Cluster Tasks Processor
  */
 
-public abstract class ClusterTasksProcessorScheduled extends ClusterTasksProcessorBasic {
+public abstract class ClusterTasksProcessorScheduled extends ClusterTasksProcessorSimple {
 	private final long maxTimeToRun;
 
 	protected ClusterTasksProcessorScheduled(ClusterTasksDataProviderType dataProviderType, Long maxTimeToRun) {

@@ -1,6 +1,6 @@
 package com.microfocus.octane.cluster.tasks.processors;
 
-import com.microfocus.octane.cluster.tasks.api.ClusterTasksProcessorBasic;
+import com.microfocus.octane.cluster.tasks.api.ClusterTasksProcessorSimple;
 import com.microfocus.octane.cluster.tasks.api.dto.ClusterTask;
 import com.microfocus.octane.cluster.tasks.api.enums.ClusterTasksDataProviderType;
 
@@ -11,7 +11,7 @@ import java.util.Map;
  * Created by gullery on 02/06/2016
  */
 
-public class ClusterTasksHC_A_test extends ClusterTasksProcessorBasic {
+public class ClusterTasksHC_A_test extends ClusterTasksProcessorSimple {
 	private static final Object COUNT_LOCK = new Object();
 	public static final Map<Long, Long> taskIDs = new LinkedHashMap<>();
 	public static volatile boolean count = false;

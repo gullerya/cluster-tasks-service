@@ -6,7 +6,7 @@ Beside providing basic queue functionality in a clustered environment, `cluster-
 Most significant feature, the one that `CTS` was originally written for, is an ability to control tasks processing in a _channelled_ fashion, where only a single task from a specific _channel_ will run at any given moment in the whole cluster.
 
 
-###Importing and initialization of the service
+###Importing and initialization of the service (done once per application instance)
 
 `CTS` is Spring oriented. Please follow the steps below to start hacking around with it:
 
@@ -29,8 +29,12 @@ Let's review a simple example of usage.
 ###Basic concepts and usage example
 
 The world of `CTS` may roughly be separated into two:
-- the __service__ is responsible for its environment setup, ongoing work and maintenance: collecting and registering processors, pulling and handing tasks over, statistics and monitoring, GC of finished/dead tasks etc. Service also provides few generic API for the consumer, for example API to enqueue tasks.
+- the __service__ is responsible for its environment setup, ongoing work and maintenance: collecting and registering processors, pulling and handing tasks over, statistics and monitoring, GC of finished/dead tasks etc.
+ Service also provides few generic API for the consumer, for example API to enqueue tasks.
+ Service import/bootstrapping is a __one-time__ effort per application.
 - a __processors__, implemented by consumer extending appropriate base abstract classes, are the actual tasks processor with custom business logic, almost completely transparent to the framework.
+ In opposite to service, it is likely that there will be many __processors__ (CPTs) in your application, each handling specific use-case.
+ Adding processors is an ongoing effort, aligned with the application evolution.
 
 In order to obtain the __service__, wire into your Spring eco-system the interface `ClusterTasksService`. It is a singleton, so the best practice would be to (auto)wire it as a private member of any of your services/components using it.
 Detailed info on __service__'s API available [here](cts-service-api.md).
@@ -40,7 +44,7 @@ Your processor typically would look like this:
 
 ```
 @Component
-public class HeavyRecalcAsyncCTP extends ClusterTasksProcessorDefault {
+public class HeavyRecalcAsyncCTP extends ClusterTasksProcessorSimple {
 	private static List<Long> numbers;      //  caution, statics are not thread/scope safe
 	private List<String> strings;           //  caution, CTPs are singletons, so this is not thread/scope sage too
 
