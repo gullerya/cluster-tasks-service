@@ -104,6 +104,12 @@ public class ClusterTasksServiceImpl implements ClusterTasksService {
 				processorsMap.put(type, processor);
 			}
 		});
+		if (!processorsMap.isEmpty()) {
+			logger.info(processorsMap.size() + " CTPs are registered in this instance:");
+			processorsMap.keySet().forEach(key -> logger.info("\t\t" + key));
+		} else {
+			logger.info("none CTPs are registered in this instance");
+		}
 	}
 
 	@Autowired
@@ -273,7 +279,7 @@ public class ClusterTasksServiceImpl implements ClusterTasksService {
 
 	//  INTERNAL WORKERS: DISPATCHER AND GC
 	//
-	private final static class ClusterTasksDispatcherThreadFactory implements ThreadFactory {
+	private final class ClusterTasksDispatcherThreadFactory implements ThreadFactory {
 		@Override
 		public Thread newThread(Runnable runnable) {
 			Thread result = new Thread(runnable);
@@ -340,7 +346,7 @@ public class ClusterTasksServiceImpl implements ClusterTasksService {
 		}
 	}
 
-	private final static class ClusterTasksGCThreadFactory implements ThreadFactory {
+	private final class ClusterTasksGCThreadFactory implements ThreadFactory {
 		@Override
 		public Thread newThread(Runnable runnable) {
 			Thread result = new Thread(runnable);

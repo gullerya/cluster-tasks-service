@@ -6,7 +6,7 @@ public class TaskBuilders {
 	}
 
 	public static TaskBuilder simpleTask() {
-		return new DefaultTaskBuilder();
+		return new SimpleTaskBuilder();
 	}
 
 	public static ChanneledTaskBuilder channeledTask() {

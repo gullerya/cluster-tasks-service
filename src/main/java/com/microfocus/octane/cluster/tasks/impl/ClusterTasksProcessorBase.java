@@ -29,7 +29,7 @@ import java.util.stream.Collectors;
  */
 
 public abstract class ClusterTasksProcessorBase {
-	private static final Logger logger = LoggerFactory.getLogger(ClusterTasksProcessorBase.class);
+	private final Logger logger = LoggerFactory.getLogger(ClusterTasksProcessorBase.class);
 	private static final String NON_CONCURRENT_TASKS_GROUP_KEY = "NULL";
 	private static final Gauge threadsUtilizationGauge;
 

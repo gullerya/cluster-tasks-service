@@ -1,6 +1,6 @@
 package com.microfocus.octane.cluster.tasks.processors;
 
-import com.microfocus.octane.cluster.tasks.api.ClusterTasksProcessorDefault;
+import com.microfocus.octane.cluster.tasks.api.ClusterTasksProcessorBasic;
 import com.microfocus.octane.cluster.tasks.api.dto.ClusterTask;
 import com.microfocus.octane.cluster.tasks.api.enums.ClusterTasksDataProviderType;
 
@@ -11,7 +11,7 @@ import java.util.List;
  * Created by gullery on 02/06/2016
  */
 
-public class ClusterTasksProcessorFairness_test_mt extends ClusterTasksProcessorDefault {
+public class ClusterTasksProcessorFairness_test_mt extends ClusterTasksProcessorBasic {
 	public static final List<String> keysProcessingEventsLog = new LinkedList<>();
 
 	protected ClusterTasksProcessorFairness_test_mt() {

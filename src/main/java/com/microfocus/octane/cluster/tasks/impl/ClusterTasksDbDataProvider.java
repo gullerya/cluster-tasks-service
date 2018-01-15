@@ -48,7 +48,7 @@ import static java.sql.Types.VARCHAR;
  */
 
 class ClusterTasksDbDataProvider implements ClusterTasksDataProvider {
-	private static final Logger logger = LoggerFactory.getLogger(ClusterTasksDbDataProvider.class);
+	private final Logger logger = LoggerFactory.getLogger(ClusterTasksDbDataProvider.class);
 	private final int PARTITIONS_NUMBER = 4;
 	private ZonedDateTime lastTruncateTime;
 	private JdbcTemplate jdbcTemplate;

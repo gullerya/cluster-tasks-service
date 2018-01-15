@@ -1,8 +1,6 @@
 package com.microfocus.octane.cluster.tasks.api;
 
 import com.microfocus.octane.cluster.tasks.api.enums.ClusterTasksDataProviderType;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 /**
  * Created by gullery on 15/08/2017.
@@ -10,8 +8,7 @@ import org.slf4j.LoggerFactory;
  * API definition and base implementation of SCHEDULED Cluster Tasks Processor
  */
 
-public abstract class ClusterTasksProcessorScheduled extends ClusterTasksProcessorDefault {
-	private static final Logger logger = LoggerFactory.getLogger(ClusterTasksProcessorScheduled.class);
+public abstract class ClusterTasksProcessorScheduled extends ClusterTasksProcessorBasic {
 	private final long maxTimeToRun;
 
 	protected ClusterTasksProcessorScheduled(ClusterTasksDataProviderType dataProviderType, Long maxTimeToRun) {
