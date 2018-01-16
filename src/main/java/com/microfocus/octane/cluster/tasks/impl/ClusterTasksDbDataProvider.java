@@ -47,7 +47,7 @@ import static java.sql.Types.VARCHAR;
  * Cluster tasks data provider backed by DB
  */
 
-class ClusterTasksDbDataProvider implements ClusterTasksDataProvider {
+class ClusterTasksDbDataProvider extends ClusterTasksDataProvider {
 	private final Logger logger = LoggerFactory.getLogger(ClusterTasksDbDataProvider.class);
 	private final int PARTITIONS_NUMBER = 4;
 	private ZonedDateTime lastTruncateTime;
@@ -60,13 +60,13 @@ class ClusterTasksDbDataProvider implements ClusterTasksDataProvider {
 	private ClusterTasksServiceConfigurerSPI serviceConfigurer;
 
 	@Override
-	public ClusterTasksDataProviderType getType() {
+	ClusterTasksDataProviderType getType() {
 		return ClusterTasksDataProviderType.DB;
 	}
 
 	//  TODO: support bulk insert here
 	@Override
-	public ClusterTaskPersistenceResult[] storeTasks(TaskInternal... tasks) {
+	ClusterTaskPersistenceResult[] storeTasks(TaskInternal... tasks) {
 		if (!clusterTasksService.getReadyPromise().isDone()) {
 			throw new IllegalStateException("cluster tasks service has not yet been initialized; either postpone tasks submission or listen to completion of [clusterTasksService].getReadyPromise()");
 		}
@@ -140,7 +140,7 @@ class ClusterTasksDbDataProvider implements ClusterTasksDataProvider {
 	}
 
 	@Override
-	public void retrieveAndDispatchTasks(Map<String, ClusterTasksProcessorBase> availableProcessors) {
+	void retrieveAndDispatchTasks(Map<String, ClusterTasksProcessorBase> availableProcessors) {
 		Map<ClusterTasksProcessorBase, Collection<TaskInternal>> tasksToRun = new LinkedHashMap<>();
 
 		//  within the same transaction do:
@@ -206,7 +206,7 @@ class ClusterTasksDbDataProvider implements ClusterTasksDataProvider {
 	}
 
 	@Override
-	public String retrieveTaskBody(Long taskId, Long partitionIndex) {
+	String retrieveTaskBody(Long taskId, Long partitionIndex) {
 		if (taskId == null) {
 			throw new IllegalArgumentException("task ID MUST NOT be null");
 		}
@@ -229,7 +229,7 @@ class ClusterTasksDbDataProvider implements ClusterTasksDataProvider {
 	}
 
 	@Override
-	public void updateTaskToFinished(Long taskId) {
+	void updateTaskToFinished(Long taskId) {
 		if (taskId == null) {
 			throw new IllegalArgumentException("task ID MUST NOT be null");
 		}
@@ -247,7 +247,7 @@ class ClusterTasksDbDataProvider implements ClusterTasksDataProvider {
 	}
 
 	@Override
-	public void handleGarbageAndStaled() {
+	void handleGarbageAndStaled() {
 		List<TaskInternal> dataSetToReschedule = new LinkedList<>();
 		getTransactionTemplate().execute(transactionStatus -> {
 			try {
@@ -283,14 +283,16 @@ class ClusterTasksDbDataProvider implements ClusterTasksDataProvider {
 		}
 	}
 
+	@Deprecated
 	@Override
-	public int countTasks(String processorType, Set<ClusterTaskStatus> statuses) {
+	int countTasks(String processorType, Set<ClusterTaskStatus> statuses) {
 		String countTasksSQL = ClusterTasksDbUtils.buildCountTasksSQL(processorType, statuses);
 		return getJdbcTemplate().queryForObject(countTasksSQL, Integer.class);
 	}
 
+	@Deprecated
 	@Override
-	public int countTasks(String processorType, String concurrencyKey, Set<ClusterTaskStatus> statuses) {
+	int countTasks(String processorType, String concurrencyKey, Set<ClusterTaskStatus> statuses) {
 		String countTasksSQL = ClusterTasksDbUtils.buildCountTasksSQL(processorType, concurrencyKey, statuses);
 		return getJdbcTemplate().queryForObject(countTasksSQL, Integer.class);
 	}

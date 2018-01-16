@@ -15,14 +15,14 @@ import java.util.Set;
  * This API is intended for internal implementation only and should NOT be used/implemented by no mean by hosting application
  */
 
-interface ClusterTasksDataProvider {
+abstract class ClusterTasksDataProvider {
 
 	/**
 	 * Provider type
 	 *
 	 * @return Tasks Provider type
 	 */
-	ClusterTasksDataProviderType getType();
+	abstract ClusterTasksDataProviderType getType();
 
 	/**
 	 * Stores task for future retrieval
@@ -30,14 +30,14 @@ interface ClusterTasksDataProvider {
 	 * @param tasks one or more tasks content to be pushed into the queue
 	 * @return an array of Optionals, corresponding to the array of the tasks, having either the task ID in case of successful push or an exception in case of failure
 	 */
-	ClusterTaskPersistenceResult[] storeTasks(TaskInternal... tasks);
+	abstract ClusterTaskPersistenceResult[] storeTasks(TaskInternal... tasks);
 
 	/**
 	 * Attempts to retrieve next valid task per type, marks the retrieved task as running and possible checks is there are more tasks valid to be executed
 	 *
 	 * @param processors data set of all registered processors, that data provider should try to find tasks for
 	 */
-	void retrieveAndDispatchTasks(Map<String, ClusterTasksProcessorBase> processors);
+	abstract void retrieveAndDispatchTasks(Map<String, ClusterTasksProcessorBase> processors);
 
 	/**
 	 * Retrieves task's body
@@ -46,20 +46,20 @@ interface ClusterTasksDataProvider {
 	 * @param partitionIndex index of table the body was stored to
 	 * @return task's body
 	 */
-	String retrieveTaskBody(Long taskId, Long partitionIndex);
+	abstract String retrieveTaskBody(Long taskId, Long partitionIndex);
 
 	/**
 	 * Updates task as FINISHED, thus releasing the processor to take next task and make this task valid for GC
 	 *
 	 * @param taskId the value that was assigned to a task in process of creation
 	 */
-	void updateTaskToFinished(Long taskId);
+	abstract void updateTaskToFinished(Long taskId);
 
 	/**
 	 * Implementation should perform a clean up of an items in storage that may be considered as 'garbage'
 	 * Items that found to be 'staled' but are not considered to be 'garbage' should be handled accordingly to each own specific logic
 	 */
-	void handleGarbageAndStaled();
+	abstract void handleGarbageAndStaled();
 
 	/**
 	 * Implementation should provide a counter of all tasks existing in the Storage right to the moment of query
@@ -71,7 +71,8 @@ interface ClusterTasksDataProvider {
 	 * @param statuses      statuses list to take into consideration, OPTIONAL; MUST NOT be null, MAY be an empty set
 	 * @return number of tasks of the specified type [AND, optionally, concurrencyKey] found in DB
 	 */
-	int countTasks(String processorType, Set<ClusterTaskStatus> statuses);
+	@Deprecated
+	abstract int countTasks(String processorType, Set<ClusterTaskStatus> statuses);
 
 	/**
 	 * Implementation should provide a counter of all tasks existing in the Storage right to the moment of query
@@ -84,5 +85,6 @@ interface ClusterTasksDataProvider {
 	 * @param statuses       statuses list to take into consideration, OPTIONAL; MUST NOT be null, MAY be an empty set
 	 * @return number of tasks of the specified type [AND, optionally, concurrencyKey] found in DB
 	 */
-	int countTasks(String processorType, String concurrencyKey, Set<ClusterTaskStatus> statuses);
+	@Deprecated
+	abstract int countTasks(String processorType, String concurrencyKey, Set<ClusterTaskStatus> statuses);
 }
