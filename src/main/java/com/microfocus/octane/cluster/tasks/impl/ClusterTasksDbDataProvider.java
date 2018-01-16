@@ -130,7 +130,7 @@ class ClusterTasksDbDataProvider implements ClusterTasksDataProvider {
 				} catch (Exception e) {
 					transactionStatus.setRollbackOnly();
 					result.add(new ClusterTaskPersistenceResultImpl(CTPPersistStatus.UNEXPECTED_FAILURE));
-					logger.error("failed to persist " + task, e);
+					logger.error(clusterTasksService.getInstanceID() + " failed to persist " + task, e);
 				}
 				return null;
 			});
@@ -195,7 +195,7 @@ class ClusterTasksDbDataProvider implements ClusterTasksDataProvider {
 			} catch (Exception e) {
 				transactionStatus.setRollbackOnly();
 				tasksToRun.clear();
-				logger.error("failed to retrieve and execute tasks", e);
+				logger.error(clusterTasksService.getInstanceID() + " failed to retrieve and execute tasks", e);
 			}
 
 			return null;
@@ -223,7 +223,7 @@ class ClusterTasksDbDataProvider implements ClusterTasksDataProvider {
 					new int[]{BIGINT},
 					ClusterTasksDbUtils::rowToTaskBodyReader);
 		} catch (DataAccessException dae) {
-			logger.error("failed to retrieve task's body", dae);
+			logger.error(clusterTasksService.getInstanceID() + " failed to retrieve task's body", dae);
 			throw new CtsGeneralFailure("failed to retrieve task's body", dae);
 		}
 	}
@@ -242,7 +242,7 @@ class ClusterTasksDbDataProvider implements ClusterTasksDataProvider {
 					new Object[]{taskId},
 					new int[]{BIGINT});
 		} catch (DataAccessException dae) {
-			logger.error("failed to update task finished", dae);
+			logger.error(clusterTasksService.getInstanceID() + " failed to update task finished", dae);
 		}
 	}
 
@@ -270,7 +270,7 @@ class ClusterTasksDbDataProvider implements ClusterTasksDataProvider {
 				);
 			} catch (Exception e) {
 				transactionStatus.setRollbackOnly();
-				logger.error("failed to cleanup cluster tasks", e);
+				logger.error(clusterTasksService.getInstanceID() + " failed to cleanup cluster tasks", e);
 				throw new CtsGeneralFailure("failed to cleanup cluster tasks", e);
 			}
 
@@ -377,7 +377,7 @@ class ClusterTasksDbDataProvider implements ClusterTasksDataProvider {
 			//  truncate currently non-active body tables (that are safe to truncate)
 			checkAndTruncateBodyTables();
 		} catch (Exception e) {
-			logger.error("failed to delete Garbage tasks data", e);
+			logger.error(clusterTasksService.getInstanceID() + " failed to delete Garbage tasks data", e);
 		}
 	}
 
@@ -445,7 +445,7 @@ class ClusterTasksDbDataProvider implements ClusterTasksDataProvider {
 				}
 			}
 		} catch (Exception e) {
-			logger.error("failed to truncate partition " + partitionIndex, e);
+			logger.error(clusterTasksService.getInstanceID() + " failed to truncate partition " + partitionIndex, e);
 		}
 	}
 }
