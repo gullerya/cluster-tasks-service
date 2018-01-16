@@ -126,7 +126,7 @@ class ClusterTasksDbDataProvider implements ClusterTasksDataProvider {
 				} catch (DuplicateKeyException dke) {
 					transactionStatus.setRollbackOnly();
 					result.add(new ClusterTaskPersistenceResultImpl(CTPPersistStatus.UNIQUE_CONSTRAINT_FAILURE));
-					logger.info("rejected " + task + " due to uniqueness violation; specifically: " + dke.getMostSpecificCause().getMessage());
+					logger.info(clusterTasksService.getInstanceID() + " rejected " + task + " due to uniqueness violation; specifically: " + dke.getMostSpecificCause().getMessage());
 				} catch (Exception e) {
 					transactionStatus.setRollbackOnly();
 					result.add(new ClusterTaskPersistenceResultImpl(CTPPersistStatus.UNEXPECTED_FAILURE));
