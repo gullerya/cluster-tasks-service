@@ -8,14 +8,10 @@ public enum ClusterTaskType {
 	REGULAR(0),
 	SCHEDULED(1);
 
-	private final long value;
+	public final long value;
 
 	ClusterTaskType(long value) {
 		this.value = value;
-	}
-
-	public long getValue() {
-		return value;
 	}
 
 	public static ClusterTaskType byValue(long numericValue) {

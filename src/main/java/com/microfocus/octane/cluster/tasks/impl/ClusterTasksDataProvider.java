@@ -5,6 +5,7 @@ import com.microfocus.octane.cluster.tasks.api.enums.ClusterTaskStatus;
 import com.microfocus.octane.cluster.tasks.api.enums.ClusterTaskType;
 import com.microfocus.octane.cluster.tasks.api.enums.ClusterTasksDataProviderType;
 
+import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
@@ -60,6 +61,14 @@ abstract class ClusterTasksDataProvider {
 	 * Items that found to be 'staled' but are not considered to be 'garbage' should be handled accordingly to each own specific logic
 	 */
 	abstract void handleGarbageAndStaled();
+
+	/**
+	 * Implementation should perform a re-scheduling of a SCHEDULED tasks ONLY
+	 * Implementation MAY verify whether the tasks are already scheduled or not yet in order to prevent attempt to insert duplicate task
+	 *
+	 * @param candidatesToReschedule list of tasks of type SCHEDULE that should be re-run
+	 */
+	abstract void reinsertScheduledTasks(List<TaskInternal> candidatesToReschedule);
 
 	/**
 	 * Implementation should provide a counter of all tasks existing in the Storage right to the moment of query

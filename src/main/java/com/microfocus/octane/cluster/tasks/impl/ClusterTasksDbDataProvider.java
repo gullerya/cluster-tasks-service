@@ -91,7 +91,7 @@ class ClusterTasksDbDataProvider extends ClusterTasksDataProvider {
 					//  insert task
 					String insertTaskSql = ClusterTasksDbUtils.buildInsertTaskSQL(serviceConfigurer.getDbType(), task.partitionIndex);
 					Object[] paramValues = new Object[]{
-							task.taskType.getValue(),
+							task.taskType.value,
 							task.processorType,
 							task.uniquenessKey,
 							task.concurrencyKey,
@@ -279,7 +279,25 @@ class ClusterTasksDbDataProvider extends ClusterTasksDataProvider {
 
 		//  reschedule tasks of SCHEDULED type
 		if (!dataSetToReschedule.isEmpty()) {
-			rescheduleTasks(dataSetToReschedule);
+			reinsertScheduledTasks(dataSetToReschedule);
+		}
+	}
+
+	@Override
+	void reinsertScheduledTasks(List<TaskInternal> candidatesToReschedule) {
+		String countAllPendingScheduled = ClusterTasksDbUtils.buildCountScheduledPendingTasksSQL();
+		Map<String, Integer> pendingCount = jdbcTemplate.query(countAllPendingScheduled, ClusterTasksDbUtils::scheduledPendingReader);
+		List<TaskInternal> tasksToReschedule = new LinkedList<>();
+		candidatesToReschedule.forEach(task -> {
+			if (!pendingCount.containsKey(task.processorType) || pendingCount.get(task.processorType) == 0) {
+				task.uniquenessKey = task.processorType;
+				task.concurrencyKey = task.processorType;
+				task.delayByMillis = 0L;
+				tasksToReschedule.add(task);
+			}
+		});
+		if (!tasksToReschedule.isEmpty()) {
+			storeTasks(tasksToReschedule.toArray(new TaskInternal[tasksToReschedule.size()]));
 		}
 	}
 
@@ -381,15 +399,6 @@ class ClusterTasksDbDataProvider extends ClusterTasksDataProvider {
 		} catch (Exception e) {
 			logger.error(clusterTasksService.getInstanceID() + " failed to delete Garbage tasks data", e);
 		}
-	}
-
-	private void rescheduleTasks(List<TaskInternal> tasksToReschedule) {
-		tasksToReschedule.forEach(task -> {
-			task.uniquenessKey = task.processorType;
-			task.concurrencyKey = task.processorType;
-			task.delayByMillis = 0L;
-		});
-		storeTasks(tasksToReschedule.toArray(new TaskInternal[tasksToReschedule.size()]));
 	}
 
 	private void checkAndTruncateBodyTables() {

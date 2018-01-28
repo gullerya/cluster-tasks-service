@@ -6,6 +6,8 @@ import io.prometheus.client.Summary;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.util.Collections;
+
 /**
  * Created by gullery on 10/05/2016.
  * <p>
@@ -88,8 +90,7 @@ class ClusterTasksWorker implements Runnable {
 			timer.observeDuration();                                                                        //  metric
 			try {
 				if (task.taskType == ClusterTaskType.SCHEDULED) {
-					TaskInternal newTask = new TaskInternal(task);
-					dataProvider.storeTasks(newTask);
+					dataProvider.reinsertScheduledTasks(Collections.singletonList(task));
 				}
 				dataProvider.updateTaskToFinished(task.id);
 			} catch (Exception e) {

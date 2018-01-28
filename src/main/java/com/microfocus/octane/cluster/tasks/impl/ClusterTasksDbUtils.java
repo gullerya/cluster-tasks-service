@@ -11,8 +11,10 @@ import java.sql.Clob;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.util.Collections;
+import java.util.LinkedHashMap;
 import java.util.LinkedList;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 import java.util.stream.Collectors;
 
@@ -223,6 +225,12 @@ final class ClusterTasksDbUtils {
 	//
 	//  COUNT - tasks counting
 	//
+	static String buildCountScheduledPendingTasksSQL() {
+		return "SELECT " + PROCESSOR_TYPE + ",COUNT(*) AS total FROM " + META_TABLE_NAME +
+				" WHERE " + TASK_TYPE + " = " + ClusterTaskType.SCHEDULED.value + " AND " + STATUS + " = " + ClusterTaskStatus.PENDING.value +
+				" GROUP BY " + PROCESSOR_TYPE;
+	}
+
 	static String buildCountTasksSQL(String processorType, Set<ClusterTaskStatus> statuses) {
 		List<String> queryClauses = new LinkedList<>();
 		if (processorType != null) {
@@ -331,6 +339,23 @@ final class ClusterTasksDbUtils {
 					task.processorType = resultSet.getString(PROCESSOR_TYPE);
 					task.maxTimeToRunMillis = resultSet.getLong(MAX_TIME_TO_RUN);
 					result.add(task);
+				} catch (SQLException sqle) {
+					logger.error("failed to read cluster task body", sqle);
+				}
+			}
+		} catch (SQLException sqle) {
+			logger.error("failed to find cluster task body", sqle);
+			throw new CtsSqlFailure("failed to find cluster task body", sqle);
+		}
+		return result;
+	}
+
+	static Map<String, Integer> scheduledPendingReader(ResultSet resultSet) {
+		Map<String, Integer> result = new LinkedHashMap<>();
+		try {
+			while (resultSet.next()) {
+				try {
+					result.put(resultSet.getString(PROCESSOR_TYPE), resultSet.getInt("total"));
 				} catch (SQLException sqle) {
 					logger.error("failed to read cluster task body", sqle);
 				}
