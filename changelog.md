@@ -1,6 +1,8 @@
 ###Changelog
 
-#####1.1.4 (current)
+#####1.1.4
+- changed naming of `ClusterTasksProcessorDefault` to `ClusterTasksProcessorSimple` in attempt to make it clearer
+- removed unneeded attempt to enqueue scheduled tasks where there is high probability that there is already one in place
 
 #####1.1.3 (LTS release)
 - fixed rare race condition that may have caused duplicate tasks runs in Oracle
