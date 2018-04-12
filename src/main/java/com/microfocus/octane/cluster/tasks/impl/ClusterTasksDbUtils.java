@@ -180,7 +180,7 @@ final class ClusterTasksDbUtils {
 	//  DELETE TASKS - garbage collection flow
 	//
 	static String buildSelectGCValidTasksSQL(DBType dbType) {
-		String selectedFields = String.join(",", META_ID, BODY_PARTITION, TASK_TYPE, PROCESSOR_TYPE, MAX_TIME_TO_RUN);
+		String selectedFields = String.join(",", META_ID, BODY_PARTITION, TASK_TYPE, PROCESSOR_TYPE, STATUS, MAX_TIME_TO_RUN);
 		if (DBType.ORACLE == dbType) {
 			return "SELECT " + selectedFields + " FROM " + META_TABLE_NAME +
 					" WHERE " + STATUS + " = " + ClusterTaskStatus.FINISHED.value +

@@ -7,7 +7,7 @@
 	<parent>
 		<groupId>com.microfocus.octane</groupId>
 		<artifactId>octane-component-parent</artifactId>
-		<version>1.0.8</version>
+		<version>1.0.13</version>
 	</parent>
 
 	<artifactId>cluster-tasks-service</artifactId>
@@ -20,7 +20,7 @@
 
 		<!--TESTS-->
 		<tests.db.schema>cts_tests_schema</tests.db.schema>
-		<octane.jdbc.service.version>1.0.0</octane.jdbc.service.version>
+		<octane.jdbc.service.version>1.0.8</octane.jdbc.service.version>
 		<jacoco.version>0.7.9</jacoco.version>
 	</properties>
 
