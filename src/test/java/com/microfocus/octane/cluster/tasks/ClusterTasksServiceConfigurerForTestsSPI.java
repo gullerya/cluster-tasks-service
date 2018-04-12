@@ -2,7 +2,6 @@ package com.microfocus.octane.cluster.tasks;
 
 import com.microfocus.octane.cluster.tasks.api.ClusterTasksServiceConfigurerSPI;
 import com.microfocus.octane.jdbc.api.JdbcService;
-import com.microfocus.octane.jdbc.impl.config.JdbcConfigurationService;
 import org.springframework.beans.factory.annotation.Autowired;
 
 import javax.sql.DataSource;
@@ -14,8 +13,8 @@ public class ClusterTasksServiceConfigurerForTestsSPI implements ClusterTasksSer
 	private DataSource dataSource;
 
 	@Autowired
-	private void processJdbcData(JdbcService jdbcService, JdbcConfigurationService configurationService) {
-		switch (jdbcService.getDataSourceHolder().getDbType()) {
+	private void processJdbcData(JdbcService jdbcService) {
+		switch (jdbcService.getDataSourceConfiguration().getDbType()) {
 			case ORACLE:
 				dbType = DBType.ORACLE;
 				break;
@@ -23,7 +22,7 @@ public class ClusterTasksServiceConfigurerForTestsSPI implements ClusterTasksSer
 				dbType = DBType.MSSQL;
 				break;
 		}
-		dataSource = jdbcService.getDataSourceHolder().getDataSource();
+		dataSource = jdbcService.getDataSourceConfiguration().getDataSource();
 		configReadyLatch.complete(true);
 	}
 

@@ -4,6 +4,8 @@
 	   xsi:schemaLocation="http://www.springframework.org/schema/beans
             http://www.springframework.org/schema/beans/spring-beans.xsd">
 
+	<import resource="classpath:jdbc-service-spring-context.xml"/>
+
 	<bean class="com.microfocus.octane.cluster.tasks.ClusterTasksServiceConfigurerForTestsSPI"/>
 
 	<bean class="com.microfocus.octane.cluster.tasks.processors.ClusterTasksProcessorA_test"/>
