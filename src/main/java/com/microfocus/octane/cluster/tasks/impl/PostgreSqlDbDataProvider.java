@@ -1,5 +1,7 @@
 package com.microfocus.octane.cluster.tasks.impl;
 
+import com.microfocus.octane.cluster.tasks.api.ClusterTasksService;
+import com.microfocus.octane.cluster.tasks.api.ClusterTasksServiceConfigurerSPI;
 import com.microfocus.octane.cluster.tasks.api.dto.ClusterTaskPersistenceResult;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -15,6 +17,10 @@ import java.util.Map;
 
 final class PostgreSqlDbDataProvider extends ClusterTasksDbDataProvider {
 	private static final Logger logger = LoggerFactory.getLogger(PostgreSqlDbDataProvider.class);
+
+	PostgreSqlDbDataProvider(ClusterTasksService clusterTasksService, ClusterTasksServiceConfigurerSPI serviceConfigurer) {
+		super(clusterTasksService, serviceConfigurer);
+	}
 
 	//  TODO: support bulk insert here
 	@Override

@@ -6,7 +6,6 @@ import com.microfocus.octane.cluster.tasks.api.ClusterTasksService;
 import com.microfocus.octane.cluster.tasks.api.ClusterTasksServiceConfigurerSPI;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.jdbc.datasource.DataSourceTransactionManager;
 import org.springframework.transaction.support.TransactionTemplate;
@@ -38,6 +37,9 @@ import static java.sql.Types.BIGINT;
 abstract public class ClusterTasksDbDataProvider extends ClusterTasksDataProvider {
 	private final Logger logger = LoggerFactory.getLogger(ClusterTasksDbDataProvider.class);
 
+	protected final ClusterTasksService clusterTasksService;
+	private final ClusterTasksServiceConfigurerSPI serviceConfigurer;
+
 	//  Metadata table
 	private static final String META_COLUMNS_PREFIX = "CTSKM_";
 	static final String META_TABLE_NAME = "CLUSTER_TASK_META";
@@ -68,10 +70,16 @@ abstract public class ClusterTasksDbDataProvider extends ClusterTasksDataProvide
 	private JdbcTemplate jdbcTemplate;
 	private TransactionTemplate transactionTemplate;
 
-	@Autowired
-	protected ClusterTasksService clusterTasksService;
-	@Autowired
-	private ClusterTasksServiceConfigurerSPI serviceConfigurer;
+	ClusterTasksDbDataProvider(ClusterTasksService clusterTasksService, ClusterTasksServiceConfigurerSPI serviceConfigurer) {
+		if (clusterTasksService == null) {
+			throw new IllegalArgumentException("cluster tasks service MUST NOT be null");
+		}
+		if (serviceConfigurer == null) {
+			throw new IllegalArgumentException("service configurer MUST NOT be null");
+		}
+		this.clusterTasksService = clusterTasksService;
+		this.serviceConfigurer = serviceConfigurer;
+	}
 
 	@Override
 	ClusterTasksDataProviderType getType() {
@@ -161,7 +169,7 @@ abstract public class ClusterTasksDbDataProvider extends ClusterTasksDataProvide
 			//  truncate currently non-active body tables (that are safe to truncate)
 			checkAndTruncateBodyTables();
 		} catch (Exception e) {
-			logger.error(clusterTasksService.getInstanceID() + " failed to delete Garbage tasks data", e);
+			logger.error("failed to delete Garbage tasks data", e);
 		}
 	}
 
@@ -220,7 +228,7 @@ abstract public class ClusterTasksDbDataProvider extends ClusterTasksDataProvide
 				}
 			}
 		} catch (Exception e) {
-			logger.error(clusterTasksService.getInstanceID() + " failed to truncate partition " + partitionIndex, e);
+			logger.error("failed to truncate partition " + partitionIndex, e);
 		}
 	}
 

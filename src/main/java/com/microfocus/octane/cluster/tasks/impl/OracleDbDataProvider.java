@@ -1,5 +1,7 @@
 package com.microfocus.octane.cluster.tasks.impl;
 
+import com.microfocus.octane.cluster.tasks.api.ClusterTasksService;
+import com.microfocus.octane.cluster.tasks.api.ClusterTasksServiceConfigurerSPI;
 import com.microfocus.octane.cluster.tasks.api.dto.ClusterTaskPersistenceResult;
 import com.microfocus.octane.cluster.tasks.api.enums.CTPPersistStatus;
 import com.microfocus.octane.cluster.tasks.api.enums.ClusterTaskStatus;
@@ -37,6 +39,10 @@ import static java.sql.Types.VARCHAR;
 
 final class OracleDbDataProvider extends ClusterTasksDbDataProvider {
 	private static final Logger logger = LoggerFactory.getLogger(OracleDbDataProvider.class);
+
+	OracleDbDataProvider(ClusterTasksService clusterTasksService, ClusterTasksServiceConfigurerSPI serviceConfigurer) {
+		super(clusterTasksService, serviceConfigurer);
+	}
 
 	//  TODO: support bulk insert here
 	@Override

@@ -74,17 +74,6 @@ public class ClusterTasksServiceImpl implements ClusterTasksService {
 
 	private final long MAX_TIME_TO_RUN_DEFAULT = 1000 * 60;
 
-	@Autowired
-	private void registerDataProviders(List<ClusterTasksDataProvider> dataProviders) {
-		dataProviders.forEach(dataProvider -> {
-			if (dataProvidersMap.containsKey(dataProvider.getType())) {
-				logger.error("more than one implementation pretend to provide '" + dataProvider.getType() + "' data provider");
-			} else {
-				dataProvidersMap.put(dataProvider.getType(), dataProvider);
-			}
-		});
-	}
-
 	@Autowired(required = false)
 	private void registerProcessors(List<ClusterTasksProcessorBase> processors) {
 		if (processors.size() > 500) {
@@ -200,6 +189,8 @@ public class ClusterTasksServiceImpl implements ClusterTasksService {
 		}
 
 		if (proceed) {
+			setupDataProviders();
+
 			dispatcherExecutor.execute(dispatcher);
 			maintainerExecutor.execute(maintainer);
 			logger.info("tasks dispatcher and maintenance threads initialized");
@@ -213,6 +204,38 @@ public class ClusterTasksServiceImpl implements ClusterTasksService {
 			logger.error("CTS initialization failed (failed to execute schema maintenance) and won't run");
 			readyPromise.complete(false);
 		}
+	}
+
+	private void setupDataProviders() {
+		//  DB
+		if (serviceConfigurer.getDbType() != null) {
+			if (serviceConfigurer.getDataSource() == null) {
+				throw new IllegalStateException("DataSource is not provided, while DBType declared to be '" + serviceConfigurer.getDbType() + "'");
+			}
+			switch (serviceConfigurer.getDbType()) {
+				case MSSQL:
+					dataProvidersMap.put(ClusterTasksDataProviderType.DB, new MsSqlDbDataProvider(this, serviceConfigurer));
+					break;
+				case ORACLE:
+					dataProvidersMap.put(ClusterTasksDataProviderType.DB, new OracleDbDataProvider(this, serviceConfigurer));
+					break;
+				case POSTGRESQL:
+					dataProvidersMap.put(ClusterTasksDataProviderType.DB, new PostgreSqlDbDataProvider(this, serviceConfigurer));
+					break;
+				default:
+					logger.error("DB type '" + serviceConfigurer.getDbType() + "' has no data provider, DB oriented tasking won't be available");
+					break;
+			}
+		}
+
+		//  summary
+		if (!dataProvidersMap.isEmpty()) {
+			logger.info("summarizing registered data providers:");
+			dataProvidersMap.forEach((type, provider) -> logger.info("\t\t" + type + ": " + provider.getClass().getSimpleName()));
+		} else {
+			throw new IllegalStateException("no (relevant) data providers available");
+		}
+
 	}
 
 	private void ensureScheduledTasksInitialized() {
