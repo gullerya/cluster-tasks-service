@@ -15,11 +15,14 @@ public class ClusterTasksServiceConfigurerForTestsSPI implements ClusterTasksSer
 	@Autowired
 	private void processJdbcData(JdbcService jdbcService) {
 		switch (jdbcService.getDataSourceConfiguration().getDbType()) {
+			case MSSQL:
+				dbType = DBType.MSSQL;
+				break;
 			case ORACLE:
 				dbType = DBType.ORACLE;
 				break;
-			case MSSQL:
-				dbType = DBType.MSSQL;
+			case POSTGRESQL:
+				dbType = DBType.POSTGRESQL;
 				break;
 		}
 		dataSource = jdbcService.getDataSourceConfiguration().getDataSource();
@@ -52,7 +55,7 @@ public class ClusterTasksServiceConfigurerForTestsSPI implements ClusterTasksSer
 	}
 
 	@Override
-	public Integer getGCIntervalMillis() {
+	public Integer getMaintenanceIntervalMillis() {
 		return null;
 	}
 }

@@ -5,8 +5,8 @@
 			   "http://www.springframework.org/schema/beans
 			   http://www.springframework.org/schema/beans/spring-beans.xsd">
 
-	<bean class="com.microfocus.octane.cluster.tasks.impl.ClusterTasksServiceImpl"/>
+	<bean id="clusterTasksService" class="com.microfocus.octane.cluster.tasks.impl.ClusterTasksServiceImpl"/>
 	<bean class="com.microfocus.octane.cluster.tasks.impl.ClusterTasksServiceSchemaManager"/>
-	<bean class="com.microfocus.octane.cluster.tasks.impl.ClusterTasksDbDataProvider"/>
+	<bean class="com.microfocus.octane.cluster.tasks.impl.ClusterTasksDbDataProvidersFactory"/>
 
 </beans>

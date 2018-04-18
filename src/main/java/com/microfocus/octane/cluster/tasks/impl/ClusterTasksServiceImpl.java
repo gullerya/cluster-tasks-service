@@ -42,16 +42,16 @@ public class ClusterTasksServiceImpl implements ClusterTasksService {
 	private final Map<ClusterTasksDataProviderType, ClusterTasksDataProvider> dataProvidersMap = new LinkedHashMap<>();
 	private final Map<String, ClusterTasksProcessorBase> processorsMap = new LinkedHashMap<>();
 	private final ExecutorService dispatcherExecutor = Executors.newSingleThreadExecutor(new ClusterTasksDispatcherThreadFactory());
-	private final ExecutorService gcExecutor = Executors.newSingleThreadExecutor(new ClusterTasksGCThreadFactory());
+	private final ExecutorService maintainerExecutor = Executors.newSingleThreadExecutor(new ClusterTasksMaintainerThreadFactory());
 	private final ClusterTasksDispatcher dispatcher = new ClusterTasksDispatcher();
-	private final ClusterTasksGC gc = new ClusterTasksGC();
+	private final ClusterTasksMaintainer maintainer = new ClusterTasksMaintainer();
 	private ClusterTasksServiceConfigurerSPI serviceConfigurer;
 	private ClusterTasksServiceSchemaManager schemaManager;
 
 	private static final Counter dispatchErrors;
 	private static final Summary dispatchDurationSummary;
-	private static final Counter gcErrors;
-	private static final Summary gcDurationSummary;
+	private static final Counter maintenanceErrors;
+	private static final Summary maintenanceDurationSummary;
 
 	static {
 		dispatchErrors = Counter.build()
@@ -62,11 +62,11 @@ public class ClusterTasksServiceImpl implements ClusterTasksService {
 				.name("cts_dispatch_duration_seconds")
 				.help("CTS tasks' dispatch duration summary")
 				.register();
-		gcErrors = Counter.build()
+		maintenanceErrors = Counter.build()
 				.name("cts_gc_errors_total")
 				.help("CTS GC errors counter")
 				.register();
-		gcDurationSummary = Summary.build()
+		maintenanceDurationSummary = Summary.build()
 				.name("cts_gc_duration_seconds")
 				.help("CTS GC duration summary")
 				.register();
@@ -153,6 +153,13 @@ public class ClusterTasksServiceImpl implements ClusterTasksService {
 
 	@Override
 	public ClusterTaskPersistenceResult[] enqueueTasks(ClusterTasksDataProviderType dataProviderType, String processorType, ClusterTask... tasks) {
+		if (!readyPromise.isDone()) {
+			throw new IllegalStateException("cluster tasks service has not yet been initialized; either postpone tasks submission or listen to completion of [clusterTasksService].getReadyPromise()");
+		}
+		if (readyPromise.isCompletedExceptionally()) {
+			throw new IllegalStateException("cluster tasks service failed to initialize; check previous logs for a root cause");
+		}
+
 		if (dataProviderType == null) {
 			throw new IllegalArgumentException("data provider type MUST NOT be null");
 		}
@@ -194,8 +201,8 @@ public class ClusterTasksServiceImpl implements ClusterTasksService {
 
 		if (proceed) {
 			dispatcherExecutor.execute(dispatcher);
-			gcExecutor.execute(gc);
-			logger.info("local tasks dispatcher initialized");
+			maintainerExecutor.execute(maintainer);
+			logger.info("tasks dispatcher and GC threads initialized");
 
 			logger.info("CTS is configured & initialized, instance ID: " + RUNTIME_INSTANCE_ID);
 			readyPromise.complete(true);
@@ -283,7 +290,7 @@ public class ClusterTasksServiceImpl implements ClusterTasksService {
 		@Override
 		public Thread newThread(Runnable runnable) {
 			Thread result = new Thread(runnable);
-			result.setName("CTP Dispatcher; TID: " + result.getId());
+			result.setName("CTS Dispatcher; TID: " + result.getId());
 			result.setDaemon(true);
 			return result;
 		}
@@ -346,42 +353,44 @@ public class ClusterTasksServiceImpl implements ClusterTasksService {
 		}
 	}
 
-	private final class ClusterTasksGCThreadFactory implements ThreadFactory {
+	private final class ClusterTasksMaintainerThreadFactory implements ThreadFactory {
 		@Override
 		public Thread newThread(Runnable runnable) {
 			Thread result = new Thread(runnable);
-			result.setName("CTP GC; TID: " + result.getId());
+			result.setName("CTS Maintainer; TID: " + result.getId());
 			result.setDaemon(true);
 			return result;
 		}
 	}
 
-	private final class ClusterTasksGC implements Runnable {
+	private final class ClusterTasksMaintainer implements Runnable {
 
 		@Override
 		public void run() {
 
-			//  infallible GC round
+			//  infallible maintenance round
 			while (true) {
-				Summary.Timer gcTimer = gcDurationSummary.startTimer();
+				Summary.Timer maintenanceTimer = maintenanceDurationSummary.startTimer();
 				try {
 					dataProvidersMap.forEach((dpType, dataProvider) -> dataProvider.handleGarbageAndStaled());
-				} catch (Throwable t) {
-					gcErrors.inc();
-					logger.error("failed to perform GC round; total failures: " + gcErrors.get(), t);
-				} finally {
-					gcTimer.observeDuration();
 
-					Integer gcInterval = null;
+					//  upon once-in-a-while decision - do count tasks
+				} catch (Throwable t) {
+					maintenanceErrors.inc();
+					logger.error("failed to perform maintenance round; total failures: " + maintenanceErrors.get(), t);
+				} finally {
+					maintenanceTimer.observeDuration();
+
+					Integer maintenanceInterval = null;
 					try {
-						gcInterval = serviceConfigurer.getGCIntervalMillis();
+						maintenanceInterval = serviceConfigurer.getMaintenanceIntervalMillis();
 					} catch (Throwable t) {
-						logger.error("failed to obtain GC interval from hosting application, falling back to default (" + ClusterTasksServiceConfigurerSPI.DEFAULT_GC_INTERVAL + ")", t);
+						logger.error("failed to obtain maintenance interval from hosting application, falling back to default (" + ClusterTasksServiceConfigurerSPI.DEFAULT_MAINTENANCE_INTERVAL + ")", t);
 					}
-					gcInterval = gcInterval == null ? ClusterTasksServiceConfigurerSPI.DEFAULT_GC_INTERVAL : gcInterval;
-					gcInterval = Math.max(gcInterval, ClusterTasksServiceConfigurerSPI.MINIMAL_GC_INTERVAL);
+					maintenanceInterval = maintenanceInterval == null ? ClusterTasksServiceConfigurerSPI.DEFAULT_MAINTENANCE_INTERVAL : maintenanceInterval;
+					maintenanceInterval = Math.max(maintenanceInterval, ClusterTasksServiceConfigurerSPI.MINIMAL_MAINTENANCE_INTERVAL);
 					try {
-						Thread.sleep(gcInterval);
+						Thread.sleep(maintenanceInterval);
 					} catch (InterruptedException ie) {
 						logger.warn("interrupted while breathing between GC rounds", ie);
 					}

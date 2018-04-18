@@ -6,10 +6,10 @@ import java.util.concurrent.CompletableFuture;
 public interface ClusterTasksServiceConfigurerSPI {
 	int MINIMAL_POLL_INTERVAL = 703;
 	int DEFAULT_POLL_INTERVAL = 1023;
-	int MINIMAL_GC_INTERVAL = 7131;
-	int DEFAULT_GC_INTERVAL = 17039;
+	int MINIMAL_MAINTENANCE_INTERVAL = 7131;
+	int DEFAULT_MAINTENANCE_INTERVAL = 17039;
 
-	enum DBType {ORACLE, MSSQL}
+	enum DBType {MSSQL, ORACLE, POSTGRESQL}
 
 	/**
 	 * MAY provide a promise, which resolving will notify ClusterTasksService that it may start its job
@@ -53,9 +53,9 @@ public interface ClusterTasksServiceConfigurerSPI {
 
 	/**
 	 * MAY provide interval (in millis) of breathing between the GC cycles
-	 * if value is lower than minimum figure - the MINIMAL_GC_INTERVAL will be used
+	 * if value is lower than minimum figure - the MINIMAL_MAINTENANCE_INTERVAL will be used
 	 *
-	 * @return number of millis between GC cycles; if NULL is returned - DEFAULT_GC_INTERVAL will be taken
+	 * @return number of millis between maintenance cycles; if NULL is returned - DEFAULT_MAINTENANCE_INTERVAL will be taken
 	 */
-	Integer getGCIntervalMillis();
+	Integer getMaintenanceIntervalMillis();
 }

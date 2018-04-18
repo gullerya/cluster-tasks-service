@@ -25,6 +25,13 @@ public interface ClusterTasksService {
 	 */
 	String getInstanceID();
 
+	/**
+	 * returns promise that is/will be resolved when an initial initialization of the library is performed
+	 * - prior to resolution of this promise all tasks related API invocations will result in IllegalStateException
+	 * - when this promise is resolved to false all tasks related API invocations will result in IllegalStateException
+	 *
+	 * @return readiness promise, SHOULD NOT be null
+	 */
 	CompletableFuture<Boolean> getReadyPromise();
 
 	/**

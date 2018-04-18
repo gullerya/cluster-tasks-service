@@ -1,6 +1,8 @@
 ###Changelog
 
 #####1.1.5 (current)
+- internal refactor as preparation for `PostgreSQL` support
+- moving to latest `octane-component-parent` to get latest `fasterxml` library - previous ones has security issue 
 
 #####1.1.4
 - changed naming of `ClusterTasksProcessorDefault` to `ClusterTasksProcessorSimple` in attempt to make it clearer
