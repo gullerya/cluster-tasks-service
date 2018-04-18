@@ -29,7 +29,7 @@ Let's review a simple example of usage.
 ###Basic concepts and usage example
 
 The world of `CTS` may roughly be separated into two:
-- the __service__ is responsible for its environment setup, ongoing work and maintenance: collecting and registering processors, pulling and handing tasks over, statistics and monitoring, GC of finished/dead tasks etc.
+- the __service__ is responsible for its environment setup, ongoing work and maintenance: collecting and registering processors, pulling and handing tasks over, statistics and monitoring, maintenance of finished/dead tasks, statistics etc.
  Service also provides few generic API for the consumer, for example API to enqueue tasks.
  Service import/bootstrapping is a __one-time__ effort per application.
 - a __processors__, implemented by consumer extending appropriate base abstract classes, are the actual tasks processor with custom business logic, almost completely transparent to the framework.

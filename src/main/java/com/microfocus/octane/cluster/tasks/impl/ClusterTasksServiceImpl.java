@@ -64,11 +64,11 @@ public class ClusterTasksServiceImpl implements ClusterTasksService {
 				.register();
 		maintenanceErrors = Counter.build()
 				.name("cts_gc_errors_total")
-				.help("CTS GC errors counter")
+				.help("CTS maintenance errors counter")
 				.register();
 		maintenanceDurationSummary = Summary.build()
 				.name("cts_gc_duration_seconds")
-				.help("CTS GC duration summary")
+				.help("CTS maintenance duration summary")
 				.register();
 	}
 
@@ -202,7 +202,7 @@ public class ClusterTasksServiceImpl implements ClusterTasksService {
 		if (proceed) {
 			dispatcherExecutor.execute(dispatcher);
 			maintainerExecutor.execute(maintainer);
-			logger.info("tasks dispatcher and GC threads initialized");
+			logger.info("tasks dispatcher and maintenance threads initialized");
 
 			logger.info("CTS is configured & initialized, instance ID: " + RUNTIME_INSTANCE_ID);
 			readyPromise.complete(true);
@@ -284,7 +284,7 @@ public class ClusterTasksServiceImpl implements ClusterTasksService {
 		return result;
 	}
 
-	//  INTERNAL WORKERS: DISPATCHER AND GC
+	//  INTERNAL WORKERS: DISPATCHER AND MAINTAINER
 	//
 	private final class ClusterTasksDispatcherThreadFactory implements ThreadFactory {
 		@Override
@@ -392,7 +392,7 @@ public class ClusterTasksServiceImpl implements ClusterTasksService {
 					try {
 						Thread.sleep(maintenanceInterval);
 					} catch (InterruptedException ie) {
-						logger.warn("interrupted while breathing between GC rounds", ie);
+						logger.warn("interrupted while breathing between maintenance rounds", ie);
 					}
 				}
 			}

@@ -52,7 +52,7 @@ public interface ClusterTasksServiceConfigurerSPI {
 	Integer getTasksPollIntervalMillis();
 
 	/**
-	 * MAY provide interval (in millis) of breathing between the GC cycles
+	 * MAY provide interval (in millis) of breathing between the maintenance cycles
 	 * if value is lower than minimum figure - the MINIMAL_MAINTENANCE_INTERVAL will be used
 	 *
 	 * @return number of millis between maintenance cycles; if NULL is returned - DEFAULT_MAINTENANCE_INTERVAL will be taken
