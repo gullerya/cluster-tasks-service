@@ -1,5 +1,7 @@
 ###Changelog
 
+#####1.1.7 (current snapshot)
+
 #####1.1.6
 - internal refactor as preparation for `PostgreSQL` support
 - moving to latest `octane-component-parent` to get latest `fasterxml` library - previous ones has security issue 
