@@ -83,8 +83,6 @@ final class MsSqlDbDataProvider extends ClusterTasksDbDataProvider {
 				logger.warn(dataProviderName + " found being NOT READY: expected number of tables - " + tableNames.size() + ", found - " + tablesCount);
 				isReady = false;
 			}
-
-			logger.info("readiness of " + dataProviderName + " resolved to " + isReady);
 		}
 
 		return isReady;
