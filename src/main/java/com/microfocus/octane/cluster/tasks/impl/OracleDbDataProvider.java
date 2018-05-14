@@ -69,7 +69,7 @@ final class OracleDbDataProvider extends ClusterTasksDbDataProvider {
 							String.join(",", sequenceNames.stream().map(sn -> "'" + sn + "'").collect(Collectors.toSet())) + ")";
 					int sequencesCount = getJdbcTemplate().queryForObject(sql, (resultSet, index) -> resultSet.getInt("cts_sequences_count"));
 					if (sequencesCount == sequenceNames.size()) {
-						logger.info(dataProviderName + " found being READY");
+						logger.info(dataProviderName + " found to be READY");
 						isReady = true;
 					} else {
 						logger.warn(dataProviderName + " found being NOT READY: expected number of sequences - " + sequenceNames.size() + ", found - " + indicesCount);
