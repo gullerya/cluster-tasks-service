@@ -1,6 +1,7 @@
 ###Changelog
 
 #####1.1.7 (current snapshot)
+- add schema readiness verification on startup
 
 #####1.1.6
 - internal refactor as preparation for `PostgreSQL` support
