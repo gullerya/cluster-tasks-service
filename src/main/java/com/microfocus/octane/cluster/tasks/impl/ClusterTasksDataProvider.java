@@ -77,6 +77,14 @@ abstract class ClusterTasksDataProvider {
 	abstract void reinsertScheduledTasks(List<TaskInternal> candidatesToReschedule);
 
 	/**
+	 * Implementation should provide a counter for all tasks in the specified status existing in the storage grouped be PROCESSOR TYPE
+	 *
+	 * @param status only tasks of this status will be counted; MUST NOT be null
+	 * @return count result mapped be PROCESSOR TYPE
+	 */
+	abstract Map<String, Integer> countTasks(ClusterTaskStatus status);
+
+	/**
 	 * Implementation should provide a counter of all tasks existing in the Storage right to the moment of query
 	 * Counter always works within boundaries of a specific processor's tasks type
 	 * Counter should take into consideration OPTIONAL concurrency key parameter

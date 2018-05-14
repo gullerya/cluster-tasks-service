@@ -16,6 +16,7 @@ import java.sql.SQLException;
 import java.time.Duration;
 import java.time.ZoneOffset;
 import java.time.ZonedDateTime;
+import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
 import java.util.LinkedList;
@@ -87,6 +88,24 @@ abstract public class ClusterTasksDbDataProvider extends ClusterTasksDataProvide
 	@Override
 	ClusterTasksDataProviderType getType() {
 		return ClusterTasksDataProviderType.DB;
+	}
+
+	@Override
+	Map<String, Integer> countTasks(ClusterTaskStatus status) {
+		String countTasksSQL = "SELECT COUNT(*) AS counter," + PROCESSOR_TYPE + " FROM " + META_TABLE_NAME +
+				" WHERE " + STATUS + " = " + status.value +
+				" GROUP BY " + PROCESSOR_TYPE;
+		return getJdbcTemplate().query(countTasksSQL, resultSet -> {
+			Map<String, Integer> result = new HashMap<>();
+			while (resultSet.next()) {
+				try {
+					result.put(resultSet.getString(PROCESSOR_TYPE), resultSet.getInt("counter"));
+				} catch (SQLException sqle) {
+					logger.error("failed to process counted tasks result", sqle);
+				}
+			}
+			return result;
+		});
 	}
 
 	@Deprecated

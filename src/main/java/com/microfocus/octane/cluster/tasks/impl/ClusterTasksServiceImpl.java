@@ -11,6 +11,7 @@ import com.microfocus.octane.cluster.tasks.api.ClusterTasksServiceConfigurerSPI;
 import com.microfocus.octane.cluster.tasks.api.dto.ClusterTaskPersistenceResult;
 import com.microfocus.octane.cluster.tasks.api.ClusterTasksService;
 import io.prometheus.client.Counter;
+import io.prometheus.client.Gauge;
 import io.prometheus.client.Summary;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -52,6 +53,7 @@ public class ClusterTasksServiceImpl implements ClusterTasksService {
 	private static final Summary dispatchDurationSummary;
 	private static final Counter maintenanceErrors;
 	private static final Summary maintenanceDurationSummary;
+	private static final Gauge pendingTasksCounter;
 
 	static {
 		dispatchErrors = Counter.build()
@@ -69,6 +71,11 @@ public class ClusterTasksServiceImpl implements ClusterTasksService {
 		maintenanceDurationSummary = Summary.build()
 				.name("cts_gc_duration_seconds")
 				.help("CTS maintenance duration summary")
+				.register();
+		pendingTasksCounter = Gauge.build()
+				.name("cts_pending_tasks_counter")
+				.help("CTS pending tasks counter (by CTP type)")
+				.labelNames("processor_type")
 				.register();
 	}
 
@@ -390,6 +397,7 @@ public class ClusterTasksServiceImpl implements ClusterTasksService {
 	}
 
 	private final class ClusterTasksMaintainer implements Runnable {
+		private long lastTasksCountTime = 0;
 
 		@Override
 		public void run() {
@@ -401,6 +409,11 @@ public class ClusterTasksServiceImpl implements ClusterTasksService {
 					dataProvidersMap.forEach((dpType, dataProvider) -> {
 						if (dataProvider.isReady()) {
 							dataProvider.handleGarbageAndStaled();
+
+							if (System.currentTimeMillis() - lastTasksCountTime > ClusterTasksServiceConfigurerSPI.DEFAULT_TASKS_COUNT_INTERVAL) {
+								lastTasksCountTime = System.currentTimeMillis();
+								countTasks(dataProvider);
+							}
 						}
 					});
 
@@ -425,6 +438,15 @@ public class ClusterTasksServiceImpl implements ClusterTasksService {
 						logger.warn("interrupted while breathing between maintenance rounds", ie);
 					}
 				}
+			}
+		}
+
+		private void countTasks(ClusterTasksDataProvider dataProvider) {
+			try {
+				Map<String, Integer> pendingTasksCounters = dataProvider.countTasks(ClusterTaskStatus.PENDING);
+				pendingTasksCounters.forEach((processorType, count) -> pendingTasksCounter.labels(processorType).set(count));
+			} catch (Exception e) {
+				logger.error("failed to count tasks", e);
 			}
 		}
 	}
