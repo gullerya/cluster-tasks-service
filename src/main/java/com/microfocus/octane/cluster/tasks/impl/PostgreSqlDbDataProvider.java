@@ -22,6 +22,11 @@ final class PostgreSqlDbDataProvider extends ClusterTasksDbDataProvider {
 		super(clusterTasksService, serviceConfigurer);
 	}
 
+	@Override
+	boolean isReady() {
+		return false;
+	}
+
 	//  TODO: support bulk insert here
 	@Override
 	ClusterTaskPersistenceResult[] storeTasks(TaskInternal... tasks) {

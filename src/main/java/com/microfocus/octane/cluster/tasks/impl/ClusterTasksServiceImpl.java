@@ -226,6 +226,7 @@ public class ClusterTasksServiceImpl implements ClusterTasksService {
 					logger.error("DB type '" + serviceConfigurer.getDbType() + "' has no data provider, DB oriented tasking won't be available");
 					break;
 			}
+			dataProvidersMap.get(ClusterTasksDataProviderType.DB).isReady();
 		}
 
 		//  summary
@@ -235,7 +236,6 @@ public class ClusterTasksServiceImpl implements ClusterTasksService {
 		} else {
 			throw new IllegalStateException("no (relevant) data providers available");
 		}
-
 	}
 
 	private void ensureScheduledTasksInitialized() {
@@ -320,6 +320,7 @@ public class ClusterTasksServiceImpl implements ClusterTasksService {
 	}
 
 	private final class ClusterTasksDispatcher implements Runnable {
+		private volatile boolean isDataProviderReady = false;
 
 		@Override
 		public void run() {
@@ -356,21 +357,23 @@ public class ClusterTasksServiceImpl implements ClusterTasksService {
 
 		private void runDispatch() {
 			dataProvidersMap.forEach((providerType, provider) -> {
-				Map<String, ClusterTasksProcessorBase> availableProcessorsOfDPType = new LinkedHashMap<>();
-				processorsMap.forEach((processorType, processor) -> {
-					if (processor.getDataProviderType().equals(providerType) && processor.isReadyToHandleTaskInternal()) {
-						availableProcessorsOfDPType.put(processorType, processor);
+				if (provider.isReady()) {
+					Map<String, ClusterTasksProcessorBase> availableProcessorsOfDPType = new LinkedHashMap<>();
+					processorsMap.forEach((processorType, processor) -> {
+						if (processor.getDataProviderType().equals(providerType) && processor.isReadyToHandleTaskInternal()) {
+							availableProcessorsOfDPType.put(processorType, processor);
+						}
+					});
+					if (!availableProcessorsOfDPType.isEmpty()) {
+						try {
+							provider.retrieveAndDispatchTasks(availableProcessorsOfDPType);
+						} catch (Throwable t) {
+							dispatchErrors.inc();
+							logger.error("failed to dispatch tasks in " + providerType + "; total failures: " + dispatchErrors.get(), t);
+						}
+					} else {
+						logger.debug("no available processors powered by data provider " + providerType + " found, skipping this dispatch round");
 					}
-				});
-				if (!availableProcessorsOfDPType.isEmpty()) {
-					try {
-						provider.retrieveAndDispatchTasks(availableProcessorsOfDPType);
-					} catch (Throwable t) {
-						dispatchErrors.inc();
-						logger.error("failed to dispatch tasks in " + providerType + "; total failures: " + dispatchErrors.get(), t);
-					}
-				} else {
-					logger.debug("no available processors powered by data provider " + providerType + " found, skipping this dispatch round");
 				}
 			});
 		}
@@ -395,7 +398,11 @@ public class ClusterTasksServiceImpl implements ClusterTasksService {
 			while (true) {
 				Summary.Timer maintenanceTimer = maintenanceDurationSummary.startTimer();
 				try {
-					dataProvidersMap.forEach((dpType, dataProvider) -> dataProvider.handleGarbageAndStaled());
+					dataProvidersMap.forEach((dpType, dataProvider) -> {
+						if (dataProvider.isReady()) {
+							dataProvider.handleGarbageAndStaled();
+						}
+					});
 
 					//  upon once-in-a-while decision - do count tasks
 				} catch (Throwable t) {

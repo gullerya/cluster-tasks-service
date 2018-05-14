@@ -27,16 +27,6 @@ final class ClusterTasksDbUtils {
 	private ClusterTasksDbUtils() {
 	}
 
-	static String buildReadTaskBodySQL(Long partitionIndex) {
-		if (partitionIndex == null) {
-			throw new IllegalArgumentException("partition index MUST NOT be null");
-		}
-		return "SELECT " + ClusterTasksDbDataProvider.BODY + " FROM " + ClusterTasksDbDataProvider.BODY_TABLE_NAME + partitionIndex + " WHERE " + ClusterTasksDbDataProvider.BODY_ID + " = ?";
-	}
-
-	//
-	//  READERS - DB responses processors
-	//
 	static List<TaskInternal> tasksMetadataReader(ResultSet resultSet) {
 		List<TaskInternal> result = new LinkedList<>();
 		TaskInternal tmpTask;

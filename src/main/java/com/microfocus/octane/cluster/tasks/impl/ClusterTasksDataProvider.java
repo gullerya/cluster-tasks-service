@@ -25,6 +25,13 @@ abstract class ClusterTasksDataProvider {
 	abstract ClusterTasksDataProviderType getType();
 
 	/**
+	 * Verifies that the data provider is ready to be polled for tasks and/or maintenance
+	 *
+	 * @return readiness status
+	 */
+	abstract boolean isReady();
+
+	/**
 	 * Stores task for future retrieval
 	 *
 	 * @param tasks one or more tasks content to be pushed into the queue

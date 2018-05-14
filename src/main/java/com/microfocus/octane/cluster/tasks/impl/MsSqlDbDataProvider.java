@@ -44,6 +44,52 @@ final class MsSqlDbDataProvider extends ClusterTasksDbDataProvider {
 		super(clusterTasksService, serviceConfigurer);
 	}
 
+	@Override
+	boolean isReady() {
+		if (isReady == null || !isReady) {
+			String sql;
+			String dataProviderName = this.getClass().getSimpleName();
+			logger.info("going to verify readiness of " + dataProviderName);
+
+			//  check tables existence
+			Set<String> tableNames = getCTSTableNames();
+			sql = "SELECT COUNT(*) AS cts_tables_count FROM INFORMATION_SCHEMA.TABLES WHERE TABLE_NAME IN(" +
+					String.join(",", tableNames.stream().map(tn -> "'" + tn + "'").collect(Collectors.toSet())) + ")";
+			int tablesCount = getJdbcTemplate().queryForObject(sql, (resultSet, index) -> resultSet.getInt("cts_tables_count"));
+			if (tablesCount == tableNames.size()) {
+				//  check indices existence
+				Set<String> indexNames = getCTSIndexNames();
+				sql = "SELECT COUNT(*) AS cts_indices_count FROM sys.indexes WHERE name IN(" +
+						String.join(",", indexNames.stream().map(in -> "'" + in + "'").collect(Collectors.toSet())) + ")";
+				int indicesCount = getJdbcTemplate().queryForObject(sql, (resultSet, index) -> resultSet.getInt("cts_indices_count"));
+				if (indicesCount == indexNames.size()) {
+					//  check sequences existence
+					Set<String> sequenceNames = getCTSSequenceNames();
+					sql = "SELECT COUNT(*) AS cts_sequences_count FROM sys.sequences WHERE name IN(" +
+							String.join(",", sequenceNames.stream().map(sn -> "'" + sn + "'").collect(Collectors.toSet())) + ")";
+					int sequencesCount = getJdbcTemplate().queryForObject(sql, (resultSet, index) -> resultSet.getInt("cts_sequences_count"));
+					if (sequencesCount == sequenceNames.size()) {
+						logger.info(dataProviderName + " found being READY");
+						isReady = true;
+					} else {
+						logger.warn(dataProviderName + " found being NOT READY: expected number of sequences - " + sequenceNames.size() + ", found - " + indicesCount);
+						return false;
+					}
+				} else {
+					logger.warn(dataProviderName + " found being NOT READY: expected number of indices - " + indexNames.size() + ", found - " + indicesCount);
+					isReady = false;
+				}
+			} else {
+				logger.warn(dataProviderName + " found being NOT READY: expected number of tables - " + tableNames.size() + ", found - " + tablesCount);
+				isReady = false;
+			}
+
+			logger.info("readiness of " + dataProviderName + " resolved to " + isReady);
+		}
+
+		return isReady;
+	}
+
 	//  TODO: support bulk insert here
 	@Override
 	ClusterTaskPersistenceResult[] storeTasks(TaskInternal... tasks) {
@@ -186,7 +232,9 @@ final class MsSqlDbDataProvider extends ClusterTasksDbDataProvider {
 
 		try {
 			JdbcTemplate jdbcTemplate = getJdbcTemplate();
-			String sql = ClusterTasksDbUtils.buildReadTaskBodySQL(partitionIndex);
+			String sql = "SELECT " + ClusterTasksDbDataProvider.BODY +
+					" FROM " + ClusterTasksDbDataProvider.BODY_TABLE_NAME + partitionIndex +
+					" WHERE " + ClusterTasksDbDataProvider.BODY_ID + " = ?";
 			return jdbcTemplate.query(
 					sql,
 					new Object[]{taskId},

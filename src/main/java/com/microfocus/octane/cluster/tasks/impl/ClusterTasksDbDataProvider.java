@@ -23,6 +23,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
 import javax.sql.DataSource;
 
@@ -39,6 +40,8 @@ abstract public class ClusterTasksDbDataProvider extends ClusterTasksDataProvide
 
 	protected final ClusterTasksService clusterTasksService;
 	private final ClusterTasksServiceConfigurerSPI serviceConfigurer;
+
+	volatile Boolean isReady = null;
 
 	//  Metadata table
 	private static final String META_COLUMNS_PREFIX = "CTSKM_";
@@ -130,6 +133,18 @@ abstract public class ClusterTasksDbDataProvider extends ClusterTasksDataProvide
 			}
 		}
 		return transactionTemplate;
+	}
+
+	Set<String> getCTSTableNames() {
+		return Stream.of(META_TABLE_NAME, BODY_TABLE_NAME + "0", BODY_TABLE_NAME + "1", BODY_TABLE_NAME + "2", BODY_TABLE_NAME + "3").collect(Collectors.toSet());
+	}
+
+	Set<String> getCTSIndexNames() {
+		return Stream.of("CTSKM_PK", "CTSKM_IDX_2", "CTSKM_IDX_3", "CTSKM_IDX_4", "CTSKB_PK_P0", "CTSKB_PK_P1", "CTSKB_PK_P2", "CTSKB_PK_P3").collect(Collectors.toSet());
+	}
+
+	Set<String> getCTSSequenceNames() {
+		return Stream.of(CLUSTER_TASK_ID_SEQUENCE).collect(Collectors.toSet());
 	}
 
 	long resolveBodyTablePartitionIndex() {
