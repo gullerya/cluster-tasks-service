@@ -1,6 +1,9 @@
 ###Changelog
 
-#####1.1.8 (current snapshot)
+#####1.1.9 (current snapshot)
+
+#####1.1.8
+- added pending tasks counters gauge to enable monitoring for the per-processor-type queues debt
 
 #####1.1.7
 - add schema readiness verification on startup
