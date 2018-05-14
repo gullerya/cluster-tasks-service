@@ -1,6 +1,8 @@
 ###Changelog
 
-#####1.1.7 (current snapshot)
+#####1.1.8 (current snapshot)
+
+#####1.1.7
 - add schema readiness verification on startup
 
 #####1.1.6
