@@ -410,14 +410,13 @@ public class ClusterTasksServiceImpl implements ClusterTasksService {
 						if (dataProvider.isReady()) {
 							dataProvider.handleGarbageAndStaled();
 
+							//  upon once-in-a-while decision - do count tasks
 							if (System.currentTimeMillis() - lastTasksCountTime > ClusterTasksServiceConfigurerSPI.DEFAULT_TASKS_COUNT_INTERVAL) {
 								lastTasksCountTime = System.currentTimeMillis();
 								countTasks(dataProvider);
 							}
 						}
 					});
-
-					//  upon once-in-a-while decision - do count tasks
 				} catch (Throwable t) {
 					maintenanceErrors.inc();
 					logger.error("failed to perform maintenance round; total failures: " + maintenanceErrors.get(), t);
