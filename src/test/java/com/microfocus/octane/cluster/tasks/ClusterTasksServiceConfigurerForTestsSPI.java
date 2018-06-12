@@ -58,4 +58,9 @@ public class ClusterTasksServiceConfigurerForTestsSPI implements ClusterTasksSer
 	public Integer getMaintenanceIntervalMillis() {
 		return null;
 	}
+
+	@Override
+	public boolean isEnabled() {
+		return true;
+	}
 }

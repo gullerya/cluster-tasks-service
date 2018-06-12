@@ -59,4 +59,12 @@ public interface ClusterTasksServiceConfigurerSPI {
 	 * @return number of millis between maintenance cycles; if NULL is returned - DEFAULT_MAINTENANCE_INTERVAL will be taken
 	 */
 	Integer getMaintenanceIntervalMillis();
+
+	/**
+	 *
+	 *
+	 *
+	 * @return true if ClusterTasksService should handle tasks
+	 */
+	boolean isEnabled();
 }

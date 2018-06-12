@@ -1,15 +1,15 @@
 package com.microfocus.octane.cluster.tasks.impl;
 
+import com.microfocus.octane.cluster.tasks.api.ClusterTasksProcessorScheduled;
+import com.microfocus.octane.cluster.tasks.api.ClusterTasksService;
+import com.microfocus.octane.cluster.tasks.api.ClusterTasksServiceConfigurerSPI;
 import com.microfocus.octane.cluster.tasks.api.builders.TaskBuilders;
 import com.microfocus.octane.cluster.tasks.api.dto.ClusterTask;
+import com.microfocus.octane.cluster.tasks.api.dto.ClusterTaskPersistenceResult;
 import com.microfocus.octane.cluster.tasks.api.enums.CTPPersistStatus;
 import com.microfocus.octane.cluster.tasks.api.enums.ClusterTaskStatus;
 import com.microfocus.octane.cluster.tasks.api.enums.ClusterTaskType;
 import com.microfocus.octane.cluster.tasks.api.enums.ClusterTasksDataProviderType;
-import com.microfocus.octane.cluster.tasks.api.ClusterTasksProcessorScheduled;
-import com.microfocus.octane.cluster.tasks.api.ClusterTasksServiceConfigurerSPI;
-import com.microfocus.octane.cluster.tasks.api.dto.ClusterTaskPersistenceResult;
-import com.microfocus.octane.cluster.tasks.api.ClusterTasksService;
 import io.prometheus.client.Counter;
 import io.prometheus.client.Gauge;
 import io.prometheus.client.Summary;
@@ -17,12 +17,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 
-import java.util.Arrays;
-import java.util.LinkedHashMap;
-import java.util.List;
-import java.util.Map;
-import java.util.Set;
-import java.util.UUID;
+import java.util.*;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
@@ -337,7 +332,9 @@ public class ClusterTasksServiceImpl implements ClusterTasksService {
 				//  dispatch round
 				Summary.Timer dispatchTimer = dispatchDurationSummary.startTimer();
 				try {
-					runDispatch();
+					if(serviceConfigurer.isEnabled()) {
+						runDispatch();
+					}
 				} catch (Throwable t) {
 					dispatchErrors.inc();
 					logger.error("failure within dispatch iteration; total failures: " + dispatchErrors.get(), t);
@@ -406,17 +403,19 @@ public class ClusterTasksServiceImpl implements ClusterTasksService {
 			while (true) {
 				Summary.Timer maintenanceTimer = maintenanceDurationSummary.startTimer();
 				try {
-					dataProvidersMap.forEach((dpType, dataProvider) -> {
-						if (dataProvider.isReady()) {
-							dataProvider.handleGarbageAndStaled();
+					if(serviceConfigurer.isEnabled()) {
+						dataProvidersMap.forEach((dpType, dataProvider) -> {
+							if (dataProvider.isReady()) {
+								dataProvider.handleGarbageAndStaled();
 
-							//  upon once-in-a-while decision - do count tasks
-							if (System.currentTimeMillis() - lastTasksCountTime > ClusterTasksServiceConfigurerSPI.DEFAULT_TASKS_COUNT_INTERVAL) {
-								lastTasksCountTime = System.currentTimeMillis();
-								countTasks(dataProvider);
+								//  upon once-in-a-while decision - do count tasks
+								if (System.currentTimeMillis() - lastTasksCountTime > ClusterTasksServiceConfigurerSPI.DEFAULT_TASKS_COUNT_INTERVAL) {
+									lastTasksCountTime = System.currentTimeMillis();
+									countTasks(dataProvider);
+								}
 							}
-						}
-					});
+						});
+					}
 				} catch (Throwable t) {
 					maintenanceErrors.inc();
 					logger.error("failed to perform maintenance round; total failures: " + maintenanceErrors.get(), t);
