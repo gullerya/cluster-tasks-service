@@ -1,6 +1,7 @@
 ###Changelog
 
 #####1.1.9 (current snapshot)
+- added isEnabled to SPI, this allows configurer to suspend ClusterTaskService from dispatching tasks
 
 #####1.1.8
 - added pending tasks counters gauge to enable monitoring for the per-processor-type queues debt
