@@ -1,6 +1,6 @@
 ###Changelog
 
-#####1.1.9 (current snapshot)
+#####1.1.9
 - added `isEnabled` to SPI to allow configurer to suspend `cluster-tasks-service` from dispatching tasks and maintenance
 
 #####1.1.8
