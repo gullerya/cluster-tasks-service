@@ -332,7 +332,8 @@ public class ClusterTasksServiceImpl implements ClusterTasksService {
 				//  dispatch round
 				Summary.Timer dispatchTimer = dispatchDurationSummary.startTimer();
 				try {
-					if(serviceConfigurer.isEnabled()) {
+					//  [YG] TODO: add here a monitor for how much time call to foreign isEnabled lasts (to notify on very prolonged calls)
+					if (serviceConfigurer.isEnabled()) {
 						runDispatch();
 					}
 				} catch (Throwable t) {
@@ -403,7 +404,8 @@ public class ClusterTasksServiceImpl implements ClusterTasksService {
 			while (true) {
 				Summary.Timer maintenanceTimer = maintenanceDurationSummary.startTimer();
 				try {
-					if(serviceConfigurer.isEnabled()) {
+					//  [YG] TODO: add here a monitor for how much time call to foreign isEnabled lasts (to notify on very prolonged calls)
+					if (serviceConfigurer.isEnabled()) {
 						dataProvidersMap.forEach((dpType, dataProvider) -> {
 							if (dataProvider.isReady()) {
 								dataProvider.handleGarbageAndStaled();

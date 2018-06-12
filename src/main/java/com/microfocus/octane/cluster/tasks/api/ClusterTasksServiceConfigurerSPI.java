@@ -61,10 +61,9 @@ public interface ClusterTasksServiceConfigurerSPI {
 	Integer getMaintenanceIntervalMillis();
 
 	/**
+	 * Allows hosting application to suspend/resume cluster-tasks-service work (tasking and maintenance) as a reaction on runtime conditions
 	 *
-	 *
-	 *
-	 * @return true if ClusterTasksService should handle tasks
+	 * @return false if cluster-tasks-service should be suspended
 	 */
 	boolean isEnabled();
 }
