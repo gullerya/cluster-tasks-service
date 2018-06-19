@@ -45,7 +45,7 @@ final class OracleDbDataProvider extends ClusterTasksDbDataProvider {
 	}
 
 	@Override
-	boolean isReady() {
+	public boolean isReady() {
 		if (isReady == null || !isReady) {
 			String sql;
 			String dataProviderName = this.getClass().getSimpleName();
@@ -90,7 +90,7 @@ final class OracleDbDataProvider extends ClusterTasksDbDataProvider {
 
 	//  TODO: support bulk insert here
 	@Override
-	ClusterTaskPersistenceResult[] storeTasks(TaskInternal... tasks) {
+	public ClusterTaskPersistenceResult[] storeTasks(TaskInternal... tasks) {
 		List<ClusterTaskPersistenceResult> result = new ArrayList<>(tasks.length);
 
 		for (TaskInternal task : tasks) {
@@ -150,11 +150,11 @@ final class OracleDbDataProvider extends ClusterTasksDbDataProvider {
 			});
 		}
 
-		return result.toArray(new ClusterTaskPersistenceResult[result.size()]);
+		return result.toArray(new ClusterTaskPersistenceResult[0]);
 	}
 
 	@Override
-	void retrieveAndDispatchTasks(Map<String, ClusterTasksProcessorBase> availableProcessors) {
+	public void retrieveAndDispatchTasks(Map<String, ClusterTasksProcessorBase> availableProcessors) {
 		Map<ClusterTasksProcessorBase, Collection<TaskInternal>> tasksToRun = new LinkedHashMap<>();
 
 		//  within the same transaction do:
@@ -165,7 +165,7 @@ final class OracleDbDataProvider extends ClusterTasksDbDataProvider {
 			try {
 				JdbcTemplate jdbcTemplate = getJdbcTemplate();
 				String selectForUpdateSql = buildSelectForUpdateTasksSQL(500);
-				String[] availableProcessorTypes = availableProcessors.keySet().toArray(new String[availableProcessors.size()]);
+				String[] availableProcessorTypes = availableProcessors.keySet().toArray(new String[0]);
 				int paramsTotal = 500;
 
 				//  prepare params
@@ -220,7 +220,7 @@ final class OracleDbDataProvider extends ClusterTasksDbDataProvider {
 	}
 
 	@Override
-	String retrieveTaskBody(Long taskId, Long partitionIndex) {
+	public String retrieveTaskBody(Long taskId, Long partitionIndex) {
 		if (taskId == null) {
 			throw new IllegalArgumentException("task ID MUST NOT be null");
 		}
@@ -245,7 +245,7 @@ final class OracleDbDataProvider extends ClusterTasksDbDataProvider {
 	}
 
 	@Override
-	void updateTaskToFinished(Long taskId) {
+	public void updateTaskToFinished(Long taskId) {
 		if (taskId == null) {
 			throw new IllegalArgumentException("task ID MUST NOT be null");
 		}
@@ -263,7 +263,7 @@ final class OracleDbDataProvider extends ClusterTasksDbDataProvider {
 	}
 
 	@Override
-	void handleGarbageAndStaled() {
+	public void handleGarbageAndStaled() {
 		List<TaskInternal> dataSetToReschedule = new LinkedList<>();
 		getTransactionTemplate().execute(transactionStatus -> {
 			try {
@@ -300,7 +300,7 @@ final class OracleDbDataProvider extends ClusterTasksDbDataProvider {
 	}
 
 	@Override
-	void reinsertScheduledTasks(List<TaskInternal> candidatesToReschedule) {
+	public void reinsertScheduledTasks(List<TaskInternal> candidatesToReschedule) {
 		String countAllPendingScheduled = buildCountScheduledPendingTasksSQL();
 		Map<String, Integer> pendingCount = getJdbcTemplate().query(countAllPendingScheduled, ClusterTasksDbUtils::scheduledPendingReader);
 		List<TaskInternal> tasksToReschedule = new LinkedList<>();
@@ -313,7 +313,7 @@ final class OracleDbDataProvider extends ClusterTasksDbDataProvider {
 			}
 		});
 		if (!tasksToReschedule.isEmpty()) {
-			storeTasks(tasksToReschedule.toArray(new TaskInternal[tasksToReschedule.size()]));
+			storeTasks(tasksToReschedule.toArray(new TaskInternal[0]));
 		}
 	}
 

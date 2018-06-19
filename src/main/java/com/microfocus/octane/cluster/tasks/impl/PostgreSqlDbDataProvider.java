@@ -23,35 +23,35 @@ final class PostgreSqlDbDataProvider extends ClusterTasksDbDataProvider {
 	}
 
 	@Override
-	boolean isReady() {
+	public boolean isReady() {
 		return false;
 	}
 
 	//  TODO: support bulk insert here
 	@Override
-	ClusterTaskPersistenceResult[] storeTasks(TaskInternal... tasks) {
+	public ClusterTaskPersistenceResult[] storeTasks(TaskInternal... tasks) {
 		return null;
 	}
 
 	@Override
-	void retrieveAndDispatchTasks(Map<String, ClusterTasksProcessorBase> availableProcessors) {
+	public void retrieveAndDispatchTasks(Map<String, ClusterTasksProcessorBase> availableProcessors) {
 	}
 
 	@Override
-	String retrieveTaskBody(Long taskId, Long partitionIndex) {
+	public String retrieveTaskBody(Long taskId, Long partitionIndex) {
 		return null;
 	}
 
 	@Override
-	void updateTaskToFinished(Long taskId) {
+	public void updateTaskToFinished(Long taskId) {
 	}
 
 	@Override
-	void handleGarbageAndStaled() {
+	public void handleGarbageAndStaled() {
 	}
 
 	@Override
-	void reinsertScheduledTasks(List<TaskInternal> candidatesToReschedule) {
+	public void reinsertScheduledTasks(List<TaskInternal> candidatesToReschedule) {
 	}
 
 	private String buildInsertTaskSQL(Long partitionIndex) {

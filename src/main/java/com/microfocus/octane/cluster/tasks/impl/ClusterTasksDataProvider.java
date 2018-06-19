@@ -15,21 +15,21 @@ import java.util.Set;
  * This API is intended for internal implementation only and should NOT be used/implemented by no mean by hosting application
  */
 
-abstract class ClusterTasksDataProvider {
+interface ClusterTasksDataProvider {
 
 	/**
 	 * Provider type
 	 *
 	 * @return Tasks Provider type
 	 */
-	abstract ClusterTasksDataProviderType getType();
+	ClusterTasksDataProviderType getType();
 
 	/**
 	 * Verifies that the data provider is ready to be polled for tasks and/or maintenance
 	 *
 	 * @return readiness status
 	 */
-	abstract boolean isReady();
+	boolean isReady();
 
 	/**
 	 * Stores task for future retrieval
@@ -37,14 +37,14 @@ abstract class ClusterTasksDataProvider {
 	 * @param tasks one or more tasks content to be pushed into the queue
 	 * @return an array of Optionals, corresponding to the array of the tasks, having either the task ID in case of successful push or an exception in case of failure
 	 */
-	abstract ClusterTaskPersistenceResult[] storeTasks(TaskInternal... tasks);
+	ClusterTaskPersistenceResult[] storeTasks(TaskInternal... tasks);
 
 	/**
 	 * Attempts to retrieve next valid task per type, marks the retrieved task as running and possible checks is there are more tasks valid to be executed
 	 *
 	 * @param processors data set of all registered processors, that data provider should try to find tasks for
 	 */
-	abstract void retrieveAndDispatchTasks(Map<String, ClusterTasksProcessorBase> processors);
+	void retrieveAndDispatchTasks(Map<String, ClusterTasksProcessorBase> processors);
 
 	/**
 	 * Retrieves task's body
@@ -53,20 +53,20 @@ abstract class ClusterTasksDataProvider {
 	 * @param partitionIndex index of table the body was stored to
 	 * @return task's body
 	 */
-	abstract String retrieveTaskBody(Long taskId, Long partitionIndex);
+	String retrieveTaskBody(Long taskId, Long partitionIndex);
 
 	/**
 	 * Updates task as FINISHED, thus releasing the processor to take next task and make this task valid for GC
 	 *
 	 * @param taskId the value that was assigned to a task in process of creation
 	 */
-	abstract void updateTaskToFinished(Long taskId);
+	void updateTaskToFinished(Long taskId);
 
 	/**
 	 * Implementation should perform a clean up of an items in storage that may be considered as 'garbage'
 	 * Items that found to be 'staled' but are not considered to be 'garbage' should be handled accordingly to each own specific logic
 	 */
-	abstract void handleGarbageAndStaled();
+	void handleGarbageAndStaled();
 
 	/**
 	 * Implementation should perform a re-scheduling of a SCHEDULED tasks ONLY
@@ -74,7 +74,7 @@ abstract class ClusterTasksDataProvider {
 	 *
 	 * @param candidatesToReschedule list of tasks of type SCHEDULE that should be re-run
 	 */
-	abstract void reinsertScheduledTasks(List<TaskInternal> candidatesToReschedule);
+	void reinsertScheduledTasks(List<TaskInternal> candidatesToReschedule);
 
 	/**
 	 * Implementation should provide a counter for all tasks in the specified status existing in the storage grouped be PROCESSOR TYPE
@@ -82,7 +82,7 @@ abstract class ClusterTasksDataProvider {
 	 * @param status only tasks of this status will be counted; MUST NOT be null
 	 * @return count result mapped be PROCESSOR TYPE
 	 */
-	abstract Map<String, Integer> countTasks(ClusterTaskStatus status);
+	Map<String, Integer> countTasks(ClusterTaskStatus status);
 
 	/**
 	 * Implementation should provide a counter of all tasks existing in the Storage right to the moment of query
@@ -95,7 +95,7 @@ abstract class ClusterTasksDataProvider {
 	 * @return number of tasks of the specified type [AND, optionally, concurrencyKey] found in DB
 	 */
 	@Deprecated
-	abstract int countTasks(String processorType, Set<ClusterTaskStatus> statuses);
+	int countTasks(String processorType, Set<ClusterTaskStatus> statuses);
 
 	/**
 	 * Implementation should provide a counter of all tasks existing in the Storage right to the moment of query
@@ -109,5 +109,5 @@ abstract class ClusterTasksDataProvider {
 	 * @return number of tasks of the specified type [AND, optionally, concurrencyKey] found in DB
 	 */
 	@Deprecated
-	abstract int countTasks(String processorType, String concurrencyKey, Set<ClusterTaskStatus> statuses);
+	int countTasks(String processorType, String concurrencyKey, Set<ClusterTaskStatus> statuses);
 }

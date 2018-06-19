@@ -36,7 +36,7 @@ import static java.sql.Types.BIGINT;
  * Cluster tasks data provider backed by DB
  */
 
-abstract public class ClusterTasksDbDataProvider extends ClusterTasksDataProvider {
+abstract class ClusterTasksDbDataProvider implements ClusterTasksDataProvider {
 	private final Logger logger = LoggerFactory.getLogger(ClusterTasksDbDataProvider.class);
 
 	protected final ClusterTasksService clusterTasksService;
@@ -86,12 +86,12 @@ abstract public class ClusterTasksDbDataProvider extends ClusterTasksDataProvide
 	}
 
 	@Override
-	ClusterTasksDataProviderType getType() {
+	public ClusterTasksDataProviderType getType() {
 		return ClusterTasksDataProviderType.DB;
 	}
 
 	@Override
-	Map<String, Integer> countTasks(ClusterTaskStatus status) {
+	public Map<String, Integer> countTasks(ClusterTaskStatus status) {
 		String countTasksSQL = "SELECT COUNT(*) AS counter," + PROCESSOR_TYPE + " FROM " + META_TABLE_NAME +
 				" WHERE " + STATUS + " = " + status.value +
 				" GROUP BY " + PROCESSOR_TYPE;
@@ -110,14 +110,14 @@ abstract public class ClusterTasksDbDataProvider extends ClusterTasksDataProvide
 
 	@Deprecated
 	@Override
-	int countTasks(String processorType, Set<ClusterTaskStatus> statuses) {
+	public int countTasks(String processorType, Set<ClusterTaskStatus> statuses) {
 		String countTasksSQL = buildCountTasksSQL(processorType, statuses);
 		return getJdbcTemplate().queryForObject(countTasksSQL, Integer.class);
 	}
 
 	@Deprecated
 	@Override
-	int countTasks(String processorType, String concurrencyKey, Set<ClusterTaskStatus> statuses) {
+	public int countTasks(String processorType, String concurrencyKey, Set<ClusterTaskStatus> statuses) {
 		String countTasksSQL = buildCountTasksSQL(processorType, concurrencyKey, statuses);
 		return getJdbcTemplate().queryForObject(countTasksSQL, Integer.class);
 	}
