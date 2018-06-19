@@ -70,6 +70,11 @@ abstract class ClusterTasksDbDataProvider implements ClusterTasksDataProvider {
 	static final String BODY = BODY_COLUMNS_PREFIX.concat("BODY");
 
 	private final int PARTITIONS_NUMBER = 4;
+	private final Map<ClusterTaskStatus, String> countTasksByStatusSQLs = new LinkedHashMap<>();
+	private final Map<Long, String> deleteTaskBodyByPartitionSQLs = new LinkedHashMap<>();
+	private final Map<Long, String> lookupOrphansByPartitionSQLs = new LinkedHashMap<>();
+	private final Map<Long, String> truncateByPartitionSQLs = new LinkedHashMap<>();
+
 	private ZonedDateTime lastTruncateTime;
 	private JdbcTemplate jdbcTemplate;
 	private TransactionTemplate transactionTemplate;
@@ -83,6 +88,19 @@ abstract class ClusterTasksDbDataProvider implements ClusterTasksDataProvider {
 		}
 		this.clusterTasksService = clusterTasksService;
 		this.serviceConfigurer = serviceConfigurer;
+
+		//  prepare SQL queries
+		for (ClusterTaskStatus status : ClusterTaskStatus.values()) {
+			countTasksByStatusSQLs
+					.put(status, "SELECT COUNT(*) AS counter," + PROCESSOR_TYPE + " FROM " + META_TABLE_NAME + " WHERE " + STATUS + " = " + status.value + " GROUP BY " + PROCESSOR_TYPE);
+		}
+		for (long partition = 0; partition < PARTITIONS_NUMBER; partition++) {
+			deleteTaskBodyByPartitionSQLs.put(partition, "DELETE FROM " + BODY_TABLE_NAME + partition +
+					" WHERE " + BODY_ID + " = ?");
+			lookupOrphansByPartitionSQLs.put(partition, "SELECT " + String.join(",", BODY_ID, BODY, META_ID) + " FROM " + BODY_TABLE_NAME + partition +
+					" LEFT OUTER JOIN " + META_TABLE_NAME + " ON " + META_ID + " = " + BODY_ID);
+			truncateByPartitionSQLs.put(partition, "TRUNCATE TABLE " + BODY_TABLE_NAME + partition);
+		}
 	}
 
 	@Override
@@ -92,9 +110,7 @@ abstract class ClusterTasksDbDataProvider implements ClusterTasksDataProvider {
 
 	@Override
 	public Map<String, Integer> countTasks(ClusterTaskStatus status) {
-		String countTasksSQL = "SELECT COUNT(*) AS counter," + PROCESSOR_TYPE + " FROM " + META_TABLE_NAME +
-				" WHERE " + STATUS + " = " + status.value +
-				" GROUP BY " + PROCESSOR_TYPE;
+		String countTasksSQL = countTasksByStatusSQLs.get(status);
 		return getJdbcTemplate().query(countTasksSQL, resultSet -> {
 			Map<String, Integer> result = new HashMap<>();
 			while (resultSet.next()) {
@@ -305,17 +321,15 @@ abstract class ClusterTasksDbDataProvider implements ClusterTasksDataProvider {
 	}
 
 	private String buildDeleteTaskBodySQL(long partitionIndex) {
-		return "DELETE FROM " + BODY_TABLE_NAME + partitionIndex + " WHERE " + BODY_ID + " = ?";
+		return deleteTaskBodyByPartitionSQLs.get(partitionIndex);
 	}
 
 	private String buildSelectVerifyBodyTableSQL(long partitionIndex) {
-		String fieldsToSelect = String.join(",", BODY_ID, BODY, META_ID);
-		return "SELECT " + fieldsToSelect + " FROM " + BODY_TABLE_NAME + partitionIndex +
-				" LEFT OUTER JOIN " + META_TABLE_NAME + " ON " + META_ID + " = " + BODY_ID;
+		return lookupOrphansByPartitionSQLs.get(partitionIndex);
 	}
 
 	private String buildTruncateBodyTableSQL(long partitionIndex) {
-		return "TRUNCATE TABLE " + BODY_TABLE_NAME + partitionIndex;
+		return truncateByPartitionSQLs.get(partitionIndex);
 	}
 
 	private BodyTablePreTruncateVerificationResult rowsToIDsInPartitionReader(ResultSet resultSet) {
