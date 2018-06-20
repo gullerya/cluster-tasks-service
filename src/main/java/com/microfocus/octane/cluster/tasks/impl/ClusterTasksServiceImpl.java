@@ -309,6 +309,17 @@ public class ClusterTasksServiceImpl implements ClusterTasksService {
 		return result;
 	}
 
+	private boolean isEnabled() {
+		long DURATION_THRESHOLD = 5;
+		long foreignCallStart = System.currentTimeMillis();
+		boolean isEnabled = serviceConfigurer.isEnabled();
+		long foreignCallDuration = System.currentTimeMillis() - foreignCallStart;
+		if (foreignCallDuration > DURATION_THRESHOLD) {
+			logger.warn("call to a foreign method 'isEnabled' took more than " + DURATION_THRESHOLD + "ms (" + foreignCallDuration + "ms)");
+		}
+		return isEnabled;
+	}
+
 	//  INTERNAL WORKERS: DISPATCHER AND MAINTAINER
 	//
 	private final class ClusterTasksDispatcherThreadFactory implements ThreadFactory {
@@ -331,8 +342,7 @@ public class ClusterTasksServiceImpl implements ClusterTasksService {
 				//  dispatch round
 				Summary.Timer dispatchTimer = dispatchDurationSummary.startTimer();
 				try {
-					//  [YG] TODO: add here a monitor for how much time call to foreign isEnabled lasts (to notify on very prolonged calls)
-					if (serviceConfigurer.isEnabled()) {
+					if (isEnabled()) {
 						runDispatch();
 					}
 				} catch (Throwable t) {
@@ -405,8 +415,7 @@ public class ClusterTasksServiceImpl implements ClusterTasksService {
 			while (true) {
 				Summary.Timer maintenanceTimer = maintenanceDurationSummary.startTimer();
 				try {
-					//  [YG] TODO: add here a monitor for how much time call to foreign isEnabled lasts (to notify on very prolonged calls)
-					if (serviceConfigurer.isEnabled()) {
+					if (isEnabled()) {
 						dataProvidersMap.forEach((dpType, dataProvider) -> {
 							if (dataProvider.isReady()) {
 
