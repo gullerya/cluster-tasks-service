@@ -346,7 +346,6 @@ final class OracleDbDataProvider extends ClusterTasksDbDataProvider {
 				);
 			} catch (Exception e) {
 				transactionStatus.setRollbackOnly();
-				logger.error(clusterTasksService.getInstanceID() + " failed to cleanup cluster tasks", e);
 				throw new CtsGeneralFailure("failed to cleanup cluster tasks", e);
 			}
 
