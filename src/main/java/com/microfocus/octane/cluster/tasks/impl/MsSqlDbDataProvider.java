@@ -77,7 +77,7 @@ final class MsSqlDbDataProvider extends ClusterTasksDbDataProvider {
 					"       WHERE " + PROCESSOR_TYPE + " IN(" + processorTypesInParameter + ")" +
 					"           AND " + STATUS + " < " + ClusterTaskStatus.FINISHED.value +
 					"           AND " + CREATED + " <= DATEADD(MILLISECOND, -" + DELAY_BY_MILLIS + ", GETDATE())) meta" +
-					"   WHERE meta.row_index <= 1 AND meta.running_count = 0) ORDER BY " + ORDERING_FACTOR);
+					"   WHERE meta.row_index <= 1 AND meta.running_count = 0)");
 		}
 		for (long partition = 0; partition < PARTITIONS_NUMBER; partition++) {
 			selectTaskBodyByPartitionSQLs.put(partition, "SELECT " + BODY + " FROM " + BODY_TABLE_NAME + partition +
@@ -93,7 +93,7 @@ final class MsSqlDbDataProvider extends ClusterTasksDbDataProvider {
 				" WHERE " + TASK_TYPE + " = " + ClusterTaskType.SCHEDULED.value + " AND " + STATUS + " = " + ClusterTaskStatus.PENDING.value + " GROUP BY " + PROCESSOR_TYPE;
 
 		String selectedForGCFields = String.join(",", META_ID, BODY_PARTITION, TASK_TYPE, PROCESSOR_TYPE, STATUS, MAX_TIME_TO_RUN);
-		selectGCValidTasksSQL = "SELECT " + selectedForGCFields + " FROM " + META_TABLE_NAME + " WITH (UPDLOCK,INDEX(CTSKM_IDX_3))" +
+		selectGCValidTasksSQL = "SELECT " + selectedForGCFields + " FROM " + META_TABLE_NAME + " WITH (UPDLOCK)" +
 				" WHERE " + STATUS + " = " + ClusterTaskStatus.FINISHED.value +
 				" OR (" + STATUS + " = " + ClusterTaskStatus.RUNNING.value + " AND DATEDIFF(MILLISECOND, " + STARTED + ", GETDATE()) > " + MAX_TIME_TO_RUN + ")";
 	}
