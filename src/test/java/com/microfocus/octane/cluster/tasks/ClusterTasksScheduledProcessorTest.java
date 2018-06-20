@@ -1,6 +1,5 @@
 package com.microfocus.octane.cluster.tasks;
 
-import com.microfocus.octane.cluster.tasks.api.dto.ClusterTask;
 import com.microfocus.octane.cluster.tasks.processors.scheduled.ClusterTasksSchedProcA_test;
 import com.microfocus.octane.cluster.tasks.processors.scheduled.ClusterTasksSchedProcB_test;
 import com.microfocus.octane.cluster.tasks.processors.scheduled.ClusterTasksSchedProcC_test;
@@ -30,9 +29,9 @@ public class ClusterTasksScheduledProcessorTest extends CTSTestsBase {
 	@Test
 	public void TestA_scheduled_tasks() {
 		//  resume processors
-		ClusterTasksSchedProcA_test.suspended = false;
-		ClusterTasksSchedProcB_test.suspended = false;
-		ClusterTasksSchedProcC_test.suspended = false;
+		ClusterTasksSchedProcA_test.suspended = false;      // this CTP's self duration is ~1000 ms
+		ClusterTasksSchedProcB_test.suspended = false;      // this CTP's self duration is ~2000 ms
+		ClusterTasksSchedProcC_test.suspended = false;      // this CTP's self duration is ~3000 ms
 
 		ClusterTasksITUtils.sleepSafely(7000);
 
