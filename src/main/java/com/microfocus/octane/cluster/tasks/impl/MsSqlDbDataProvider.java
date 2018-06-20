@@ -73,11 +73,11 @@ final class MsSqlDbDataProvider extends ClusterTasksDbDataProvider {
 					"       (SELECT " + META_ID + "," +
 					"               ROW_NUMBER() OVER (PARTITION BY COALESCE(" + CONCURRENCY_KEY + ",CAST(NEWID() AS VARCHAR(64))) ORDER BY " + ORDERING_FACTOR + "," + CREATED + "," + META_ID + " ASC) AS row_index," +
 					"               COUNT(CASE WHEN " + STATUS + " = " + ClusterTaskStatus.RUNNING.value + " THEN 1 ELSE NULL END) OVER (PARTITION BY COALESCE(" + CONCURRENCY_KEY + ",CAST(NEWID() AS VARCHAR(64)))) AS running_count" +
-					"       FROM " + META_TABLE_NAME + " WITH (UPDLOCK,INDEX(CTSKM_IDX_2))" +
+					"       FROM " + META_TABLE_NAME + " WITH (UPDLOCK)" +
 					"       WHERE " + PROCESSOR_TYPE + " IN(" + processorTypesInParameter + ")" +
 					"           AND " + STATUS + " < " + ClusterTaskStatus.FINISHED.value +
 					"           AND " + CREATED + " <= DATEADD(MILLISECOND, -" + DELAY_BY_MILLIS + ", GETDATE())) meta" +
-					"   WHERE meta.row_index <= 1 AND meta.running_count = 0)");
+					"   WHERE meta.row_index <= 1 AND meta.running_count = 0) ORDER BY " + ORDERING_FACTOR);
 		}
 		for (long partition = 0; partition < PARTITIONS_NUMBER; partition++) {
 			selectTaskBodyByPartitionSQLs.put(partition, "SELECT " + BODY + " FROM " + BODY_TABLE_NAME + partition +
@@ -271,7 +271,7 @@ final class MsSqlDbDataProvider extends ClusterTasksDbDataProvider {
 			} catch (Exception e) {
 				transactionStatus.setRollbackOnly();
 				tasksToRun.clear();
-				logger.error(clusterTasksService.getInstanceID() + " failed to retrieve and execute tasks", e);
+				throw new CtsGeneralFailure("failed to retrieve and execute tasks", e);
 			}
 
 			return null;

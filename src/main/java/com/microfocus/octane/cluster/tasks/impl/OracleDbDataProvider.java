@@ -273,7 +273,7 @@ final class OracleDbDataProvider extends ClusterTasksDbDataProvider {
 			} catch (Exception e) {
 				transactionStatus.setRollbackOnly();
 				tasksToRun.clear();
-				logger.error(clusterTasksService.getInstanceID() + " failed to retrieve and execute tasks", e);
+				throw new CtsGeneralFailure("failed to retrieve and execute tasks", e);
 			}
 
 			return null;

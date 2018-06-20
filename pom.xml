@@ -20,7 +20,7 @@
 
 		<!--TESTS-->
 		<tests.db.schema>cts_tests_schema</tests.db.schema>
-		<octane.jdbc.service.version>1.0.8</octane.jdbc.service.version>
+		<octane.jdbc.service.version>1.0.9</octane.jdbc.service.version>
 		<jacoco.version>0.7.9</jacoco.version>
 	</properties>
 
