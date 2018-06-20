@@ -1,9 +1,11 @@
 package com.microfocus.octane.cluster.tasks.impl;
 
 import com.microfocus.octane.cluster.tasks.api.enums.ClusterTaskStatus;
+import com.microfocus.octane.cluster.tasks.api.enums.ClusterTaskType;
 import com.microfocus.octane.cluster.tasks.api.enums.ClusterTasksDataProviderType;
 import com.microfocus.octane.cluster.tasks.api.ClusterTasksService;
 import com.microfocus.octane.cluster.tasks.api.ClusterTasksServiceConfigurerSPI;
+import com.microfocus.octane.cluster.tasks.api.errors.CtsSqlFailure;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.jdbc.core.JdbcTemplate;
@@ -69,10 +71,12 @@ abstract class ClusterTasksDbDataProvider implements ClusterTasksDataProvider {
 	static final String BODY_ID = BODY_COLUMNS_PREFIX.concat("ID");
 	static final String BODY = BODY_COLUMNS_PREFIX.concat("BODY");
 
-	private final int PARTITIONS_NUMBER = 4;
+	final int PARTITIONS_NUMBER = 4;
+
 	private final Map<ClusterTaskStatus, String> countTasksByStatusSQLs = new LinkedHashMap<>();
-	private final Map<Long, String> deleteTaskBodyByPartitionSQLs = new LinkedHashMap<>();
 	private final Map<Long, String> lookupOrphansByPartitionSQLs = new LinkedHashMap<>();
+	private final String deleteTaskMetaSQL;
+	private final Map<Long, String> deleteTaskBodyByPartitionSQLs = new LinkedHashMap<>();
 	private final Map<Long, String> truncateByPartitionSQLs = new LinkedHashMap<>();
 
 	private ZonedDateTime lastTruncateTime;
@@ -89,16 +93,17 @@ abstract class ClusterTasksDbDataProvider implements ClusterTasksDataProvider {
 		this.clusterTasksService = clusterTasksService;
 		this.serviceConfigurer = serviceConfigurer;
 
-		//  prepare SQL queries
+		//  prepare SQL statements
 		for (ClusterTaskStatus status : ClusterTaskStatus.values()) {
 			countTasksByStatusSQLs
 					.put(status, "SELECT COUNT(*) AS counter," + PROCESSOR_TYPE + " FROM " + META_TABLE_NAME + " WHERE " + STATUS + " = " + status.value + " GROUP BY " + PROCESSOR_TYPE);
 		}
+		deleteTaskMetaSQL = "DELETE FROM " + META_TABLE_NAME + " WHERE " + META_ID + " = ?";
 		for (long partition = 0; partition < PARTITIONS_NUMBER; partition++) {
-			deleteTaskBodyByPartitionSQLs.put(partition, "DELETE FROM " + BODY_TABLE_NAME + partition +
-					" WHERE " + BODY_ID + " = ?");
 			lookupOrphansByPartitionSQLs.put(partition, "SELECT " + String.join(",", BODY_ID, BODY, META_ID) + " FROM " + BODY_TABLE_NAME + partition +
 					" LEFT OUTER JOIN " + META_TABLE_NAME + " ON " + META_ID + " = " + BODY_ID);
+			deleteTaskBodyByPartitionSQLs.put(partition, "DELETE FROM " + BODY_TABLE_NAME + partition +
+					" WHERE " + BODY_ID + " = ?");
 			truncateByPartitionSQLs.put(partition, "TRUNCATE TABLE " + BODY_TABLE_NAME + partition);
 		}
 	}
@@ -180,6 +185,110 @@ abstract class ClusterTasksDbDataProvider implements ClusterTasksDataProvider {
 
 	Set<String> getCTSSequenceNames() {
 		return Stream.of(CLUSTER_TASK_ID_SEQUENCE).collect(Collectors.toSet());
+	}
+
+	List<TaskInternal> tasksMetadataReader(ResultSet resultSet) {
+		List<TaskInternal> result = new LinkedList<>();
+		TaskInternal tmpTask;
+		Long tmpLong;
+		String tmpString;
+		try {
+			while (resultSet.next()) {
+				try {
+					tmpTask = new TaskInternal();
+					tmpTask.id = resultSet.getLong(ClusterTasksDbDataProvider.META_ID);
+					tmpTask.taskType = ClusterTaskType.byValue(resultSet.getLong(ClusterTasksDbDataProvider.TASK_TYPE));
+					tmpTask.processorType = resultSet.getString(ClusterTasksDbDataProvider.PROCESSOR_TYPE);
+					tmpTask.uniquenessKey = resultSet.getString(ClusterTasksDbDataProvider.UNIQUENESS_KEY);
+					tmpString = resultSet.getString(ClusterTasksDbDataProvider.CONCURRENCY_KEY);
+					if (!resultSet.wasNull()) {
+						tmpTask.concurrencyKey = tmpString;
+					}
+					tmpLong = resultSet.getLong(ClusterTasksDbDataProvider.ORDERING_FACTOR);
+					if (!resultSet.wasNull()) {
+						tmpTask.orderingFactor = tmpLong;
+					}
+					tmpTask.delayByMillis = resultSet.getLong(ClusterTasksDbDataProvider.DELAY_BY_MILLIS);
+					tmpTask.maxTimeToRunMillis = resultSet.getLong(ClusterTasksDbDataProvider.MAX_TIME_TO_RUN);
+					tmpLong = resultSet.getLong(ClusterTasksDbDataProvider.BODY_PARTITION);
+					if (!resultSet.wasNull()) {
+						tmpTask.partitionIndex = tmpLong;
+					}
+
+					result.add(tmpTask);
+				} catch (Exception e) {
+					logger.error("failed to read cluster task " + result.size(), e);
+				}
+			}
+		} catch (SQLException sqle) {
+			logger.error("failed to read cluster tasks", sqle);
+			throw new CtsSqlFailure("failed to read cluster task", sqle);
+		}
+		return result;
+	}
+
+	String rowToTaskBodyReader(ResultSet resultSet) {
+		String result = null;
+		try {
+			if (resultSet.next()) {
+				try {
+					Clob clobBody = resultSet.getClob(ClusterTasksDbDataProvider.BODY);
+					if (clobBody != null) {
+						result = clobBody.getSubString(1, (int) clobBody.length());
+					}
+				} catch (SQLException sqle) {
+					logger.error("failed to read cluster task body", sqle);
+					throw new CtsSqlFailure("failed to read cluster task body", sqle);
+				}
+			}
+		} catch (SQLException sqle) {
+			logger.error("failed to find cluster task body", sqle);
+			throw new CtsSqlFailure("failed to find cluster task body", sqle);
+		}
+		return result;
+	}
+
+	Map<String, Integer> scheduledPendingReader(ResultSet resultSet) {
+		Map<String, Integer> result = new LinkedHashMap<>();
+		try {
+			while (resultSet.next()) {
+				try {
+					result.put(resultSet.getString(ClusterTasksDbDataProvider.PROCESSOR_TYPE), resultSet.getInt("total"));
+				} catch (SQLException sqle) {
+					logger.error("failed to read cluster task body", sqle);
+				}
+			}
+		} catch (SQLException sqle) {
+			logger.error("failed to find cluster task body", sqle);
+			throw new CtsSqlFailure("failed to find cluster task body", sqle);
+		}
+		return result;
+	}
+
+	List<TaskInternal> gcCandidatesReader(ResultSet resultSet) {
+		List<TaskInternal> result = new LinkedList<>();
+		try {
+			while (resultSet.next()) {
+				try {
+					TaskInternal task = new TaskInternal();
+					task.id = resultSet.getLong(ClusterTasksDbDataProvider.META_ID);
+					task.taskType = ClusterTaskType.byValue(resultSet.getLong(ClusterTasksDbDataProvider.TASK_TYPE));
+					Long tmpLong = resultSet.getLong(ClusterTasksDbDataProvider.BODY_PARTITION);
+					if (!resultSet.wasNull()) {
+						task.partitionIndex = tmpLong;
+					}
+					task.processorType = resultSet.getString(ClusterTasksDbDataProvider.PROCESSOR_TYPE);
+					task.maxTimeToRunMillis = resultSet.getLong(ClusterTasksDbDataProvider.MAX_TIME_TO_RUN);
+					result.add(task);
+				} catch (SQLException sqle) {
+					logger.error("failed to read cluster task body", sqle);
+				}
+			}
+		} catch (SQLException sqle) {
+			logger.error("failed to find cluster task body", sqle);
+			throw new CtsSqlFailure("failed to find cluster task body", sqle);
+		}
+		return result;
 	}
 
 	long resolveBodyTablePartitionIndex() {
@@ -317,7 +426,7 @@ abstract class ClusterTasksDbDataProvider implements ClusterTasksDataProvider {
 	}
 
 	private String buildDeleteTaskMetaSQL() {
-		return "DELETE FROM " + META_TABLE_NAME + " WHERE " + META_ID + " = ?";
+		return deleteTaskMetaSQL;
 	}
 
 	private String buildDeleteTaskBodySQL(long partitionIndex) {

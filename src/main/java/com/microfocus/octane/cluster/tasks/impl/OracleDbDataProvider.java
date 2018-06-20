@@ -40,8 +40,64 @@ import static java.sql.Types.VARCHAR;
 final class OracleDbDataProvider extends ClusterTasksDbDataProvider {
 	private static final Logger logger = LoggerFactory.getLogger(OracleDbDataProvider.class);
 
+	private final String areTablesReadySQL;
+	private final String areIndicesReadySQL;
+	private final String areSequencesReadySQL;
+
+	private final Map<Integer, String> selectForUpdateTasksSQLs = new LinkedHashMap<>();
+	private final Map<Long, String> selectTaskBodyByPartitionSQLs = new LinkedHashMap<>();
+
+	private final String updateTasksStartedSQL;
+	private final String updateTaskFinishedSQL;
+
+	private final String countScheduledPendingTasksSQL;
+	private final String selectGCValidTasksSQL;
+
 	OracleDbDataProvider(ClusterTasksService clusterTasksService, ClusterTasksServiceConfigurerSPI serviceConfigurer) {
 		super(clusterTasksService, serviceConfigurer);
+
+		//  prepare SQL statements
+		areTablesReadySQL = "SELECT COUNT(*) AS cts_tables_count FROM user_tables WHERE table_name IN(" +
+				String.join(",", getCTSTableNames().stream().map(tn -> "'" + tn + "'").collect(Collectors.toSet())) + ")";
+		areIndicesReadySQL = "SELECT COUNT(*) AS cts_indices_count FROM user_indexes WHERE index_name IN(" +
+				String.join(",", getCTSIndexNames().stream().map(in -> "'" + in + "'").collect(Collectors.toSet())) + ")";
+		areSequencesReadySQL = "SELECT COUNT(*) AS cts_sequences_count FROM user_sequences WHERE sequence_name IN(" +
+				String.join(",", getCTSSequenceNames().stream().map(sn -> "'" + sn + "'").collect(Collectors.toSet())) + ")";
+
+		String selectForRunFields = String.join(",", META_ID, TASK_TYPE, PROCESSOR_TYPE, UNIQUENESS_KEY, CONCURRENCY_KEY, ORDERING_FACTOR, DELAY_BY_MILLIS, MAX_TIME_TO_RUN, BODY_PARTITION, STATUS);
+		for (int maxProcessorTypes : new Integer[]{20, 50, 100, 500}) {
+			String processorTypesInParameter = String.join(",", Collections.nCopies(maxProcessorTypes, "?"));
+			selectForUpdateTasksSQLs.put(maxProcessorTypes, "SELECT " + selectForRunFields +
+					" FROM " + META_TABLE_NAME + " WHERE ROWID IN " +
+					"   (SELECT row_id FROM" +
+					"       (SELECT ROWID AS row_id," +
+					"               ROW_NUMBER() OVER (PARTITION BY COALESCE(" + CONCURRENCY_KEY + ",RAWTOHEX(SYS_GUID())) ORDER BY " + ORDERING_FACTOR + "," + CREATED + "," + META_ID + " ASC) AS row_index," +
+					"               COUNT(CASE WHEN " + STATUS + " = " + ClusterTaskStatus.RUNNING.value + " THEN 1 ELSE NULL END) OVER (PARTITION BY COALESCE(" + CONCURRENCY_KEY + ",RAWTOHEX(SYS_GUID()))) AS running_count" +
+					"       FROM " + META_TABLE_NAME +
+					"       WHERE " + PROCESSOR_TYPE + " IN(" + processorTypesInParameter + ")" +
+					"           AND " + STATUS + " < " + ClusterTaskStatus.FINISHED.value +
+					"           AND " + CREATED + " <= SYSDATE - NUMTODSINTERVAL(" + DELAY_BY_MILLIS + " / 1000, 'SECOND')) meta" +
+					"   WHERE meta.row_index <= 1 AND meta.running_count = 0)" +
+					" FOR UPDATE");
+		}
+		for (long partition = 0; partition < PARTITIONS_NUMBER; partition++) {
+			selectTaskBodyByPartitionSQLs.put(partition, "SELECT " + BODY + " FROM " + BODY_TABLE_NAME + partition +
+					" WHERE " + BODY_ID + " = ?");
+		}
+
+		updateTasksStartedSQL = "UPDATE " + META_TABLE_NAME + " SET " + STATUS + " = " + ClusterTaskStatus.RUNNING.value + ", " + STARTED + " = SYSDATE, " + RUNTIME_INSTANCE + " = ?" +
+				" WHERE " + META_ID + " = ?";
+		updateTaskFinishedSQL = "UPDATE " + META_TABLE_NAME + " SET " + String.join(",", STATUS + " = " + ClusterTaskStatus.FINISHED.value, UNIQUENESS_KEY + " = RAWTOHEX(SYS_GUID())") +
+				" WHERE " + META_ID + " = ?";
+
+		countScheduledPendingTasksSQL = "SELECT " + PROCESSOR_TYPE + ",COUNT(*) AS total FROM " + META_TABLE_NAME +
+				" WHERE " + TASK_TYPE + " = " + ClusterTaskType.SCHEDULED.value + " AND " + STATUS + " = " + ClusterTaskStatus.PENDING.value + " GROUP BY " + PROCESSOR_TYPE;
+
+		String selectedForGCFields = String.join(",", META_ID, BODY_PARTITION, TASK_TYPE, PROCESSOR_TYPE, STATUS, MAX_TIME_TO_RUN);
+		selectGCValidTasksSQL = "SELECT " + selectedForGCFields + " FROM " + META_TABLE_NAME +
+				" WHERE " + STATUS + " = " + ClusterTaskStatus.FINISHED.value +
+				" OR (" + STATUS + " = " + ClusterTaskStatus.RUNNING.value + " AND " + STARTED + " < SYSDATE - NUMTODSINTERVAL(" + MAX_TIME_TO_RUN + " / 1000, 'SECOND'))" +
+				" FOR UPDATE";
 	}
 
 	@Override
@@ -53,20 +109,17 @@ final class OracleDbDataProvider extends ClusterTasksDbDataProvider {
 
 			//  check tables existence
 			Set<String> tableNames = getCTSTableNames();
-			sql = "SELECT COUNT(*) AS cts_tables_count FROM user_tables WHERE table_name IN(" +
-					String.join(",", tableNames.stream().map(tn -> "'" + tn + "'").collect(Collectors.toSet())) + ")";
+			sql = areTablesReadySQL;
 			int tablesCount = getJdbcTemplate().queryForObject(sql, (resultSet, index) -> resultSet.getInt("cts_tables_count"));
 			if (tablesCount == tableNames.size()) {
 				//  check indices existence
 				Set<String> indexNames = getCTSIndexNames();
-				sql = "SELECT COUNT(*) AS cts_indices_count FROM user_indexes WHERE index_name IN(" +
-						String.join(",", indexNames.stream().map(in -> "'" + in + "'").collect(Collectors.toSet())) + ")";
+				sql = areIndicesReadySQL;
 				int indicesCount = getJdbcTemplate().queryForObject(sql, (resultSet, index) -> resultSet.getInt("cts_indices_count"));
 				if (indicesCount == indexNames.size()) {
 					//  check sequences existence
 					Set<String> sequenceNames = getCTSSequenceNames();
-					sql = "SELECT COUNT(*) AS cts_sequences_count FROM user_sequences WHERE sequence_name IN(" +
-							String.join(",", sequenceNames.stream().map(sn -> "'" + sn + "'").collect(Collectors.toSet())) + ")";
+					sql = areSequencesReadySQL;
 					int sequencesCount = getJdbcTemplate().queryForObject(sql, (resultSet, index) -> resultSet.getInt("cts_sequences_count"));
 					if (sequencesCount == sequenceNames.size()) {
 						logger.info(dataProviderName + " found to be READY");
@@ -164,9 +217,19 @@ final class OracleDbDataProvider extends ClusterTasksDbDataProvider {
 		getTransactionTemplate().execute(transactionStatus -> {
 			try {
 				JdbcTemplate jdbcTemplate = getJdbcTemplate();
-				String selectForUpdateSql = buildSelectForUpdateTasksSQL(500);
 				String[] availableProcessorTypes = availableProcessors.keySet().toArray(new String[0]);
-				int paramsTotal = 500;
+				Integer paramsTotal = null;
+				String sql = null;
+				for (int testedParamTotal : selectForUpdateTasksSQLs.keySet()) {
+					if (testedParamTotal >= availableProcessors.size()) {
+						paramsTotal = testedParamTotal;
+						sql = selectForUpdateTasksSQLs.get(testedParamTotal);
+						break;
+					}
+				}
+				if (paramsTotal == null || sql == null) {
+					throw new IllegalStateException("failed to match 'selectForUpdateTasks' SQL for the amount of " + availableProcessors.size() + " processors");
+				}
 
 				//  prepare params
 				Object[] params = new Object[paramsTotal];
@@ -178,7 +241,7 @@ final class OracleDbDataProvider extends ClusterTasksDbDataProvider {
 				for (int i = 0; i < paramsTotal; i++) paramTypes[i] = Types.NVARCHAR;
 
 				List<TaskInternal> tasks;
-				tasks = jdbcTemplate.query(selectForUpdateSql, params, paramTypes, ClusterTasksDbUtils::tasksMetadataReader);
+				tasks = jdbcTemplate.query(sql, params, paramTypes, this::tasksMetadataReader);
 				if (!tasks.isEmpty()) {
 					Map<String, List<TaskInternal>> tasksByProcessor = tasks.stream().collect(Collectors.groupingBy(ti -> ti.processorType));
 					Set<Long> tasksToRunIDs = new LinkedHashSet<>();
@@ -193,15 +256,16 @@ final class OracleDbDataProvider extends ClusterTasksDbDataProvider {
 
 					//  update selected tasks to RUNNING
 					if (!tasksToRunIDs.isEmpty()) {
-						String updateTasksStartedSQL = buildUpdateTaskStartedSQL();
 						String runtimeInstanceID = clusterTasksService.getInstanceID();
 						List<Object[]> updateParams = tasksToRunIDs.stream()
 								.sorted()
 								.map(id -> new Object[]{runtimeInstanceID, id})
 								.collect(Collectors.toList());
 						int[] updateResults = jdbcTemplate.batchUpdate(updateTasksStartedSQL, updateParams, new int[]{VARCHAR, BIGINT});
-						logger.debug("update tasks to RUNNING result: [" + String.join(", ", Stream.of(updateResults).map(String::valueOf).collect(Collectors.toList())) + "]");
-						logger.debug("from a total of " + tasks.size() + " available tasks " + tasksToRunIDs.size() + " has been started");
+						if (logger.isDebugEnabled()) {
+							logger.debug("update tasks to RUNNING result: [" + String.join(", ", Stream.of(updateResults).map(String::valueOf).collect(Collectors.toList())) + "]");
+							logger.debug("from a total of " + tasks.size() + " available tasks " + tasksToRunIDs.size() + " has been started");
+						}
 					} else {
 						logger.warn("from a total of " + tasks.size() + " available tasks none has been started");
 					}
@@ -230,14 +294,12 @@ final class OracleDbDataProvider extends ClusterTasksDbDataProvider {
 
 		try {
 			JdbcTemplate jdbcTemplate = getJdbcTemplate();
-			String sql = "SELECT " + ClusterTasksDbDataProvider.BODY +
-					" FROM " + ClusterTasksDbDataProvider.BODY_TABLE_NAME + partitionIndex +
-					" WHERE " + ClusterTasksDbDataProvider.BODY_ID + " = ?";
+			String sql = selectTaskBodyByPartitionSQLs.get(partitionIndex);
 			return jdbcTemplate.query(
 					sql,
 					new Object[]{taskId},
 					new int[]{BIGINT},
-					ClusterTasksDbUtils::rowToTaskBodyReader);
+					this::rowToTaskBodyReader);
 		} catch (DataAccessException dae) {
 			logger.error(clusterTasksService.getInstanceID() + " failed to retrieve task's body", dae);
 			throw new CtsGeneralFailure("failed to retrieve task's body", dae);
@@ -252,7 +314,6 @@ final class OracleDbDataProvider extends ClusterTasksDbDataProvider {
 
 		try {
 			JdbcTemplate jdbcTemplate = getJdbcTemplate();
-			String updateTaskFinishedSQL = buildUpdateTaskFinishedSQL();
 			jdbcTemplate.update(
 					updateTaskFinishedSQL,
 					new Object[]{taskId},
@@ -268,8 +329,7 @@ final class OracleDbDataProvider extends ClusterTasksDbDataProvider {
 		getTransactionTemplate().execute(transactionStatus -> {
 			try {
 				JdbcTemplate jdbcTemplate = getJdbcTemplate();
-				String selectGCValidTasksSQL = buildSelectGCValidTasksSQL();
-				List<TaskInternal> gcCandidates = jdbcTemplate.query(selectGCValidTasksSQL, ClusterTasksDbUtils::gcCandidatesReader);
+				List<TaskInternal> gcCandidates = jdbcTemplate.query(selectGCValidTasksSQL, this::gcCandidatesReader);
 
 				//  delete garbage tasks data
 				Map<Long, Long> dataSetToDelete = new LinkedHashMap<>();
@@ -301,8 +361,7 @@ final class OracleDbDataProvider extends ClusterTasksDbDataProvider {
 
 	@Override
 	public void reinsertScheduledTasks(List<TaskInternal> candidatesToReschedule) {
-		String countAllPendingScheduled = buildCountScheduledPendingTasksSQL();
-		Map<String, Integer> pendingCount = getJdbcTemplate().query(countAllPendingScheduled, ClusterTasksDbUtils::scheduledPendingReader);
+		Map<String, Integer> pendingCount = getJdbcTemplate().query(countScheduledPendingTasksSQL, this::scheduledPendingReader);
 		List<TaskInternal> tasksToReschedule = new LinkedList<>();
 		candidatesToReschedule.forEach(task -> {
 			if (!pendingCount.containsKey(task.processorType) || pendingCount.get(task.processorType) == 0) {
@@ -329,51 +388,5 @@ final class OracleDbDataProvider extends ClusterTasksDbDataProvider {
 		}
 		result += "END;";
 		return result;
-	}
-
-	private String buildSelectForUpdateTasksSQL(int maxProcessorTypes) {
-		String selectFields = String.join(",", META_ID, TASK_TYPE, PROCESSOR_TYPE, UNIQUENESS_KEY, CONCURRENCY_KEY, ORDERING_FACTOR, DELAY_BY_MILLIS, MAX_TIME_TO_RUN, BODY_PARTITION, STATUS);
-		String processorTypesInParameter = String.join(",", Collections.nCopies(maxProcessorTypes, "?"));
-		return "SELECT " + selectFields +
-				" FROM " + META_TABLE_NAME + " WHERE ROWID IN " +
-				"   (SELECT row_id FROM" +
-				"       (SELECT ROWID AS row_id," +
-				"               ROW_NUMBER() OVER (PARTITION BY COALESCE(" + CONCURRENCY_KEY + ",RAWTOHEX(SYS_GUID())) ORDER BY " + ORDERING_FACTOR + "," + CREATED + "," + META_ID + " ASC) AS row_index," +
-				"               COUNT(CASE WHEN " + STATUS + " = " + ClusterTaskStatus.RUNNING.value + " THEN 1 ELSE NULL END) OVER (PARTITION BY COALESCE(" + CONCURRENCY_KEY + ",RAWTOHEX(SYS_GUID()))) AS running_count" +
-				"       FROM " + META_TABLE_NAME +
-				"       WHERE " + PROCESSOR_TYPE + " IN(" + processorTypesInParameter + ")" +
-				"           AND " + STATUS + " < " + ClusterTaskStatus.FINISHED.value +
-				"           AND " + CREATED + " <= SYSDATE - NUMTODSINTERVAL(" + DELAY_BY_MILLIS + " / 1000, 'SECOND')) meta" +
-				"   WHERE meta.row_index <= 1 AND meta.running_count = 0)" +
-				" FOR UPDATE";
-	}
-
-	private String buildUpdateTaskStartedSQL() {
-		return "UPDATE " + META_TABLE_NAME + " SET " +
-				STATUS + " = " + ClusterTaskStatus.RUNNING.value + ", " +
-				STARTED + " = SYSDATE, " +
-				RUNTIME_INSTANCE + " = ? WHERE " + META_ID + " = ?";
-	}
-
-	private String buildUpdateTaskFinishedSQL() {
-		return "UPDATE " + META_TABLE_NAME + " SET " +
-				String.join(",",
-						STATUS + " = " + ClusterTaskStatus.FINISHED.value,
-						UNIQUENESS_KEY + " = RAWTOHEX(SYS_GUID())") +
-				" WHERE " + META_ID + " = ?";
-	}
-
-	private String buildCountScheduledPendingTasksSQL() {
-		return "SELECT " + PROCESSOR_TYPE + ",COUNT(*) AS total FROM " + META_TABLE_NAME +
-				" WHERE " + TASK_TYPE + " = " + ClusterTaskType.SCHEDULED.value + " AND " + STATUS + " = " + ClusterTaskStatus.PENDING.value +
-				" GROUP BY " + PROCESSOR_TYPE;
-	}
-
-	private String buildSelectGCValidTasksSQL() {
-		String selectedFields = String.join(",", META_ID, BODY_PARTITION, TASK_TYPE, PROCESSOR_TYPE, STATUS, MAX_TIME_TO_RUN);
-		return "SELECT " + selectedFields + " FROM " + META_TABLE_NAME +
-				" WHERE " + STATUS + " = " + ClusterTaskStatus.FINISHED.value +
-				" OR (" + STATUS + " = " + ClusterTaskStatus.RUNNING.value + " AND " + STARTED + " < SYSDATE - NUMTODSINTERVAL(" + MAX_TIME_TO_RUN + " / 1000, 'SECOND'))" +
-				" FOR UPDATE";
 	}
 }

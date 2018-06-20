@@ -408,6 +408,8 @@ public class ClusterTasksServiceImpl implements ClusterTasksService {
 					if (serviceConfigurer.isEnabled()) {
 						dataProvidersMap.forEach((dpType, dataProvider) -> {
 							if (dataProvider.isReady()) {
+
+								//  [YG] TODO: split rescheduling from GC, this will most likely allow remove some locking
 								dataProvider.handleGarbageAndStaled();
 
 								//  upon once-in-a-while decision - do count tasks
