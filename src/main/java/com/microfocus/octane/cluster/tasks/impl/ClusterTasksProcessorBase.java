@@ -122,13 +122,24 @@ public abstract class ClusterTasksProcessorBase {
 	}
 
 	final boolean isReadyToHandleTaskInternal() {
+		long FOREIGN_CHECK_DURATION_THRESHOLD = 5;
 		boolean internalResult = true;
 		if (availableWorkers.get() == 0) {
 			internalResult = false;
 		} else if (minimalTasksTakeInterval > 0) {
 			internalResult = System.currentTimeMillis() - lastTaskHandledLocalTime > minimalTasksTakeInterval;
 		}
-		return internalResult && isReadyToHandleTask();
+
+		boolean foreignResult = true;
+		if (internalResult) {
+			long foreignCallStart = System.currentTimeMillis();
+			foreignResult = isReadyToHandleTask();
+			long foreignCallDuration = System.currentTimeMillis() - foreignCallStart;
+			if (foreignCallDuration > FOREIGN_CHECK_DURATION_THRESHOLD) {
+				logger.warn("call to a foreign method 'isReadyToHandleTask' took more than " + FOREIGN_CHECK_DURATION_THRESHOLD + "ms (" + foreignCallDuration + "ms)");
+			}
+		}
+		return internalResult && foreignResult;
 	}
 
 	final Collection<TaskInternal> selectTasksToRun(List<TaskInternal> candidates) {
