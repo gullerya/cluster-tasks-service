@@ -74,7 +74,7 @@ public class ClusterTasksServiceImpl implements ClusterTasksService {
 				.register();
 	}
 
-	private final long MAX_TIME_TO_RUN_DEFAULT = 1000 * 60;
+	private static final long MAX_TIME_TO_RUN_DEFAULT = 1000 * 60;
 
 	@Autowired(required = false)
 	private void registerProcessors(List<ClusterTasksProcessorBase> processors) {
@@ -322,7 +322,6 @@ public class ClusterTasksServiceImpl implements ClusterTasksService {
 	}
 
 	private final class ClusterTasksDispatcher implements Runnable {
-		private volatile boolean isDataProviderReady = false;
 
 		@Override
 		public void run() {
@@ -341,21 +340,7 @@ public class ClusterTasksServiceImpl implements ClusterTasksService {
 					logger.error("failure within dispatch iteration; total failures: " + dispatchErrors.get(), t);
 				} finally {
 					dispatchTimer.observeDuration();
-				}
-
-				//  breathing pause
-				Integer breathingInterval = null;
-				try {
-					breathingInterval = serviceConfigurer.getTasksPollIntervalMillis();
-				} catch (Throwable t) {
-					logger.warn("failed to obtain breathing interval from service configurer, falling back to DEFAULT (" + serviceConfigurer.DEFAULT_POLL_INTERVAL + ")", t);
-				}
-				breathingInterval = breathingInterval == null ? serviceConfigurer.DEFAULT_POLL_INTERVAL : breathingInterval;
-				breathingInterval = Math.max(breathingInterval, serviceConfigurer.MINIMAL_POLL_INTERVAL);
-				try {
-					Thread.sleep(breathingInterval);
-				} catch (InterruptedException ie) {
-					logger.warn("interrupted while breathing between dispatch rounds", ie);
+					breathe();
 				}
 			}
 		}
@@ -381,6 +366,22 @@ public class ClusterTasksServiceImpl implements ClusterTasksService {
 					}
 				}
 			});
+		}
+
+		private void breathe() {
+			Integer breathingInterval = null;
+			try {
+				breathingInterval = serviceConfigurer.getTasksPollIntervalMillis();
+			} catch (Throwable t) {
+				logger.warn("failed to obtain breathing interval from service configurer, falling back to DEFAULT (" + serviceConfigurer.DEFAULT_POLL_INTERVAL + ")", t);
+			}
+			breathingInterval = breathingInterval == null ? serviceConfigurer.DEFAULT_POLL_INTERVAL : breathingInterval;
+			breathingInterval = Math.max(breathingInterval, serviceConfigurer.MINIMAL_POLL_INTERVAL);
+			try {
+				Thread.sleep(breathingInterval);
+			} catch (InterruptedException ie) {
+				logger.warn("interrupted while breathing between dispatch rounds", ie);
+			}
 		}
 	}
 
@@ -425,20 +426,7 @@ public class ClusterTasksServiceImpl implements ClusterTasksService {
 					logger.error("failed to perform maintenance round; total failures: " + maintenanceErrors.get(), t);
 				} finally {
 					maintenanceTimer.observeDuration();
-
-					Integer maintenanceInterval = null;
-					try {
-						maintenanceInterval = serviceConfigurer.getMaintenanceIntervalMillis();
-					} catch (Throwable t) {
-						logger.error("failed to obtain maintenance interval from hosting application, falling back to default (" + ClusterTasksServiceConfigurerSPI.DEFAULT_MAINTENANCE_INTERVAL + ")", t);
-					}
-					maintenanceInterval = maintenanceInterval == null ? ClusterTasksServiceConfigurerSPI.DEFAULT_MAINTENANCE_INTERVAL : maintenanceInterval;
-					maintenanceInterval = Math.max(maintenanceInterval, ClusterTasksServiceConfigurerSPI.MINIMAL_MAINTENANCE_INTERVAL);
-					try {
-						Thread.sleep(maintenanceInterval);
-					} catch (InterruptedException ie) {
-						logger.warn("interrupted while breathing between maintenance rounds", ie);
-					}
+					breathe();
 				}
 			}
 		}
@@ -449,6 +437,22 @@ public class ClusterTasksServiceImpl implements ClusterTasksService {
 				pendingTasksCounters.forEach((processorType, count) -> pendingTasksCounter.labels(processorType).set(count));
 			} catch (Exception e) {
 				logger.error("failed to count tasks", e);
+			}
+		}
+
+		private void breathe() {
+			Integer maintenanceInterval = null;
+			try {
+				maintenanceInterval = serviceConfigurer.getMaintenanceIntervalMillis();
+			} catch (Throwable t) {
+				logger.error("failed to obtain maintenance interval from hosting application, falling back to default (" + ClusterTasksServiceConfigurerSPI.DEFAULT_MAINTENANCE_INTERVAL + ")", t);
+			}
+			maintenanceInterval = maintenanceInterval == null ? ClusterTasksServiceConfigurerSPI.DEFAULT_MAINTENANCE_INTERVAL : maintenanceInterval;
+			maintenanceInterval = Math.max(maintenanceInterval, ClusterTasksServiceConfigurerSPI.MINIMAL_MAINTENANCE_INTERVAL);
+			try {
+				Thread.sleep(maintenanceInterval);
+			} catch (InterruptedException ie) {
+				logger.warn("interrupted while breathing between maintenance rounds", ie);
 			}
 		}
 	}
