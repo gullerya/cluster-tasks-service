@@ -1,6 +1,8 @@
 ###Changelog
 
 #####1.1.10 (current snapshot)
+- improved performance of SQL strings handling (static constants instead of dynamically building each time)
+- removed usage of `CTSKM_IDX_2` in `SELECT` statements of MSSQL to reduce the probability of deadlocks
 
 #####1.1.9
 - added `isEnabled` to SPI to allow configurer to suspend `cluster-tasks-service` from dispatching tasks and maintenance
