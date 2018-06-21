@@ -44,6 +44,8 @@ final class MsSqlDbDataProvider extends ClusterTasksDbDataProvider {
 	private final String areIndicesReadySQL;
 	private final String areSequencesReadySQL;
 
+	private final String insertTaskWithoutBodySQL;
+	private final Map<Long, String> insertTaskWithBodySQL = new LinkedHashMap<>();
 	private final Map<Integer, String> selectForUpdateTasksSQLs = new LinkedHashMap<>();
 	private final Map<Long, String> selectTaskBodyByPartitionSQLs = new LinkedHashMap<>();
 
@@ -64,6 +66,11 @@ final class MsSqlDbDataProvider extends ClusterTasksDbDataProvider {
 		areSequencesReadySQL = "SELECT COUNT(*) AS cts_sequences_count FROM sys.sequences WHERE name IN(" +
 				String.join(",", getCTSSequenceNames().stream().map(sn -> "'" + sn + "'").collect(Collectors.toSet())) + ")";
 
+		String insertFields = String.join(",", META_ID, TASK_TYPE, PROCESSOR_TYPE, UNIQUENESS_KEY, CONCURRENCY_KEY, DELAY_BY_MILLIS, MAX_TIME_TO_RUN, BODY_PARTITION, ORDERING_FACTOR, CREATED, STATUS);
+		insertTaskWithoutBodySQL = "DECLARE @taskId BIGINT = NEXT VALUE FOR " + CLUSTER_TASK_ID_SEQUENCE + ";" +
+				" INSERT INTO " + META_TABLE_NAME + " (" + insertFields + ")" +
+				" VALUES (@taskId, ?, ?, ?, ?, ?, ?, ?, COALESCE(?, CAST(FORMAT(CURRENT_TIMESTAMP,'yyyyMMddHHmmssfff') AS BIGINT) + ?), GETDATE(), " + ClusterTaskStatus.PENDING.value + ");";
+
 		String selectFields = String.join(",", META_ID, TASK_TYPE, PROCESSOR_TYPE, UNIQUENESS_KEY, CONCURRENCY_KEY, ORDERING_FACTOR, DELAY_BY_MILLIS, MAX_TIME_TO_RUN, BODY_PARTITION, STATUS);
 		for (int maxProcessorTypes : new Integer[]{20, 50, 100, 500}) {
 			String processorTypesInParameter = String.join(",", Collections.nCopies(maxProcessorTypes, "?"));
@@ -82,6 +89,11 @@ final class MsSqlDbDataProvider extends ClusterTasksDbDataProvider {
 		for (long partition = 0; partition < PARTITIONS_NUMBER; partition++) {
 			selectTaskBodyByPartitionSQLs.put(partition, "SELECT " + BODY + " FROM " + BODY_TABLE_NAME + partition +
 					" WHERE " + BODY_ID + " = ?");
+			insertTaskWithBodySQL.put(partition, "DECLARE @taskId BIGINT = NEXT VALUE FOR " + CLUSTER_TASK_ID_SEQUENCE + ";" +
+					" INSERT INTO " + META_TABLE_NAME + " (" + insertFields + ")" +
+					" VALUES (@taskId, ?, ?, ?, ?, ?, ?, ?, COALESCE(?, CAST(FORMAT(CURRENT_TIMESTAMP,'yyyyMMddHHmmssfff') AS BIGINT) + ?), GETDATE(), " + ClusterTaskStatus.PENDING.value + ");" +
+					" INSERT INTO " + BODY_TABLE_NAME + partition + " (" + String.join(",", BODY_ID, BODY) + ") VALUES (@taskId, ?);"
+			);
 		}
 
 		updateTasksStartedSQL = "UPDATE " + META_TABLE_NAME + " SET " + STATUS + " = " + ClusterTaskStatus.RUNNING.value + ", " + STARTED + " = GETDATE(), " + RUNTIME_INSTANCE + " = ?" +
@@ -374,14 +386,8 @@ final class MsSqlDbDataProvider extends ClusterTasksDbDataProvider {
 	}
 
 	private String buildInsertTaskSQL(Long partitionIndex) {
-		String result;
-		String fields = String.join(",", META_ID, TASK_TYPE, PROCESSOR_TYPE, UNIQUENESS_KEY, CONCURRENCY_KEY, DELAY_BY_MILLIS, MAX_TIME_TO_RUN, BODY_PARTITION, ORDERING_FACTOR, CREATED, STATUS);
-		result = "DECLARE @taskId BIGINT = NEXT VALUE FOR " + CLUSTER_TASK_ID_SEQUENCE + "; " +
-				"INSERT INTO " + META_TABLE_NAME + " (" + fields + ") " +
-				"VALUES (@taskId, ?, ?, ?, ?, ?, ?, ?, COALESCE(?, CAST(FORMAT(CURRENT_TIMESTAMP,'yyyyMMddHHmmssfff') AS BIGINT) + ?), GETDATE(), " + ClusterTaskStatus.PENDING.value + "); ";
-		if (partitionIndex != null) {
-			result += "INSERT INTO " + BODY_TABLE_NAME + partitionIndex + " (" + String.join(",", BODY_ID, BODY) + ") VALUES (@taskId, ?); ";
-		}
-		return result;
+		return partitionIndex == null ?
+				insertTaskWithoutBodySQL :
+				insertTaskWithBodySQL.get(partitionIndex);
 	}
 }

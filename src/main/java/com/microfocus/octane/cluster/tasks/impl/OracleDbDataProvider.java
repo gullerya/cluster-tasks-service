@@ -44,6 +44,8 @@ final class OracleDbDataProvider extends ClusterTasksDbDataProvider {
 	private final String areIndicesReadySQL;
 	private final String areSequencesReadySQL;
 
+	private final String insertTaskWithoutBodySQL;
+	private final Map<Long, String> insertTaskWithBodySQL = new LinkedHashMap<>();
 	private final Map<Integer, String> selectForUpdateTasksSQLs = new LinkedHashMap<>();
 	private final Map<Long, String> selectTaskBodyByPartitionSQLs = new LinkedHashMap<>();
 
@@ -64,6 +66,13 @@ final class OracleDbDataProvider extends ClusterTasksDbDataProvider {
 		areSequencesReadySQL = "SELECT COUNT(*) AS cts_sequences_count FROM user_sequences WHERE sequence_name IN(" +
 				String.join(",", getCTSSequenceNames().stream().map(sn -> "'" + sn + "'").collect(Collectors.toSet())) + ")";
 
+		String insertFields = String.join(",", META_ID, TASK_TYPE, PROCESSOR_TYPE, UNIQUENESS_KEY, CONCURRENCY_KEY, DELAY_BY_MILLIS, MAX_TIME_TO_RUN, BODY_PARTITION, ORDERING_FACTOR, CREATED, STATUS);
+		insertTaskWithoutBodySQL = "DECLARE taskId NUMBER(19) := " + CLUSTER_TASK_ID_SEQUENCE + ".NEXTVAL;" +
+				" BEGIN" +
+				"   INSERT INTO " + META_TABLE_NAME + " (" + insertFields + ")" +
+				"   VALUES (taskId, ?, ?, ?, ?, ?, ?, ?, COALESCE(?, TO_NUMBER(TO_CHAR(SYSTIMESTAMP,'yyyymmddhh24missff3')) + ?), SYSDATE, " + ClusterTaskStatus.PENDING.value + ");" +
+				" END;";
+
 		String selectForRunFields = String.join(",", META_ID, TASK_TYPE, PROCESSOR_TYPE, UNIQUENESS_KEY, CONCURRENCY_KEY, ORDERING_FACTOR, DELAY_BY_MILLIS, MAX_TIME_TO_RUN, BODY_PARTITION, STATUS);
 		for (int maxProcessorTypes : new Integer[]{20, 50, 100, 500}) {
 			String processorTypesInParameter = String.join(",", Collections.nCopies(maxProcessorTypes, "?"));
@@ -83,6 +92,12 @@ final class OracleDbDataProvider extends ClusterTasksDbDataProvider {
 		for (long partition = 0; partition < PARTITIONS_NUMBER; partition++) {
 			selectTaskBodyByPartitionSQLs.put(partition, "SELECT " + BODY + " FROM " + BODY_TABLE_NAME + partition +
 					" WHERE " + BODY_ID + " = ?");
+			insertTaskWithBodySQL.put(partition, "DECLARE taskId NUMBER(19) := " + CLUSTER_TASK_ID_SEQUENCE + ".NEXTVAL;" +
+					" BEGIN" +
+					"   INSERT INTO " + META_TABLE_NAME + " (" + insertFields + ")" +
+					"   VALUES (taskId, ?, ?, ?, ?, ?, ?, ?, COALESCE(?, TO_NUMBER(TO_CHAR(SYSTIMESTAMP,'yyyymmddhh24missff3')) + ?), SYSDATE, " + ClusterTaskStatus.PENDING.value + ");" +
+					"   INSERT INTO " + BODY_TABLE_NAME + partition + " (" + String.join(",", BODY_ID, BODY) + ") VALUES (taskId, ?);" +
+					" END;");
 		}
 
 		updateTasksStartedSQL = "UPDATE " + META_TABLE_NAME + " SET " + STATUS + " = " + ClusterTaskStatus.RUNNING.value + ", " + STARTED + " = SYSDATE, " + RUNTIME_INSTANCE + " = ?" +
@@ -376,16 +391,8 @@ final class OracleDbDataProvider extends ClusterTasksDbDataProvider {
 	}
 
 	private String buildInsertTaskSQL(Long partitionIndex) {
-		String result;
-		String fields = String.join(",", META_ID, TASK_TYPE, PROCESSOR_TYPE, UNIQUENESS_KEY, CONCURRENCY_KEY, DELAY_BY_MILLIS, MAX_TIME_TO_RUN, BODY_PARTITION, ORDERING_FACTOR, CREATED, STATUS);
-		result = "DECLARE taskId NUMBER(19) := " + CLUSTER_TASK_ID_SEQUENCE + ".NEXTVAL; " +
-				"BEGIN " +
-				"INSERT INTO " + META_TABLE_NAME + " (" + fields + ") " +
-				"VALUES (taskId, ?, ?, ?, ?, ?, ?, ?, COALESCE(?, TO_NUMBER(TO_CHAR(SYSTIMESTAMP,'yyyymmddhh24missff3')) + ?), SYSDATE, " + ClusterTaskStatus.PENDING.value + "); ";
-		if (partitionIndex != null) {
-			result += "INSERT INTO " + BODY_TABLE_NAME + partitionIndex + " (" + String.join(",", BODY_ID, BODY) + ") VALUES (taskId, ?); ";
-		}
-		result += "END;";
-		return result;
+		return partitionIndex == null ?
+				insertTaskWithoutBodySQL :
+				insertTaskWithBodySQL.get(partitionIndex);
 	}
 }
