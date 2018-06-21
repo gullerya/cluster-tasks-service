@@ -160,13 +160,16 @@ final class MsSqlDbDataProvider extends ClusterTasksDbDataProvider {
 			getTransactionTemplate().execute(transactionStatus -> {
 				try {
 					JdbcTemplate jdbcTemplate = getJdbcTemplate();
+					String insertTaskSql;
 					boolean hasBody = task.body != null;
 					if (hasBody) {
 						task.partitionIndex = resolveBodyTablePartitionIndex();
+						insertTaskSql = insertTaskWithBodySQL.get(task.partitionIndex);
+					} else {
+						insertTaskSql = insertTaskWithoutBodySQL;
 					}
 
 					//  insert task
-					String insertTaskSql = buildInsertTaskSQL(task.partitionIndex);
 					Object[] paramValues = new Object[]{
 							task.taskType.value,
 							task.processorType,
@@ -383,11 +386,5 @@ final class MsSqlDbDataProvider extends ClusterTasksDbDataProvider {
 		if (!tasksToReschedule.isEmpty()) {
 			storeTasks(tasksToReschedule.toArray(new TaskInternal[0]));
 		}
-	}
-
-	private String buildInsertTaskSQL(Long partitionIndex) {
-		return partitionIndex == null ?
-				insertTaskWithoutBodySQL :
-				insertTaskWithBodySQL.get(partitionIndex);
 	}
 }
