@@ -228,7 +228,6 @@ public class ClusterTasksServiceImpl implements ClusterTasksService {
 					logger.error("DB type '" + serviceConfigurer.getDbType() + "' has no data provider, DB oriented tasking won't be available");
 					break;
 			}
-			dataProvidersMap.get(ClusterTasksDataProviderType.DB).isReady();
 		}
 
 		//  summary
@@ -416,16 +415,16 @@ public class ClusterTasksServiceImpl implements ClusterTasksService {
 				Summary.Timer maintenanceTimer = maintenanceDurationSummary.startTimer();
 				try {
 					if (isEnabled()) {
-						dataProvidersMap.forEach((dpType, dataProvider) -> {
-							if (dataProvider.isReady()) {
+						dataProvidersMap.forEach((dpType, provider) -> {
+							if (provider.isReady()) {
 
 								//  [YG] TODO: split rescheduling from GC, this will most likely allow remove some locking
-								dataProvider.handleGarbageAndStaled();
+								provider.handleGarbageAndStaled();
 
 								//  upon once-in-a-while decision - do count tasks
 								if (System.currentTimeMillis() - lastTasksCountTime > ClusterTasksServiceConfigurerSPI.DEFAULT_TASKS_COUNT_INTERVAL) {
 									lastTasksCountTime = System.currentTimeMillis();
-									countTasks(dataProvider);
+									countTasks(provider);
 								}
 							}
 						});
