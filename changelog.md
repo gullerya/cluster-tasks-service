@@ -1,6 +1,7 @@
 ###Changelog
 
-#####1.2.1 (current snapshot)
+#####1.3.0 (current snapshot)
+- added support for `PostgreSQL`
 
 #####1.2.0
 - improved performance of SQL strings handling (static constants instead of dynamically building each time)

@@ -18,7 +18,6 @@ import java.sql.SQLException;
 import java.time.Duration;
 import java.time.ZoneOffset;
 import java.time.ZonedDateTime;
-import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
 import java.util.LinkedList;
@@ -73,7 +72,6 @@ abstract class ClusterTasksDbDataProvider implements ClusterTasksDataProvider {
 
 	final int PARTITIONS_NUMBER = 4;
 
-	private final Map<ClusterTaskStatus, String> countTasksByStatusSQLs = new LinkedHashMap<>();
 	private final Map<Long, String> lookupOrphansByPartitionSQLs = new LinkedHashMap<>();
 	private final String deleteTaskMetaSQL;
 	private final Map<Long, String> deleteTaskBodyByPartitionSQLs = new LinkedHashMap<>();
@@ -94,10 +92,6 @@ abstract class ClusterTasksDbDataProvider implements ClusterTasksDataProvider {
 		this.serviceConfigurer = serviceConfigurer;
 
 		//  prepare SQL statements
-		for (ClusterTaskStatus status : ClusterTaskStatus.values()) {
-			countTasksByStatusSQLs
-					.put(status, "SELECT COUNT(*) AS counter," + PROCESSOR_TYPE + " FROM " + META_TABLE_NAME + " WHERE " + STATUS + " = " + status.value + " GROUP BY " + PROCESSOR_TYPE);
-		}
 		deleteTaskMetaSQL = "DELETE FROM " + META_TABLE_NAME + " WHERE " + META_ID + " = ?";
 		for (long partition = 0; partition < PARTITIONS_NUMBER; partition++) {
 			lookupOrphansByPartitionSQLs.put(partition, "SELECT " + String.join(",", BODY_ID, BODY, META_ID) + " FROM " + BODY_TABLE_NAME + partition +
@@ -111,22 +105,6 @@ abstract class ClusterTasksDbDataProvider implements ClusterTasksDataProvider {
 	@Override
 	public ClusterTasksDataProviderType getType() {
 		return ClusterTasksDataProviderType.DB;
-	}
-
-	@Override
-	public Map<String, Integer> countTasks(ClusterTaskStatus status) {
-		String countTasksSQL = countTasksByStatusSQLs.get(status);
-		return getJdbcTemplate().query(countTasksSQL, resultSet -> {
-			Map<String, Integer> result = new HashMap<>();
-			while (resultSet.next()) {
-				try {
-					result.put(resultSet.getString(PROCESSOR_TYPE), resultSet.getInt("counter"));
-				} catch (SQLException sqle) {
-					logger.error("failed to process counted tasks result", sqle);
-				}
-			}
-			return result;
-		});
 	}
 
 	@Deprecated
@@ -173,18 +151,6 @@ abstract class ClusterTasksDbDataProvider implements ClusterTasksDataProvider {
 			}
 		}
 		return transactionTemplate;
-	}
-
-	Set<String> getCTSTableNames() {
-		return Stream.of(META_TABLE_NAME, BODY_TABLE_NAME + "0", BODY_TABLE_NAME + "1", BODY_TABLE_NAME + "2", BODY_TABLE_NAME + "3").collect(Collectors.toSet());
-	}
-
-	Set<String> getCTSIndexNames() {
-		return Stream.of("CTSKM_PK", "CTSKM_IDX_2", "CTSKM_IDX_3", "CTSKM_IDX_4", "CTSKB_PK_P0", "CTSKB_PK_P1", "CTSKB_PK_P2", "CTSKB_PK_P3").collect(Collectors.toSet());
-	}
-
-	Set<String> getCTSSequenceNames() {
-		return Stream.of(CLUSTER_TASK_ID_SEQUENCE).collect(Collectors.toSet());
 	}
 
 	List<TaskInternal> tasksMetadataReader(ResultSet resultSet) {

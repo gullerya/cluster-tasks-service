@@ -48,7 +48,7 @@ class ClusterTasksServiceSchemaManager {
 	}
 
 	private String getSQLsLocation(ClusterTasksServiceConfigurerSPI.DBType dbType) {
-		String result = null;
+		String result;
 		switch (dbType) {
 			case ORACLE:
 				result = "classpath:cts/schema/oracle";
@@ -56,6 +56,11 @@ class ClusterTasksServiceSchemaManager {
 			case MSSQL:
 				result = "classpath:cts/schema/sqlserver";
 				break;
+			case POSTGRESQL:
+				result = "classpath:cts/schema/postgresql";
+				break;
+			default:
+				throw new IllegalArgumentException(dbType + " is not supported");
 		}
 		return result;
 	}
