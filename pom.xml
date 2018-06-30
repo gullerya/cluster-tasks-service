@@ -4,44 +4,102 @@
 		 xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
 	<modelVersion>4.0.0</modelVersion>
 
-	<parent>
-		<groupId>com.microfocus.octane</groupId>
-		<artifactId>octane-component-parent</artifactId>
-		<version>1.0.13</version>
-	</parent>
-
 	<artifactId>cluster-tasks-service</artifactId>
+	<groupId>com.microfocus.octane</groupId>
 	<version>1.2.1-SNAPSHOT</version>
 
 	<properties>
+
+		<slf4j.version>1.7.25</slf4j.version>
 		<spring.version>4.2.5.RELEASE</spring.version>
-		<flyway.version>4.2.0</flyway.version>
-		<prometheus.version>0.1.0</prometheus.version>
+		<flyway.version>5.1.3</flyway.version>
+		<prometheus.version>0.4.0</prometheus.version>
+
+		<!--BUILD-->
+		<jdk.version>1.8</jdk.version>
+		<maven-clean-plugin.version>3.1.0</maven-clean-plugin.version>
+		<maven-source-plugin.version>3.0.1</maven-source-plugin.version>
+		<maven-compiler-plugin.version>3.7.0</maven-compiler-plugin.version>
+		<maven-deploy-plugin.version>2.8.2</maven-deploy-plugin.version>
 
 		<!--TESTS-->
-		<tests.db.schema>cts_tests_schema</tests.db.schema>
 		<octane.jdbc.service.version>1.0.9</octane.jdbc.service.version>
-		<jacoco.version>0.7.9</jacoco.version>
+
+		<skipTests>true</skipTests>
+		<junit.version>4.12</junit.version>
+		<maven-surefire-plugin.version>2.22.0</maven-surefire-plugin.version>
+		<jacoco-maven-plugin.version>0.8.1</jacoco-maven-plugin.version>
+		<sql-maven-plugin.version>1.5</sql-maven-plugin.version>
+		<mssql-jdbc.version>6.2.1.jre8</mssql-jdbc.version>
+		<ojdbc.version>11.2.0.3</ojdbc.version>
+		<postgresql.version>42.2.2</postgresql.version>
+
+		<tests.db.schema>cts_tests_schema</tests.db.schema>
+		<tests.db.driver>TO_BE_REPLACED_DYNAMICALLY_BY_PROFILE</tests.db.driver>
+		<tests.db.url>TO_BE_REPLACED_DYNAMICALLY_BY_CONFIG</tests.db.url>
+		<tests.db.username>TO_BE_REPLACED_DYNAMICALLY_BY_PROFILE</tests.db.username>
+		<tests.db.password>TO_BE_REPLACED_DYNAMICALLY_BY_PROFILE</tests.db.password>
+		<tests.db.drop.script>TO_BE_REPLACED_DYNAMICALLY_BY_PROFILE</tests.db.drop.script>
+		<tests.db.create.script>TO_BE_REPLACED_DYNAMICALLY_BY_PROFILE</tests.db.create.script>
 	</properties>
 
+	<dependencyManagement>
+		<dependencies>
+			<dependency>
+				<artifactId>slf4j-api</artifactId>
+				<groupId>org.slf4j</groupId>
+				<version>${slf4j.version}</version>
+			</dependency>
+			<dependency>
+				<artifactId>spring-jdbc</artifactId>
+				<groupId>org.springframework</groupId>
+				<version>${spring.version}</version>
+			</dependency>
+			<dependency>
+				<artifactId>flyway-core</artifactId>
+				<groupId>org.flywaydb</groupId>
+				<version>${flyway.version}</version>
+			</dependency>
+			<dependency>
+				<artifactId>simpleclient</artifactId>
+				<groupId>io.prometheus</groupId>
+				<version>${prometheus.version}</version>
+			</dependency>
+		</dependencies>
+	</dependencyManagement>
+
 	<dependencies>
+
+		<dependency>
+			<artifactId>slf4j-api</artifactId>
+			<groupId>org.slf4j</groupId>
+		</dependency>
 		<dependency>
 			<artifactId>spring-jdbc</artifactId>
 			<groupId>org.springframework</groupId>
-			<version>${spring.version}</version>
 		</dependency>
 		<dependency>
 			<artifactId>flyway-core</artifactId>
 			<groupId>org.flywaydb</groupId>
-			<version>${flyway.version}</version>
 		</dependency>
 		<dependency>
 			<artifactId>simpleclient</artifactId>
 			<groupId>io.prometheus</groupId>
-			<version>${prometheus.version}</version>
 		</dependency>
 
 		<!--TESTS-->
+		<dependency>
+			<artifactId>junit</artifactId>
+			<groupId>junit</groupId>
+			<version>${junit.version}</version>
+			<scope>test</scope>
+		</dependency>
+		<dependency>
+			<artifactId>spring-test</artifactId>
+			<groupId>org.springframework</groupId>
+			<version>${spring.version}</version>
+			<scope>test</scope>
+		</dependency>
 		<dependency>
 			<artifactId>octane-jdbc-service</artifactId>
 			<groupId>com.microfocus.octane</groupId>
@@ -49,5 +107,256 @@
 			<scope>test</scope>
 		</dependency>
 	</dependencies>
+
+	<build>
+		<pluginManagement>
+			<plugins>
+				<!--BUILD-->
+				<plugin>
+					<artifactId>versions-maven-plugin</artifactId>
+					<groupId>org.codehaus.mojo</groupId>
+					<version>${versions-maven-plugin.version}</version>
+				</plugin>
+				<plugin>
+					<artifactId>maven-clean-plugin</artifactId>
+					<groupId>org.apache.maven.plugins</groupId>
+					<version>${maven-clean-plugin.version}</version>
+				</plugin>
+				<plugin>
+					<artifactId>maven-compiler-plugin</artifactId>
+					<groupId>org.apache.maven.plugins</groupId>
+					<version>${maven-compiler-plugin.version}</version>
+					<configuration>
+						<source>${jdk.version}</source>
+						<target>${jdk.version}</target>
+						<encoding>UTF-8</encoding>
+					</configuration>
+				</plugin>
+				<plugin>
+					<artifactId>maven-deploy-plugin</artifactId>
+					<groupId>org.apache.maven.plugins</groupId>
+					<version>${maven-deploy-plugin.version}</version>
+				</plugin>
+				<plugin>
+					<artifactId>maven-source-plugin</artifactId>
+					<groupId>org.apache.maven.plugins</groupId>
+					<version>${maven-source-plugin.version}</version>
+				</plugin>
+
+				<!--TESTS-->
+				<plugin>
+					<artifactId>maven-surefire-plugin</artifactId>
+					<groupId>org.apache.maven.plugins</groupId>
+					<version>${maven-surefire-plugin.version}</version>
+					<configuration>
+						<skipTests>${skipTests}</skipTests>
+					</configuration>
+				</plugin>
+				<plugin>
+					<artifactId>jacoco-maven-plugin</artifactId>
+					<groupId>org.jacoco</groupId>
+					<version>${jacoco-maven-plugin.version}</version>
+				</plugin>
+				<plugin>
+					<artifactId>sql-maven-plugin</artifactId>
+					<groupId>org.codehaus.mojo</groupId>
+					<version>${sql-maven-plugin.version}</version>
+					<dependencies>
+						<dependency>
+							<artifactId>mssql-jdbc</artifactId>
+							<groupId>com.microsoft.sqlserver</groupId>
+							<version>${mssql-jdbc.version}</version>
+						</dependency>
+						<dependency>
+							<artifactId>ojdbc</artifactId>
+							<groupId>com.oracle.jdbc</groupId>
+							<version>${ojdbc.version}</version>
+						</dependency>
+						<dependency>
+							<artifactId>postgresql</artifactId>
+							<groupId>org.postgresql</groupId>
+							<version>${postgresql.version}</version>
+						</dependency>
+					</dependencies>
+					<configuration>
+						<driver>${tests.db.driver}</driver>
+						<url>${tests.db.url}</url>
+						<username>${tests.db.username}</username>
+						<password>${tests.db.password}</password>
+					</configuration>
+				</plugin>
+			</plugins>
+		</pluginManagement>
+		<plugins>
+			<plugin>
+				<artifactId>maven-source-plugin</artifactId>
+				<groupId>org.apache.maven.plugins</groupId>
+				<configuration>
+					<excludeResources>true</excludeResources>
+				</configuration>
+				<executions>
+					<execution>
+						<id>attach-sources</id>
+						<goals>
+							<goal>jar</goal>
+						</goals>
+					</execution>
+				</executions>
+			</plugin>
+		</plugins>
+	</build>
+
+	<profiles>
+		<profile>
+			<id>sqlserver</id>
+			<properties>
+				<tests.db.driver>com.microsoft.sqlserver.jdbc.SQLServerDriver</tests.db.driver>
+				<tests.db.url>jdbc:sqlserver://localhost:1433</tests.db.url>
+				<tests.db.username>sa</tests.db.username>
+				<tests.db.password>Mercurypw123</tests.db.password>
+				<tests.db.drop.script>DROP DATABASE ${tests.db.schema}</tests.db.drop.script>
+				<tests.db.create.script>CREATE DATABASE ${tests.db.schema}</tests.db.create.script>
+			</properties>
+		</profile>
+		<profile>
+			<id>oracle</id>
+			<properties>
+				<tests.db.driver>oracle.jdbc.OracleDriver</tests.db.driver>
+				<tests.db.url>jdbc:oracle:thin:@mydtbld0137.hpeswlab.net:1521/mqmdeploy</tests.db.url>
+				<tests.db.username>system</tests.db.username>
+				<tests.db.password>Manager12</tests.db.password>
+				<tests.db.drop.script>
+					DROP USER ${tests.db.schema} CASCADE;
+					DROP TABLESPACE ${tests.db.schema} INCLUDING CONTENTS AND DATAFILES;
+					DROP TABLESPACE ${tests.db.schema}_tmp INCLUDING CONTENTS AND DATAFILES;
+				</tests.db.drop.script>
+				<tests.db.create.script>
+					CREATE TABLESPACE ${tests.db.schema}
+					DATAFILE '${tests.db.schema}.dat' SIZE 5M AUTOEXTEND ON NEXT 1M
+					NOLOGGING
+					EXTENT MANAGEMENT LOCAL UNIFORM SIZE 1M
+					SEGMENT SPACE MANAGEMENT AUTO;
+
+					CREATE TEMPORARY TABLESPACE ${tests.db.schema}_tmp
+					TEMPFILE '${tests.db.schema}.tmp' SIZE 5M AUTOEXTEND ON NEXT 1M;
+
+					CREATE USER ${tests.db.schema} IDENTIFIED BY ${tests.db.schema}
+					DEFAULT TABLESPACE ${tests.db.schema} TEMPORARY TABLESPACE ${tests.db.schema}_tmp;
+					GRANT CONNECT, RESOURCE, DBA TO ${tests.db.schema};
+					GRANT CREATE SESSION TO ${tests.db.schema};
+					GRANT UNLIMITED TABLESPACE TO ${tests.db.schema};
+				</tests.db.create.script>
+			</properties>
+		</profile>
+		<profile>
+			<id>postgresql</id>
+			<properties>
+				<tests.db.driver>org.postgresql.Driver</tests.db.driver>
+				<tests.db.url>jdbc:postgresql://localhost:5432/postgres</tests.db.url>
+				<tests.db.username>postgres</tests.db.username>
+				<tests.db.password>postgres</tests.db.password>
+				<tests.db.drop.script>DROP DATABASE ${tests.db.schema}</tests.db.drop.script>
+				<tests.db.create.script>CREATE DATABASE ${tests.db.schema}</tests.db.create.script>
+			</properties>
+		</profile>
+		<profile>
+			<id>create-tests-schema</id>
+			<build>
+				<plugins>
+					<plugin>
+						<artifactId>sql-maven-plugin</artifactId>
+						<groupId>org.codehaus.mojo</groupId>
+						<executions>
+							<execution>
+								<id>drop-db-before-test-if-any</id>
+								<phase>process-test-resources</phase>
+								<goals>
+									<goal>execute</goal>
+								</goals>
+								<configuration>
+									<autocommit>true</autocommit>
+									<sqlCommand>${tests.db.drop.script}</sqlCommand>
+									<onError>continue</onError>
+								</configuration>
+							</execution>
+							<execution>
+								<id>create-db</id>
+								<phase>process-test-resources</phase>
+								<goals>
+									<goal>execute</goal>
+								</goals>
+								<configuration>
+									<autocommit>true</autocommit>
+									<sqlCommand>${tests.db.create.script}</sqlCommand>
+								</configuration>
+							</execution>
+						</executions>
+					</plugin>
+				</plugins>
+			</build>
+		</profile>
+		<profile>
+			<id>drop-tests-schema</id>
+			<build>
+				<plugins>
+					<plugin>
+						<artifactId>sql-maven-plugin</artifactId>
+						<groupId>org.codehaus.mojo</groupId>
+						<executions>
+							<execution>
+								<id>drop-db</id>
+								<phase>test</phase>
+								<goals>
+									<goal>execute</goal>
+								</goals>
+								<configuration>
+									<autocommit>true</autocommit>
+									<sqlCommand>${tests.db.drop.script}</sqlCommand>
+									<onError>continue</onError>
+								</configuration>
+							</execution>
+						</executions>
+					</plugin>
+				</plugins>
+			</build>
+		</profile>
+		<profile>
+			<id>jacoco-coverage</id>
+			<build>
+				<plugins>
+					<plugin>
+						<artifactId>jacoco-maven-plugin</artifactId>
+						<groupId>org.jacoco</groupId>
+						<executions>
+							<execution>
+								<id>prepare-agent</id>
+								<goals>
+									<goal>prepare-agent</goal>
+								</goals>
+							</execution>
+							<execution>
+								<id>report</id>
+								<phase>prepare-package</phase>
+								<goals>
+									<goal>report</goal>
+								</goals>
+							</execution>
+							<execution>
+								<id>post-unit-test</id>
+								<phase>test</phase>
+								<goals>
+									<goal>report</goal>
+								</goals>
+								<configuration>
+									<dataFile>target/jacoco.exec</dataFile>
+									<outputDirectory>target/jacoco-report</outputDirectory>
+								</configuration>
+							</execution>
+						</executions>
+					</plugin>
+				</plugins>
+			</build>
+		</profile>
+	</profiles>
 
 </project>
