@@ -6,7 +6,7 @@
 
 	<artifactId>cluster-tasks-service</artifactId>
 	<groupId>com.microfocus.octane</groupId>
-	<version>1.2.1-SNAPSHOT</version>
+	<version>1.3.1-SNAPSHOT</version>
 
 	<properties>
 
@@ -17,9 +17,13 @@
 
 		<!--BUILD-->
 		<jdk.version>1.8</jdk.version>
+		<baseNexusURL>http://mydtbld0051.hpeswlab.net:8081/nexus</baseNexusURL>
 		<maven-clean-plugin.version>3.1.0</maven-clean-plugin.version>
 		<maven-source-plugin.version>3.0.1</maven-source-plugin.version>
+		<maven-resources-plugin.version>3.1.0</maven-resources-plugin.version>
 		<maven-compiler-plugin.version>3.7.0</maven-compiler-plugin.version>
+		<maven-jar-plugin.version>3.1.0</maven-jar-plugin.version>
+		<maven-install-plugin.version>2.5.2</maven-install-plugin.version>
 		<maven-deploy-plugin.version>2.8.2</maven-deploy-plugin.version>
 
 		<!--TESTS-->
@@ -69,7 +73,6 @@
 	</dependencyManagement>
 
 	<dependencies>
-
 		<dependency>
 			<artifactId>slf4j-api</artifactId>
 			<groupId>org.slf4j</groupId>
@@ -108,6 +111,17 @@
 		</dependency>
 	</dependencies>
 
+	<distributionManagement>
+		<repository>
+			<id>mqm-prod</id>
+			<url>${baseNexusURL}/content/repositories/mqm-prod</url>
+		</repository>
+		<snapshotRepository>
+			<id>mqm-latest</id>
+			<url>${baseNexusURL}/content/repositories/mqm-latest</url>
+		</snapshotRepository>
+	</distributionManagement>
+
 	<build>
 		<pluginManagement>
 			<plugins>
@@ -123,6 +137,11 @@
 					<version>${maven-clean-plugin.version}</version>
 				</plugin>
 				<plugin>
+					<artifactId>maven-resources-plugin</artifactId>
+					<groupId>org.apache.maven.plugins</groupId>
+					<version>${maven-resources-plugin.version}</version>
+				</plugin>
+				<plugin>
 					<artifactId>maven-compiler-plugin</artifactId>
 					<groupId>org.apache.maven.plugins</groupId>
 					<version>${maven-compiler-plugin.version}</version>
@@ -131,6 +150,16 @@
 						<target>${jdk.version}</target>
 						<encoding>UTF-8</encoding>
 					</configuration>
+				</plugin>
+				<plugin>
+					<artifactId>maven-jar-plugin</artifactId>
+					<groupId>org.apache.maven.plugins</groupId>
+					<version>${maven-jar-plugin.version}</version>
+				</plugin>
+				<plugin>
+					<artifactId>maven-install-plugin</artifactId>
+					<groupId>org.apache.maven.plugins</groupId>
+					<version>${maven-install-plugin.version}</version>
 				</plugin>
 				<plugin>
 					<artifactId>maven-deploy-plugin</artifactId>

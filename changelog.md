@@ -1,6 +1,8 @@
 ###Changelog
 
-#####1.3.0 (current snapshot)
+#####1.3.1 (current snapshot)
+
+#####1.3.0
 - added support for `PostgreSQL`
 
 #####1.2.0
