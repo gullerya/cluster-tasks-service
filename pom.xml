@@ -18,6 +18,7 @@
 		<!--BUILD-->
 		<jdk.version>1.8</jdk.version>
 		<baseNexusURL>http://mydtbld0051.hpeswlab.net:8081/nexus</baseNexusURL>
+		<versions-maven-plugin.version>2.5</versions-maven-plugin.version>
 		<maven-clean-plugin.version>3.1.0</maven-clean-plugin.version>
 		<maven-source-plugin.version>3.0.1</maven-source-plugin.version>
 		<maven-resources-plugin.version>3.1.0</maven-resources-plugin.version>
