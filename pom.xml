@@ -7,7 +7,36 @@
 	<artifactId>cluster-tasks-service</artifactId>
 	<groupId>com.microfocus.octane</groupId>
 	<version>1.3.1-SNAPSHOT</version>
+	
+	<name>Cluster Tasks Service (CTS)</name>
+	<descriptions>Tasks manangement, distribution and execution service, working in cluster aware fashion, providing queue-like functionalities, embedded.</description>
+	<url>https://github.com/MicroFocus/cluster-tasks-service</url>
 
+	<licenses>
+		<license>
+			<name>The Apache License, Version 2.0</name>
+			<url>http://www.apache.org/licenses/LICENSE-2.0.txt</url>
+		</license>
+	</licenses>
+	
+	<developers>
+		<developer>
+			<id>gullery</id>
+			<name>Yuri Guller</name>
+			<email>gullerya@gmail.com</email>
+			<organization>MicroFocus</organization>
+			<roles>
+				<role>Global Owner</role>
+			</roles>
+		</developer>
+	</developers>
+	
+	<scm>
+		<connection>scm:git:git://github.com/MicroFocus/cluster-tasks-service.git</connection>
+		<developerConnection>scm:git:ssh://github.com:/MicroFocus/cluster-tasks-service.git</developerConnection>
+		<url>https://github.com/MicroFocus/cluster-tasks-service</url>
+	</scm>
+	
 	<properties>
 
 		<slf4j.version>1.7.25</slf4j.version>
