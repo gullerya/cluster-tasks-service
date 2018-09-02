@@ -1,4 +1,5 @@
-###Summary
+
+### Summary
 
 `cluster-tasks-service` library is built to provide distribution of tasks across a clustered environment.
 Beside providing basic queue functionality in a clustered environment, `cluster-tasks-service` (henceforth `CTS`) employs several advanced distribution features.
@@ -6,14 +7,14 @@ Beside providing basic queue functionality in a clustered environment, `cluster-
 Most significant feature, the one that `CTS` was originally written for, is an ability to control tasks processing in a _channelled_ fashion, where only a single task from a specific _channel_ will run at any given moment in the whole cluster.
 
 
-###Importing and initialization of the service (done once per application instance)
+### Importing and initialization of the service (done once per application instance)
 
 `CTS` is Spring oriented. Please follow the steps below to start hacking around with it:
 
 - Setup the dependency in your `pom.xml` (as in example below) or other compatible build tool configuration (providing the correct version, of course):
 ```
 <dependency>
-    <artifactId>cluster-tasks-service</artifactId>
+	<artifactId>cluster-tasks-service</artifactId>
 	<groupId>com.microfocus.octane</groupId>
 	<version>${relevant.cts.version}</version>
 </dependency>
@@ -26,27 +27,27 @@ See [CTS configuration SPI overview](cts-configurer-spi.md) for more details.
 If all gone smooth, `CTS` will kick in upon the application start and be available for submitting and processing tasks.
 Let's review a simple example of usage.
 
-###Basic concepts and usage example
+### Basic concepts and usage example
 
 The world of `CTS` may roughly be separated into two:
-- the __service__ is responsible for its environment setup, ongoing work and maintenance: collecting and registering processors, pulling and handing tasks over, statistics and monitoring, maintenance of finished/dead tasks, statistics etc.
+- the __service__ is responsible for its environment setup, ongoing work and maintenance: collecting and registering processors, pulling and handing tasks over, statistics and monitoring, maintenance of finished/dead tasks etc.
  Service also provides few generic API for the consumer, for example API to enqueue tasks.
  Service import/bootstrapping is a __one-time__ effort per application.
-- a __processors__, implemented by consumer extending appropriate base abstract classes, are the actual tasks processor with custom business logic, almost completely transparent to the framework.
- In opposite to service, it is likely that there will be many __processors__ (CPTs) in your application, each handling specific use-case.
+- a __processors__, implemented by library consumer and extending appropriate base abstract class, are an actual tasks processors with custom business logic, almost completely transparent to the framework.
+ It is likely, that there will be many __processors__ (CPTs) in your application, each handling specific use-case.
  Adding processors is an ongoing effort, aligned with the application evolution.
 
 In order to obtain the __service__, wire into your Spring eco-system the interface `ClusterTasksService`. It is a singleton, so the best practice would be to (auto)wire it as a private member of any of your services/components using it.
 Detailed info on __service__'s API available [here](cts-service-api.md).
 
-Next, you'd like to drop you actual logic for some task processing. To do that, you'll need to implement on of the task processor's base classes and expose them as a Spring beans.
+Next, you'd like to drop you actual logic for some task processing. To do that, you'll need to implement one of the task processor's base classes and expose them as a Spring beans.
 Your processor typically would look like this:
 
 ```
 @Component
 public class HeavyRecalcAsyncCTP extends ClusterTasksProcessorSimple {
 	private static List<Long> numbers;      //  caution, statics are not thread/scope safe
-	private List<String> strings;           //  caution, CTPs are singletons, so this is not thread/scope sage too
+	private List<String> strings;           //  caution, CTPs are singletons, so this is not thread/scope safe either
 
 	protected HeavyRecalcAsyncCTP() {
 		super(ClusterTasksDataProviderType.DB, 3);
@@ -68,21 +69,24 @@ To see your __processor__ taking the task, is to enqueue it:
 
 ```
 @Autowired
-ClusterTasksService clusterTasksService;
+private ClusterTasksService clusterTasksService;
 ...
 
 private void doRecalcOfNewContent(String newContentSerialized) {
-    //  prepare task
+	//  prepare task
 	ClusterTask task = TaskBuilders.simpleTask()
 			.setDelayByMillis(5000L)
 			.setBody(newContentSerialized)
 			.build();
-			
-	//  enqueue task to the DB storage (the only available as of now) and to the correct processor
-	ClusterTaskPersistenceResult[] enqueueResults = clusterTasksService.enqueueTasks(ClusterTasksDataProviderType.DB, "HeavyRecalcAsyncCTP", task);
 
-    //  you may inspect results of enqueue and process/log/retry any abnormalities
-    ...
+	//  enqueue task to the DB storage (the only available as of now) and to the correct processor
+	ClusterTaskPersistenceResult[] enqueueResults = clusterTasksService.enqueueTasks(
+		ClusterTasksDataProviderType.DB,
+		"HeavyRecalcAsyncCTP",
+		task);
+
+	//  you may inspect results of enqueue and process/log/retry any abnormalities
+	...
 }
 ```
 
