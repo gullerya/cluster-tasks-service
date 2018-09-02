@@ -52,6 +52,7 @@
 		<versions-maven-plugin.version>2.6</versions-maven-plugin.version>
 		<maven-clean-plugin.version>3.1.0</maven-clean-plugin.version>
 		<maven-source-plugin.version>3.0.1</maven-source-plugin.version>
+		<maven-javadoc-plugin.version>3.0.1</maven-javadoc-plugin.version>
 		<maven-resources-plugin.version>3.1.0</maven-resources-plugin.version>
 		<maven-compiler-plugin.version>3.8.0</maven-compiler-plugin.version>
 		<maven-jar-plugin.version>3.1.0</maven-jar-plugin.version>
@@ -202,6 +203,14 @@
 					<artifactId>maven-source-plugin</artifactId>
 					<groupId>org.apache.maven.plugins</groupId>
 					<version>${maven-source-plugin.version}</version>
+				</plugin>
+				<plugin>
+					<artifactId>maven-javadoc-plugin</artifactId>
+					<groupId>org.apache.maven.plugins</groupId>
+					<version>${maven-javadoc-plugin.version}</version>
+					<configuration>
+						<excludePackageNames>com.microfocus.octane.cluster.tasks.impl</excludePackageNames>
+					</configuration>
 				</plugin>
 
 				<!--TESTS-->
