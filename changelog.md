@@ -3,6 +3,7 @@
 #####1.3.1 (current snapshot)
 - changed to public open-source repo
 - added Apache 2.0 license
+- added license notice for each file as required by OSRB team
 - adjusted `pom.xml` to be compliant with Maven Central projects requirements
 
 #####1.3.0
