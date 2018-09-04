@@ -4,14 +4,14 @@
 	   xsi:schemaLocation="http://www.springframework.org/schema/beans
             http://www.springframework.org/schema/beans/spring-beans.xsd">
 
-	<import resource="classpath:jdbc-service-spring-context.xml"/>
+	<import resource="cluster-tasks-service-context.xml"/>
 
-	<bean class="com.microfocus.octane.cluster.tasks.ClusterTasksServiceConfigurerForTestsSPI"/>
+	<bean class="com.microfocus.cluster.tasks.ClusterTasksServiceConfigurerForTestsSPI"/>
 
-	<bean class="com.microfocus.octane.cluster.tasks.processors.scheduled.ClusterTasksSchedProcA_test"/>
+	<bean class="com.microfocus.cluster.tasks.processors.scheduled.ClusterTasksSchedProcA_test"/>
 
-	<bean class="com.microfocus.octane.cluster.tasks.processors.scheduled.ClusterTasksSchedProcB_test"/>
+	<bean class="com.microfocus.cluster.tasks.processors.scheduled.ClusterTasksSchedProcB_test"/>
 
-	<bean class="com.microfocus.octane.cluster.tasks.processors.scheduled.ClusterTasksSchedProcC_test"/>
+	<bean class="com.microfocus.cluster.tasks.processors.scheduled.ClusterTasksSchedProcC_test"/>
 
 </beans>

@@ -6,7 +6,7 @@
 
 	<artifactId>cluster-tasks-service</artifactId>
 	<groupId>com.microfocus.octane</groupId>
-	<version>1.3.1-SNAPSHOT</version>
+	<version>1.4.0-SNAPSHOT</version>
 
 	<name>Cluster Tasks Service (CTS)</name>
 	<description>Tasks management, distribution and execution service, working in cluster aware fashion, providing
@@ -28,7 +28,7 @@
 			<email>gullerya@gmail.com</email>
 			<organization>MicroFocus</organization>
 			<roles>
-				<role>Owner</role>
+				<role>Maintainer</role>
 			</roles>
 		</developer>
 	</developers>
@@ -60,7 +60,6 @@
 		<maven-deploy-plugin.version>2.8.2</maven-deploy-plugin.version>
 
 		<!--TESTS-->
-		<octane.jdbc.service.version>1.0.9</octane.jdbc.service.version>
 		<skipTests>true</skipTests>
 		<junit.version>4.12</junit.version>
 		<maven-surefire-plugin.version>2.22.0</maven-surefire-plugin.version>
@@ -70,6 +69,7 @@
 		<mssql-jdbc.version>7.0.0.jre8</mssql-jdbc.version>
 		<ojdbc.version>11.2.0.3</ojdbc.version>
 		<postgresql.version>42.2.4</postgresql.version>
+		<hikari.version>3.2.0</hikari.version>
 
 		<tests.db.schema>cts_tests_schema</tests.db.schema>
 		<tests.db.driver>TO_BE_REPLACED_DYNAMICALLY_BY_PROFILE</tests.db.driver>
@@ -125,9 +125,39 @@
 
 		<!--TESTS-->
 		<dependency>
-			<artifactId>junit</artifactId>
-			<groupId>junit</groupId>
-			<version>${junit.version}</version>
+			<artifactId>slf4j-simple</artifactId>
+			<groupId>org.slf4j</groupId>
+			<version>${slf4j.version}</version>
+			<scope>test</scope>
+		</dependency>
+		<dependency>
+			<artifactId>mssql-jdbc</artifactId>
+			<groupId>com.microsoft.sqlserver</groupId>
+			<version>${mssql-jdbc.version}</version>
+			<scope>test</scope>
+		</dependency>
+		<dependency>
+			<artifactId>ojdbc</artifactId>
+			<groupId>com.oracle.jdbc</groupId>
+			<version>${ojdbc.version}</version>
+			<scope>test</scope>
+		</dependency>
+		<dependency>
+			<artifactId>postgresql</artifactId>
+			<groupId>org.postgresql</groupId>
+			<version>${postgresql.version}</version>
+			<scope>test</scope>
+		</dependency>
+		<dependency>
+			<artifactId>HikariCP</artifactId>
+			<groupId>com.zaxxer</groupId>
+			<version>${hikari.version}</version>
+			<scope>test</scope>
+		</dependency>
+		<dependency>
+			<artifactId>spring-context</artifactId>
+			<groupId>org.springframework</groupId>
+			<version>${spring.version}</version>
 			<scope>test</scope>
 		</dependency>
 		<dependency>
@@ -137,9 +167,9 @@
 			<scope>test</scope>
 		</dependency>
 		<dependency>
-			<artifactId>octane-jdbc-service</artifactId>
-			<groupId>com.microfocus.octane</groupId>
-			<version>${octane.jdbc.service.version}</version>
+			<artifactId>junit</artifactId>
+			<groupId>junit</groupId>
+			<version>${junit.version}</version>
 			<scope>test</scope>
 		</dependency>
 	</dependencies>
@@ -203,13 +233,24 @@
 					<artifactId>maven-source-plugin</artifactId>
 					<groupId>org.apache.maven.plugins</groupId>
 					<version>${maven-source-plugin.version}</version>
+					<configuration>
+						<excludeResources>true</excludeResources>
+					</configuration>
+					<executions>
+						<execution>
+							<id>attach-sources</id>
+							<goals>
+								<goal>jar</goal>
+							</goals>
+						</execution>
+					</executions>
 				</plugin>
 				<plugin>
 					<artifactId>maven-javadoc-plugin</artifactId>
 					<groupId>org.apache.maven.plugins</groupId>
 					<version>${maven-javadoc-plugin.version}</version>
 					<configuration>
-						<excludePackageNames>com.microfocus.octane.cluster.tasks.impl</excludePackageNames>
+						<excludePackageNames>com.microfocus.cluster.tasks.impl</excludePackageNames>
 					</configuration>
 				</plugin>
 
@@ -284,17 +325,10 @@
 			<plugin>
 				<artifactId>maven-source-plugin</artifactId>
 				<groupId>org.apache.maven.plugins</groupId>
-				<configuration>
-					<excludeResources>true</excludeResources>
-				</configuration>
-				<executions>
-					<execution>
-						<id>attach-sources</id>
-						<goals>
-							<goal>jar</goal>
-						</goals>
-					</execution>
-				</executions>
+			</plugin>
+			<plugin>
+				<artifactId>maven-javadoc-plugin</artifactId>
+				<groupId>org.apache.maven.plugins</groupId>
 			</plugin>
 		</plugins>
 	</build>

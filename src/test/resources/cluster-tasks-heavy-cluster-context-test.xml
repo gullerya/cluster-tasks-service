@@ -3,18 +3,18 @@
 	   xsi:schemaLocation="http://www.springframework.org/schema/beans
 	http://www.springframework.org/schema/beans/spring-beans-3.0.xsd">
 
-	<import resource="classpath:jdbc-service-spring-context.xml"/>
+	<import resource="cluster-tasks-service-context.xml"/>
 
-	<bean class="com.microfocus.octane.cluster.tasks.ClusterTasksServiceConfigurerForTestsSPI"/>
+	<bean class="com.microfocus.cluster.tasks.ClusterTasksServiceConfigurerForTestsSPI"/>
 
-	<bean class="com.microfocus.octane.cluster.tasks.processors.ClusterTasksHC_A_test"/>
+	<bean class="com.microfocus.cluster.tasks.processors.ClusterTasksHC_A_test"/>
 
-	<bean class="com.microfocus.octane.cluster.tasks.processors.ClusterTasksHC_B_test"/>
+	<bean class="com.microfocus.cluster.tasks.processors.ClusterTasksHC_B_test"/>
 
-	<bean class="com.microfocus.octane.cluster.tasks.processors.ClusterTasksHC_C_test"/>
+	<bean class="com.microfocus.cluster.tasks.processors.ClusterTasksHC_C_test"/>
 
-	<bean class="com.microfocus.octane.cluster.tasks.processors.ClusterTasksHC_D_test"/>
+	<bean class="com.microfocus.cluster.tasks.processors.ClusterTasksHC_D_test"/>
 
-	<bean class="com.microfocus.octane.cluster.tasks.processors.ClusterTasksHC_E_test"/>
+	<bean class="com.microfocus.cluster.tasks.processors.ClusterTasksHC_E_test"/>
 
 </beans>
