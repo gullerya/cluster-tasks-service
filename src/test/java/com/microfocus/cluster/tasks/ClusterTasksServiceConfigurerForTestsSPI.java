@@ -51,7 +51,7 @@ public class ClusterTasksServiceConfigurerForTestsSPI implements ClusterTasksSer
 
 		HikariDataSource hikariDataSource = new HikariDataSource();
 		hikariDataSource.setDriverClassName(jdbcDriverClass);
-		hikariDataSource.setJdbcUrl(jdbcProperties.getProperty("url") + "/" + jdbcProperties.getProperty("schema"));
+		hikariDataSource.setJdbcUrl(jdbcProperties.getProperty("url"));
 		hikariDataSource.setUsername(jdbcProperties.getProperty("username"));
 		hikariDataSource.setPassword(jdbcProperties.getProperty("password"));
 		hikariDataSource.validate();
