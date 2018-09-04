@@ -22,7 +22,7 @@ Most significant feature, the one that `CTS` was originally written for, is an a
 
 - Implement `ClusterTasksServiceConfigurerSPI` interface as a __Spring__ bean (singleton).
 Upon application start, `CTS` will wire this bean and take everything it needs from it (DataSource object, for example).
-See [CTS configuration SPI overview](cts-configurer-spi.md) for more details.
+See [CTS configuration SPI overview](docs/cts-configurer-spi.md) for more details.
   
 If all gone smooth, `CTS` will kick in upon the application start and be available for submitting and processing tasks.
 Let's review a simple example of usage.
@@ -38,7 +38,7 @@ The world of `CTS` may roughly be separated into two:
  Adding processors is an ongoing effort, aligned with the application evolution.
 
 In order to obtain the __service__, wire into your Spring eco-system the interface `ClusterTasksService`. It is a singleton, so the best practice would be to (auto)wire it as a private member of any of your services/components using it.
-Detailed info on __service__'s API available [here](cts-service-api.md).
+Detailed info on __service__'s API available [here](docs/cts-service-api.md).
 
 Next, you'd like to drop you actual logic for some task processing. To do that, you'll need to implement one of the task processor's base classes and expose them as a Spring beans.
 Your processor typically would look like this:
