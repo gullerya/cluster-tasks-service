@@ -5,7 +5,7 @@
 	<modelVersion>4.0.0</modelVersion>
 
 	<artifactId>cluster-tasks-service</artifactId>
-	<groupId>com.microfocus.octane</groupId>
+	<groupId>com.microfocus</groupId>
 	<version>1.4.0-SNAPSHOT</version>
 
 	<name>Cluster Tasks Service (CTS)</name>
@@ -48,7 +48,6 @@
 
 		<!--BUILD-->
 		<jdk.version>1.8</jdk.version>
-		<baseNexusURL>http://mydtbld0051.hpeswlab.net:8081/nexus</baseNexusURL>
 		<versions-maven-plugin.version>2.6</versions-maven-plugin.version>
 		<maven-clean-plugin.version>3.1.0</maven-clean-plugin.version>
 		<maven-source-plugin.version>3.0.1</maven-source-plugin.version>
@@ -57,7 +56,11 @@
 		<maven-compiler-plugin.version>3.8.0</maven-compiler-plugin.version>
 		<maven-jar-plugin.version>3.1.0</maven-jar-plugin.version>
 		<maven-install-plugin.version>2.5.2</maven-install-plugin.version>
-		<maven-deploy-plugin.version>2.8.2</maven-deploy-plugin.version>
+
+		<!--DEPLOY-->
+		<nexus-url>https://oss.sonatype.org</nexus-url>
+		<maven-gpg-plugin.version>1.6</maven-gpg-plugin.version>
+		<nexus-staging-maven-plugin.version>1.6.8</nexus-staging-maven-plugin.version>
 
 		<!--TESTS-->
 		<skipTests>true</skipTests>
@@ -175,25 +178,20 @@
 	</dependencies>
 
 	<distributionManagement>
-		<repository>
-			<id>mqm-prod</id>
-			<url>${baseNexusURL}/content/repositories/mqm-prod</url>
-		</repository>
 		<snapshotRepository>
-			<id>mqm-latest</id>
-			<url>${baseNexusURL}/content/repositories/mqm-latest</url>
+			<id>ossrh</id>
+			<url>${nexus-url}/content/repositories/snapshots</url>
 		</snapshotRepository>
+		<repository>
+			<id>ossrh</id>
+			<url>${nexus-url}/service/local/staging/deploy/maven2</url>
+		</repository>
 	</distributionManagement>
 
 	<build>
 		<pluginManagement>
 			<plugins>
 				<!--BUILD-->
-				<plugin>
-					<artifactId>versions-maven-plugin</artifactId>
-					<groupId>org.codehaus.mojo</groupId>
-					<version>${versions-maven-plugin.version}</version>
-				</plugin>
 				<plugin>
 					<artifactId>maven-clean-plugin</artifactId>
 					<groupId>org.apache.maven.plugins</groupId>
@@ -203,6 +201,9 @@
 					<artifactId>maven-resources-plugin</artifactId>
 					<groupId>org.apache.maven.plugins</groupId>
 					<version>${maven-resources-plugin.version}</version>
+					<configuration>
+						<encoding>UTF-8</encoding>
+					</configuration>
 				</plugin>
 				<plugin>
 					<artifactId>maven-compiler-plugin</artifactId>
@@ -223,35 +224,6 @@
 					<artifactId>maven-install-plugin</artifactId>
 					<groupId>org.apache.maven.plugins</groupId>
 					<version>${maven-install-plugin.version}</version>
-				</plugin>
-				<plugin>
-					<artifactId>maven-deploy-plugin</artifactId>
-					<groupId>org.apache.maven.plugins</groupId>
-					<version>${maven-deploy-plugin.version}</version>
-				</plugin>
-				<plugin>
-					<artifactId>maven-source-plugin</artifactId>
-					<groupId>org.apache.maven.plugins</groupId>
-					<version>${maven-source-plugin.version}</version>
-					<configuration>
-						<excludeResources>true</excludeResources>
-					</configuration>
-					<executions>
-						<execution>
-							<id>attach-sources</id>
-							<goals>
-								<goal>jar</goal>
-							</goals>
-						</execution>
-					</executions>
-				</plugin>
-				<plugin>
-					<artifactId>maven-javadoc-plugin</artifactId>
-					<groupId>org.apache.maven.plugins</groupId>
-					<version>${maven-javadoc-plugin.version}</version>
-					<configuration>
-						<excludePackageNames>com.microfocus.cluster.tasks.impl</excludePackageNames>
-					</configuration>
 				</plugin>
 
 				<!--TESTS-->
@@ -319,18 +291,73 @@
 						</dependency>
 					</dependencies>
 				</plugin>
+
+				<!--DEPLOY-->
+				<plugin>
+					<artifactId>versions-maven-plugin</artifactId>
+					<groupId>org.codehaus.mojo</groupId>
+					<version>${versions-maven-plugin.version}</version>
+				</plugin>
+				<plugin>
+					<artifactId>maven-source-plugin</artifactId>
+					<groupId>org.apache.maven.plugins</groupId>
+					<version>${maven-source-plugin.version}</version>
+					<configuration>
+						<excludeResources>true</excludeResources>
+					</configuration>
+					<executions>
+						<execution>
+							<id>attach-sources</id>
+							<goals>
+								<goal>jar-no-fork</goal>
+							</goals>
+						</execution>
+					</executions>
+				</plugin>
+				<plugin>
+					<artifactId>maven-javadoc-plugin</artifactId>
+					<groupId>org.apache.maven.plugins</groupId>
+					<version>${maven-javadoc-plugin.version}</version>
+					<configuration>
+						<encoding>UTF-8</encoding>
+						<excludePackageNames>com.microfocus.cluster.tasks.impl</excludePackageNames>
+					</configuration>
+					<executions>
+						<execution>
+							<id>attach-javadocs</id>
+							<goals>
+								<goal>jar</goal>
+							</goals>
+						</execution>
+					</executions>
+				</plugin>
+				<plugin>
+					<artifactId>maven-gpg-plugin</artifactId>
+					<groupId>org.apache.maven.plugins</groupId>
+					<version>${maven-gpg-plugin.version}</version>
+					<executions>
+						<execution>
+							<id>sign-artifacts</id>
+							<phase>verify</phase>
+							<goals>
+								<goal>sign</goal>
+							</goals>
+						</execution>
+					</executions>
+				</plugin>
+				<plugin>
+					<artifactId>nexus-staging-maven-plugin</artifactId>
+					<groupId>org.sonatype.plugins</groupId>
+					<version>${nexus-staging-maven-plugin.version}</version>
+					<extensions>true</extensions>
+					<configuration>
+						<serverId>ossrh</serverId>
+						<nexusUrl>${nexus-url}</nexusUrl>
+						<autoReleaseAfterClose>false</autoReleaseAfterClose>
+					</configuration>
+				</plugin>
 			</plugins>
 		</pluginManagement>
-		<plugins>
-			<plugin>
-				<artifactId>maven-source-plugin</artifactId>
-				<groupId>org.apache.maven.plugins</groupId>
-			</plugin>
-			<plugin>
-				<artifactId>maven-javadoc-plugin</artifactId>
-				<groupId>org.apache.maven.plugins</groupId>
-			</plugin>
-		</plugins>
 	</build>
 
 	<profiles>
@@ -480,6 +507,30 @@
 								</configuration>
 							</execution>
 						</executions>
+					</plugin>
+				</plugins>
+			</build>
+		</profile>
+
+		<profile>
+			<id>release</id>
+			<build>
+				<plugins>
+					<plugin>
+						<artifactId>maven-source-plugin</artifactId>
+						<groupId>org.apache.maven.plugins</groupId>
+					</plugin>
+					<plugin>
+						<artifactId>maven-javadoc-plugin</artifactId>
+						<groupId>org.apache.maven.plugins</groupId>
+					</plugin>
+					<plugin>
+						<artifactId>maven-gpg-plugin</artifactId>
+						<groupId>org.apache.maven.plugins</groupId>
+					</plugin>
+					<plugin>
+						<artifactId>nexus-staging-maven-plugin</artifactId>
+						<groupId>org.sonatype.plugins</groupId>
 					</plugin>
 				</plugins>
 			</build>
