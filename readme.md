@@ -1,3 +1,4 @@
+[![Maven Central](https://img.shields.io/maven-central/v/com.microfocus/cluster-tasks-service.svg?label=Maven%20Central)](https://search.maven.org/search?q=g:%22com.microfocus%22%20AND%20a:%22cluster-tasks-service%22)
 
 ### Summary
 
