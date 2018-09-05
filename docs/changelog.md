@@ -1,6 +1,8 @@
 ### Changelog
 
-##### 1.3.1 (current snapshot)
+##### 1.4.1 (current snapshot)
+
+##### 1.4.0
 - changed to public open-source repo
 - added Apache 2.0 license
 - added license notice for each file as required by OSRB team

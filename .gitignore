@@ -3,6 +3,6 @@
 .idea/
 
 # build/tests artifacts
-*.class
 target*/
 logs/
+gpg-log

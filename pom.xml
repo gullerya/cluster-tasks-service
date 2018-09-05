@@ -6,7 +6,7 @@
 
 	<artifactId>cluster-tasks-service</artifactId>
 	<groupId>com.microfocus</groupId>
-	<version>1.4.0-SNAPSHOT</version>
+	<version>1.4.1-SNAPSHOT</version>
 
 	<name>Cluster Tasks Service (CTS)</name>
 	<description>Tasks management, distribution and execution service, working in cluster aware fashion, providing
@@ -48,7 +48,6 @@
 
 		<!--BUILD-->
 		<jdk.version>1.8</jdk.version>
-		<versions-maven-plugin.version>2.6</versions-maven-plugin.version>
 		<maven-clean-plugin.version>3.1.0</maven-clean-plugin.version>
 		<maven-source-plugin.version>3.0.1</maven-source-plugin.version>
 		<maven-javadoc-plugin.version>3.0.1</maven-javadoc-plugin.version>
@@ -294,11 +293,6 @@
 
 				<!--DEPLOY-->
 				<plugin>
-					<artifactId>versions-maven-plugin</artifactId>
-					<groupId>org.codehaus.mojo</groupId>
-					<version>${versions-maven-plugin.version}</version>
-				</plugin>
-				<plugin>
 					<artifactId>maven-source-plugin</artifactId>
 					<groupId>org.apache.maven.plugins</groupId>
 					<version>${maven-source-plugin.version}</version>
@@ -335,6 +329,9 @@
 					<artifactId>maven-gpg-plugin</artifactId>
 					<groupId>org.apache.maven.plugins</groupId>
 					<version>${maven-gpg-plugin.version}</version>
+					<configuration>
+						<keyname>gullerya@gmail.com</keyname>
+					</configuration>
 					<executions>
 						<execution>
 							<id>sign-artifacts</id>
@@ -513,13 +510,9 @@
 		</profile>
 
 		<profile>
-			<id>release</id>
+			<id>deploy</id>
 			<build>
 				<plugins>
-					<plugin>
-						<artifactId>versions-maven-plugin</artifactId>
-						<groupId>org.codehaus.mojo</groupId>
-					</plugin>
 					<plugin>
 						<artifactId>maven-source-plugin</artifactId>
 						<groupId>org.apache.maven.plugins</groupId>
