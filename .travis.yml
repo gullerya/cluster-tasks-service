@@ -5,5 +5,5 @@ services:
   - postgresql
 
 script:
-  - mvn test -T8 -DskipTests=false -Ddb.config.location=environment -Ddb.type=POSTGRESQL -Ddb.url=jdbc:postgresql://localhost:5432/cts_tests_schema -Ddb.username=postgres -Pcreate-tests-schema,drop-tests-schema,postgresql,jacoco-coverage
+  - mvn test -T8 -DskipTests=false -Ddb.config.location=environment -Dtest.db.type=POSTGRESQL -Dtest.db.url=jdbc:postgresql://localhost:5432/cts_tests_schema -Dtest.db.username=postgres -Pcreate-tests-schema,drop-tests-schema,postgresql,jacoco-coverage
   - mvn spotbugs:check -T8

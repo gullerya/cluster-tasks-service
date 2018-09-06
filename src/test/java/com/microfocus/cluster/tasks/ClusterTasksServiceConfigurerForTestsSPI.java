@@ -90,10 +90,10 @@ public class ClusterTasksServiceConfigurerForTestsSPI implements ClusterTasksSer
 		String dbConfigLocation;
 		if ((dbConfigLocation = System.getProperty("db.config.location")) != null && !dbConfigLocation.isEmpty()) {
 			if ("environment".equals(dbConfigLocation)) {
-				result.setProperty("type", System.getProperty("db.type"));
-				result.setProperty("url", System.getProperty("db.url"));
-				result.setProperty("username", System.getProperty("db.username"));
-				result.setProperty("password", System.getProperty("db.password"));
+				result.setProperty("type", System.getProperty("test.db.type"));
+				result.setProperty("url", System.getProperty("test.db.url"));
+				result.setProperty("username", System.getProperty("test.db.username"));
+				result.setProperty("password", System.getProperty("test.db.password"));
 			} else {
 				result.load(new FileInputStream(dbConfigLocation));
 			}
