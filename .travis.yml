@@ -22,13 +22,13 @@ before_install:
 - sleep 1
 
 before_script:
-- psql -c 'create database cts_tests_schema;' -U postgres
+- psql -c 'CREATE DATABASE cts_tests_schema;' -U postgres
 
 jobs:
   include:
   - stage: test
     script:
-    - mvn test -e -T8 -DskipTests=false -Ddb.config.location=environment -Dtests.db.type=POSTGRESQL -Dtests.db.url=jdbc:postgresql://localhost:5433/cts_tests_schema -Dtests.db.username=postgres -Pcreate-tests-schema,drop-tests-schema,postgresql,jacoco-coverage
+    - mvn test -e -T8 -DskipTests=false -Ddb.config.location=environment -Dtests.db.type=POSTGRESQL -Dtests.db.url=jdbc:postgresql://localhost:5433/cts_tests_schema -Dtests.db.username=postgres -Ppostgresql,jacoco-coverage
     - mvn spotbugs:check -T8
 
 cache:
