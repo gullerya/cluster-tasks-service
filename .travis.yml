@@ -21,9 +21,12 @@ before_install:
 - sudo service postgresql restart
 - sleep 1
 
-script:
-- mvn test -T8 -DskipTests=false -Ddb.config.location=environment -Dtests.db.type=POSTGRESQL -Dtests.db.url=jdbc:postgresql://localhost:5433/cts_tests_schema -Dtests.db.username=postgres -Pcreate-tests-schema,drop-tests-schema,postgresql,jacoco-coverage
-- mvn spotbugs:check -T8
+jobs:
+  include:
+  - stage: test
+    script:
+    - mvn test -T8 -DskipTests=false -Ddb.config.location=environment -Dtests.db.type=POSTGRESQL -Dtests.db.url=jdbc:postgresql://localhost:5433/cts_tests_schema -Dtests.db.username=postgres -Pcreate-tests-schema,drop-tests-schema,postgresql,jacoco-coverage
+    - mvn spotbugs:check -T8
 
 cache:
   directories:
