@@ -1,10 +1,12 @@
 language: java
 jdk: oraclejdk8
+install: true
 services:
   - postgresql
 
 # TEST
 
 # SPOTBUGS
-install: true
-script: mvn spotbugs:check -T8
+script:
+  - mvn test -T8 -Ddb.config.location=environment -Ddb.type=POSTGRESQL -Ddb.url=jdbc:postgresql://localhost:5432/cts_tests_schema -Ddb.username=postgres -Pcreate-tests-schema,drop-tests-schema,postgresql,jacoco-coverage
+  - mvn spotbugs:check -T8
