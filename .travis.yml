@@ -1,8 +1,9 @@
 language: java
 jdk: oraclejdk8
 install: true
-services:
-  - postgresql
+
+addons:
+  postgresql: "10"
 
 script:
   - mvn test -T8 -DskipTests=false -Ddb.config.location=environment -Dtest.db.type=POSTGRESQL -Dtest.db.url=jdbc:postgresql://localhost:5432/cts_tests_schema -Dtest.db.username=postgres -Pcreate-tests-schema,drop-tests-schema,postgresql,jacoco-coverage
