@@ -19,20 +19,10 @@ public class ClusterTasksServiceConfigurerForTestsSPI implements ClusterTasksSer
 	private final DataSource dataSource;
 
 	private ClusterTasksServiceConfigurerForTestsSPI() throws IOException {
-		Properties jdbcProperties = new Properties();
-		String jdbcConfigFile;
-		if ((jdbcConfigFile = System.getProperty("jdbc.config.location")) != null && !jdbcConfigFile.isEmpty()) {
-			jdbcProperties.load(new FileInputStream(jdbcConfigFile));
-		} else {
-			jdbcProperties.load(this.getClass().getClassLoader().getResourceAsStream("db.properties"));
-		}
-
-		if (!jdbcProperties.containsKey("type")) {
-			throw new IllegalStateException("DB type not specified");
-		}
+		Properties dbConfig = resolveConfigProperties();
 
 		String jdbcDriverClass;
-		switch (jdbcProperties.getProperty("type")) {
+		switch (dbConfig.getProperty("type")) {
 			case "MSSQL":
 				dbType = MSSQL;
 				jdbcDriverClass = "com.microsoft.sqlserver.jdbc.SQLServerDriver";
@@ -46,14 +36,14 @@ public class ClusterTasksServiceConfigurerForTestsSPI implements ClusterTasksSer
 				jdbcDriverClass = "org.postgresql.Driver";
 				break;
 			default:
-				throw new IllegalStateException("unsupported DB type specified: " + jdbcProperties.getProperty("type"));
+				throw new IllegalStateException("unsupported DB type specified: " + dbConfig.getProperty("type"));
 		}
 
 		HikariDataSource hikariDataSource = new HikariDataSource();
 		hikariDataSource.setDriverClassName(jdbcDriverClass);
-		hikariDataSource.setJdbcUrl(jdbcProperties.getProperty("url"));
-		hikariDataSource.setUsername(jdbcProperties.getProperty("username"));
-		hikariDataSource.setPassword(jdbcProperties.getProperty("password"));
+		hikariDataSource.setJdbcUrl(dbConfig.getProperty("url"));
+		hikariDataSource.setUsername(dbConfig.getProperty("username"));
+		hikariDataSource.setPassword(dbConfig.getProperty("password"));
 		hikariDataSource.validate();
 
 		dataSource = hikariDataSource;
@@ -93,5 +83,32 @@ public class ClusterTasksServiceConfigurerForTestsSPI implements ClusterTasksSer
 	@Override
 	public boolean isEnabled() {
 		return true;
+	}
+
+	private Properties resolveConfigProperties() throws IOException {
+		Properties result = new Properties();
+		String dbConfigLocation;
+		if ((dbConfigLocation = System.getProperty("db.config.location")) != null && !dbConfigLocation.isEmpty()) {
+			if ("environment".equals(dbConfigLocation)) {
+				result.setProperty("type", System.getProperty("db.type"));
+				result.setProperty("url", System.getProperty("db.url"));
+				result.setProperty("username", System.getProperty("db.username"));
+				result.setProperty("password", System.getProperty("db.password"));
+			} else {
+				result.load(new FileInputStream(dbConfigLocation));
+			}
+		} else {
+			result.load(this.getClass().getClassLoader().getResourceAsStream("db.properties"));
+		}
+
+		//  basic validation
+		if (!result.containsKey("type") || result.getProperty("type").isEmpty()) {
+			throw new IllegalStateException("DB type invalid: [" + result.getProperty("type") + "]");
+		}
+		if (!result.containsKey("url") || result.getProperty("url").isEmpty()) {
+			throw new IllegalStateException("DB url invalid: [" + result.getProperty("url") + "]");
+		}
+
+		return result;
 	}
 }
