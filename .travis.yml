@@ -31,6 +31,9 @@ jobs:
     - mvn test -e -T8 -DskipTests=false -Ddb.config.location=environment -Dtests.db.type=POSTGRESQL -Dtests.db.url=jdbc:postgresql://localhost:5433/cts_tests_schema -Dtests.db.username=postgres -Ppostgresql,jacoco-coverage
     - mvn spotbugs:check -T8
 
+after_success:
+- bash <(curl -s https://codecov.io/bash)
+
 cache:
   directories:
   - $HOME/.m2
