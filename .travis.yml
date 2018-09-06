@@ -18,7 +18,7 @@ env:
   - PGPORT=5433
 
 script:
-- mvn test -T8 -DskipTests=false -Ddb.config.location=environment -Dtests.db.type=POSTGRESQL -Dtests.db.url=jdbc:postgresql://localhost:5433/cts_tests_schema -Dtests.db.username=postgres -Pcreate-tests-schema,drop-tests-schema,postgresql,jacoco-coverage
+- mvn test -T8 -DskipTests=false -Ddb.config.location=environment -Dtests.db.type=POSTGRESQL -Dtests.db.url=jdbc:postgresql://localhost:5433/cts_tests_schema -Dtests.db.username=postgres -Dtests.db.password=postgres -Pcreate-tests-schema,drop-tests-schema,postgresql,jacoco-coverage
 - mvn spotbugs:check -T8
 
 cache:
