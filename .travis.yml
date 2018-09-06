@@ -1,14 +1,26 @@
 language: java
-jdk: oraclejdk8
+
 install: true
+
+jdk: oraclejdk8
+
+services:
+- postgresql
 
 addons:
   postgresql: "10"
+  apt:
+    packages:
+    - postgresql-10
 
-cache:
-  directories:
-  - $HOME/.m2
+env:
+  global:
+  - PGPORT=5433
 
 script:
 - mvn test -T8 -DskipTests=false -Ddb.config.location=environment -Dtests.db.type=POSTGRESQL -Dtests.db.url=jdbc:postgresql://localhost:5433/cts_tests_schema -Dtests.db.username=postgres -Pcreate-tests-schema,drop-tests-schema,postgresql,jacoco-coverage
 - mvn spotbugs:check -T8
+
+cache:
+  directories:
+  - $HOME/.m2
