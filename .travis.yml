@@ -17,8 +17,12 @@ env:
   global:
   - PGPORT=5433
 
+before_script:
+- sudo cp /etc/postgresql/10/main/pg_hba.conf
+- sudo service postgresql restart
+
 script:
-- mvn test -T8 -DskipTests=false -Ddb.config.location=environment -Dtests.db.type=POSTGRESQL -Dtests.db.url=jdbc:postgresql://localhost:5433/cts_tests_schema -Dtests.db.username=postgres -Dtests.db.password=postgres -Pcreate-tests-schema,drop-tests-schema,postgresql,jacoco-coverage
+- mvn test -T8 -DskipTests=false -Ddb.config.location=environment -Dtests.db.type=POSTGRESQL -Dtests.db.url=jdbc:postgresql://localhost:5433/cts_tests_schema -Dtests.db.username=postgres -Pcreate-tests-schema,drop-tests-schema,postgresql,jacoco-coverage
 - mvn spotbugs:check -T8
 
 cache:
