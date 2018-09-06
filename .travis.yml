@@ -21,6 +21,9 @@ before_install:
 - sudo service postgresql restart
 - sleep 1
 
+before_script:
+- psql -c 'create database cts_tests_schema;' -U postgres
+
 jobs:
   include:
   - stage: test
