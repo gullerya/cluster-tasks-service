@@ -24,7 +24,7 @@ public class ClusterTasksServiceConfigurerForTestsSPI implements ClusterTasksSer
 		if ((jdbcConfigFile = System.getProperty("jdbc.config.location")) != null && !jdbcConfigFile.isEmpty()) {
 			jdbcProperties.load(new FileInputStream(jdbcConfigFile));
 		} else {
-			jdbcProperties.load(this.getClass().getClassLoader().getResourceAsStream("jdbc.properties"));
+			jdbcProperties.load(this.getClass().getClassLoader().getResourceAsStream("db.properties"));
 		}
 
 		if (!jdbcProperties.containsKey("type")) {
