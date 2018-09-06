@@ -63,14 +63,14 @@
 
 		<!--TESTS-->
 		<skipTests>true</skipTests>
-		<junit.version>4.12</junit.version>
+		<junit.version>5.3.0</junit.version>
 		<maven-surefire-plugin.version>2.22.0</maven-surefire-plugin.version>
 		<jacoco-maven-plugin.version>0.8.2</jacoco-maven-plugin.version>
 		<spotbugs.version>3.1.6</spotbugs.version>
 		<sql-maven-plugin.version>1.5</sql-maven-plugin.version>
 		<mssql-jdbc.version>7.0.0.jre8</mssql-jdbc.version>
 		<ojdbc.version>11.2.0.3</ojdbc.version>
-		<postgresql.version>42.2.4</postgresql.version>
+		<postgresql.version>42.2.5</postgresql.version>
 		<hikari.version>3.2.0</hikari.version>
 
 		<tests.db.schema>cts_tests_schema</tests.db.schema>
