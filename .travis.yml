@@ -1,5 +1,4 @@
 sudo: true
-
 install: true
 language: java
 jdk: oraclejdk8
@@ -17,9 +16,10 @@ env:
   global:
   - PGPORT=5433
 
-before_script:
-- sudo cp /etc/postgresql/10/main/pg_hba.conf
+before_install:
+- sudo sed -i -e '/local.*peer/s/postgres/all/' -e 's/peer\|md5/trust/g' /etc/postgresql/*/main/pg_hba.conf
 - sudo service postgresql restart
+- sleep 1
 
 script:
 - mvn test -T8 -DskipTests=false -Ddb.config.location=environment -Dtests.db.type=POSTGRESQL -Dtests.db.url=jdbc:postgresql://localhost:5433/cts_tests_schema -Dtests.db.username=postgres -Pcreate-tests-schema,drop-tests-schema,postgresql,jacoco-coverage
