@@ -1,0 +1,8 @@
+language: java
+jdk: oraclejdk8
+
+# TEST
+
+# SPOTBUGS
+install: true
+script: mvn spotbugs:check -T8
