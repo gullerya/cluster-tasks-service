@@ -1,0 +1,9 @@
+version: 1.0.{build}
+platform: Any CPU
+services: mssql2014
+build_script:
+- sh: mvn install spotbugs:check -T8
+test_script:
+- sh: >-
+    mvn test -T8 -DskipTests=false -Pcreate-tests-schema,drop-tests-schema,sqlserver,jacoco-coverage -Ddb.config.location=environment -Dtests.db.type=MSSQL -Dtests.db.url=jdbc:sqlserver://localhost\\SQL2014:1433 -Dtests.db.username=sa -Dtests.db.password=Password12!
+    bash <(curl -s https://codecov.io/bash)
