@@ -12,9 +12,12 @@ test_script:
 - cmd: mvn test -T8 -DskipTests=false -Pcreate-tests-schema,drop-tests-schema,sqlserver,jacoco-coverage -Ddb.config.location=environment -Dtests.db.type=MSSQL -Dtests.db.url=jdbc:sqlserver://localhost\\SQL2014:1433 -Dtests.db.username=sa -Dtests.db.password=Password12!
 
 after_test:
-- cmd: |
-    $env:PATH = 'C:\msys64\usr\bin;' + $env:PATH
-    Invoke-WebRequest -Uri 'https://codecov.io/bash' -OutFile codecov.sh
-    bash codecov.sh -f "target\jacoco-report\jacoco.xml"
+- ps: |
+  $env:PATH = 'C:\msys64\usr\bin;' + $env:PATH
+  Invoke-WebRequest -Uri 'https://codecov.io/bash' -OutFile codecov.sh
+  bash codecov.sh -f "target\jacoco-report\jacoco.xml"
+
+cache:
+- C:\Users\appveyor\.m2
 
 build: off
