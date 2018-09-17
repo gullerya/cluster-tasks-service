@@ -6,15 +6,13 @@ services:
 - mssql2014
 
 build_script:
-- ps: mvn install spotbugs:check -T8
+- cmd: mvn install spotbugs:check -T8
 
 test_script:
-- ps: mvn test -T8 -DskipTests=false -Pcreate-tests-schema,drop-tests-schema,sqlserver,jacoco-coverage -Ddb.config.location=environment -Dtests.db.type=MSSQL -Dtests.db.url=jdbc:sqlserver://localhost\\SQL2014:1433 -Dtests.db.username=sa -Dtests.db.password=Password12!
+- cmd: mvn test -T8 -DskipTests=false -Pcreate-tests-schema,drop-tests-schema,sqlserver,jacoco-coverage -Ddb.config.location=environment -Dtests.db.type=MSSQL -Dtests.db.url=jdbc:sqlserver://localhost\\SQL2014:1433 -Dtests.db.username=sa -Dtests.db.password=Password12!
 
 after_test:
-- ps: |
-    find "C:\projects\cluster-tasks-service\target\surefire-reports\" -type f -name 'TEST*.xml' -print0 | xargs -0 -I '{}' curl -F 'file=@{}' "https://ci.appveyor.com/api/testresults/junit/$APPVEYOR_JOB_ID"
-- ps: |
+- cmd: |
     $env:PATH = 'C:\msys64\usr\bin;' + $env:PATH
     Invoke-WebRequest -Uri 'https://codecov.io/bash' -OutFile codecov.sh
     bash codecov.sh -f "target\jacoco-report\jacoco.xml"
