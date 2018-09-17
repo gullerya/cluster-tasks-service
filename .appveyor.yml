@@ -1,4 +1,5 @@
 version: 1.0.{build}
+
 platform: Any CPU
 
 services:
@@ -15,3 +16,5 @@ after_test:
     $env:PATH = 'C:\msys64\usr\bin;' + $env:PATH
     Invoke-WebRequest -Uri 'https://codecov.io/bash' -OutFile codecov.sh
     bash codecov.sh -f "target\jacoco-report\jacoco.xml"
+
+build: off
