@@ -227,10 +227,9 @@ final class PostgreSqlDbDataProvider extends ClusterTasksDbDataProvider {
 				String[] availableProcessorTypes = availableProcessors.keySet().toArray(new String[0]);
 				Integer paramsTotal = null;
 				String sql = null;
-				for (int testedParamTotal : selectForUpdateTasksSQLs.keySet()) {
-					if (testedParamTotal >= availableProcessors.size()) {
-						paramsTotal = testedParamTotal;
-						sql = selectForUpdateTasksSQLs.get(testedParamTotal);
+				for (Map.Entry<Integer, String> testedParam : selectForUpdateTasksSQLs.entrySet()) {
+					if ((paramsTotal = testedParam.getKey()) >= availableProcessors.size()) {
+						sql = testedParam.getValue();
 						break;
 					}
 				}
@@ -277,10 +276,10 @@ final class PostgreSqlDbDataProvider extends ClusterTasksDbDataProvider {
 						logger.warn("from a total of " + tasks.size() + " available tasks none has been started");
 					}
 				}
-			} catch (Exception e) {
+			} catch (Throwable t) {
 				transactionStatus.setRollbackOnly();
 				tasksToRun.clear();
-				throw new CtsGeneralFailure("failed to retrieve and execute tasks", e);
+				throw new CtsGeneralFailure("failed to retrieve and execute tasks", t);
 			}
 
 			return null;

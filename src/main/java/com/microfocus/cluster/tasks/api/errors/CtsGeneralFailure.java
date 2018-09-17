@@ -9,7 +9,7 @@
 package com.microfocus.cluster.tasks.api.errors;
 
 public class CtsGeneralFailure extends RuntimeException {
-	public CtsGeneralFailure(String message, Exception e) {
-		super(message, e);
+	public CtsGeneralFailure(String message, Throwable throwable) {
+		super(message, throwable);
 	}
 }

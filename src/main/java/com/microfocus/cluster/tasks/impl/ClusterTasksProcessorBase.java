@@ -99,8 +99,7 @@ public abstract class ClusterTasksProcessorBase {
 	 *
 	 * @param minimalTasksTakeInterval interval of the processor's readiness to take tasks, in milliseconds
 	 */
-	protected void setMinimalTasksTakeInterval(Integer minimalTasksTakeInterval) {
-		minimalTasksTakeInterval = minimalTasksTakeInterval == null ? ClusterTasksServiceConfigurerSPI.DEFAULT_POLL_INTERVAL : minimalTasksTakeInterval;
+	protected void setMinimalTasksTakeInterval(int minimalTasksTakeInterval) {
 		this.minimalTasksTakeInterval = Math.max(minimalTasksTakeInterval, ClusterTasksServiceConfigurerSPI.MINIMAL_POLL_INTERVAL);
 	}
 

@@ -327,7 +327,7 @@ public class ClusterTasksServiceImpl implements ClusterTasksService {
 
 	//  INTERNAL WORKERS: DISPATCHER AND MAINTAINER
 	//
-	private final class ClusterTasksDispatcherThreadFactory implements ThreadFactory {
+	private static final class ClusterTasksDispatcherThreadFactory implements ThreadFactory {
 		@Override
 		public Thread newThread(Runnable runnable) {
 			Thread result = new Thread(runnable);
@@ -400,7 +400,7 @@ public class ClusterTasksServiceImpl implements ClusterTasksService {
 		}
 	}
 
-	private final class ClusterTasksMaintainerThreadFactory implements ThreadFactory {
+	private static final class ClusterTasksMaintainerThreadFactory implements ThreadFactory {
 		@Override
 		public Thread newThread(Runnable runnable) {
 			Thread result = new Thread(runnable);

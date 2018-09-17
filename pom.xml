@@ -238,7 +238,7 @@
 					<version>${spotbugs.version}</version>
 					<configuration>
 						<effort>max</effort>
-						<maxRank>11</maxRank>
+						<maxRank>17</maxRank>
 					</configuration>
 					<executions>
 						<execution>
