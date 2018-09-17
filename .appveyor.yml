@@ -17,7 +17,4 @@ after_test:
   Invoke-WebRequest -Uri 'https://codecov.io/bash' -OutFile codecov.sh
   bash codecov.sh -f "target\jacoco-report\jacoco.xml"
 
-cache:
-- C:\Users\appveyor\.m2
-
 build: off
