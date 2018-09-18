@@ -25,8 +25,10 @@ before_install:
 - sudo service postgresql restart
 
 # ORACLE DB
-- sudo wget https://raw.githubusercontent.com/Vincit/travis-oracledb-xe/master/accept_the_license_agreement_for_oracledb_xe_11g_and_install.sh
-- sudo bash ./accept_the_license_agreement_for_oracledb_xe_11g_and_install.sh
+#- sudo wget https://raw.githubusercontent.com/Vincit/travis-oracledb-xe/master/accept_the_license_agreement_for_oracledb_xe_11g_and_install.sh
+#- sudo bash ./accept_the_license_agreement_for_oracledb_xe_11g_and_install.sh
+
+- sudo docker pull wnameless/oracle-xe-11g && docker run -d -p 49161:1521 wnameless/oracle-xe-11g
 
 # WAIT
 - sleep 2
