@@ -1,4 +1,3 @@
-sudo: required
 install: true
 language: java
 jdk: oraclejdk8
@@ -21,14 +20,13 @@ env:
 
 before_install:
 
-
 # POSTGRESQL DB
-#- sudo sed -i -e '/local.*peer/s/postgres/all/' -e 's/peer\|md5/trust/g' /etc/postgresql/*/main/pg_hba.conf
-#- sudo service postgresql restart
+- sudo sed -i -e '/local.*peer/s/postgres/all/' -e 's/peer\|md5/trust/g' /etc/postgresql/*/main/pg_hba.conf
+- sudo service postgresql restart
 
 # ORACLE DB
 - sudo wget https://raw.githubusercontent.com/Vincit/travis-oracledb-xe/master/accept_the_license_agreement_for_oracledb_xe_11g_and_install.sh
-- sudo bash ./accept_the_license_agreement_for_oracledb_xe_11g_and_install.sh
+- sudo su bash ./accept_the_license_agreement_for_oracledb_xe_11g_and_install.sh
 
 # WAIT
 - sleep 2
