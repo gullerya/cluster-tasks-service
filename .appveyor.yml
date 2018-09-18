@@ -5,11 +5,6 @@ platform: Any CPU
 services:
 - mssql2014
 
-before_test:
-- appveyor DownloadFile OracleXE112_Win64.zip
-- 7z x OracleXE112_Win64.zip -y >NUL
-- DISK1\setup.exe /s /f1"DISK1\response\OracleXE-install.iss"
-
 test_script:
 - cmd: mvn verify spotbugs:check -T8
 - cmd: mvn test -T8 -DskipTests=false -Pcreate-tests-schema,drop-tests-schema,sqlserver,jacoco-coverage -Ddb.config.location=environment -Dtests.db.type=MSSQL -Dtests.db.url=jdbc:sqlserver://localhost\\SQL2014:1433 -Dtests.db.username=sa -Dtests.db.password=Password12!
