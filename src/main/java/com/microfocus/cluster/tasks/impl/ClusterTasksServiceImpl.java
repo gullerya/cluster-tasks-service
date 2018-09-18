@@ -82,7 +82,7 @@ public class ClusterTasksServiceImpl implements ClusterTasksService {
 				.register();
 	}
 
-	private static final long MAX_TIME_TO_RUN_DEFAULT = 1000 * 60;
+	private static final Long MAX_TIME_TO_RUN_DEFAULT = 1000 * 60L;
 
 	@Autowired
 	private ClusterTasksServiceImpl(ClusterTasksServiceConfigurerSPI serviceConfigurer, ClusterTasksServiceSchemaManager schemaManager) {
@@ -303,7 +303,7 @@ public class ClusterTasksServiceImpl implements ClusterTasksService {
 
 			target.processorType = targetProcessorType;
 			target.orderingFactor = null;
-			target.delayByMillis = source.getDelayByMillis() == null ? 0L : source.getDelayByMillis();
+			target.delayByMillis = source.getDelayByMillis() == null ? (Long) 0L : source.getDelayByMillis();
 			target.maxTimeToRunMillis = source.getMaxTimeToRunMillis() == null || source.getMaxTimeToRunMillis() == 0 ? MAX_TIME_TO_RUN_DEFAULT : source.getMaxTimeToRunMillis();
 			target.body = source.getBody() == null || source.getBody().isEmpty() ? null : source.getBody();
 			target.taskType = ClusterTaskType.REGULAR;
