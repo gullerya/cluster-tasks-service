@@ -42,6 +42,7 @@ jobs:
   - stage: test
     script:
     - mvn test -e -T8 -DskipTests=false -Ddb.config.location=environment -Dtests.db.type=POSTGRESQL -Dtests.db.url=jdbc:postgresql://localhost:5433/cts_tests_schema -Dtests.db.username=postgres -Ppostgresql,jacoco-coverage
+    - mvn test -e -T8 -DskipTests=false -Ddb.config.location=environment -Dtests.db.type=ORACLE -Dtests.db.url=jdbc:oracle:thin:@localhost:49161:xe -Dtests.db.username=system -Dtests.db.password=oracle -Poracle,create-tests-schema,drop-tests-schema,jacoco-coverage
     - mvn spotbugs:check -T8
 
 after_success:
