@@ -127,10 +127,20 @@
 
 		<!--TESTS-->
 		<dependency>
-			<artifactId>slf4j-simple</artifactId>
-			<groupId>org.slf4j</groupId>
-			<version>${slf4j.version}</version>
+			<artifactId>log4j-api</artifactId>
+			<groupId>org.apache.logging.log4j</groupId>
+			<version>2.11.1</version>
 			<scope>test</scope>
+		</dependency>
+		<dependency>
+			<artifactId>log4j-core</artifactId>
+			<groupId>org.apache.logging.log4j</groupId>
+			<version>2.11.1</version>
+		</dependency>
+		<dependency>
+			<artifactId>log4j-slf4j-impl</artifactId>
+			<groupId>org.apache.logging.log4j</groupId>
+			<version>2.11.1</version>
 		</dependency>
 		<dependency>
 			<artifactId>HikariCP</artifactId>

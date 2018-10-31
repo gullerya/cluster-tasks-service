@@ -39,7 +39,7 @@ import static org.junit.Assert.assertEquals;
 
 public class ClusterTasksHeavyClusterTest {
 	private static final Logger logger = LoggerFactory.getLogger(ClusterTasksHeavyClusterTest.class);
-	private int numberOfNodes = 4;
+	private int numberOfNodes = 8;
 	private int numberOfTasks = 100;
 
 	@Test
