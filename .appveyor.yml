@@ -30,4 +30,5 @@ after_test:
     bash codecov.sh -f "target\jacoco-report\jacoco.xml"
 
 cache:
+- C:\maven\
 - C:\Users\appveyor\.m2
