@@ -151,12 +151,6 @@
 			<scope>test</scope>
 		</dependency>
 		<dependency>
-			<artifactId>ojdbc</artifactId>
-			<groupId>com.oracle.jdbc</groupId>
-			<version>${ojdbc.version}</version>
-			<scope>test</scope>
-		</dependency>
-		<dependency>
 			<artifactId>mssql-jdbc</artifactId>
 			<groupId>com.microsoft.sqlserver</groupId>
 			<version>${mssql-jdbc.version}</version>
@@ -409,6 +403,14 @@
 					GRANT UNLIMITED TABLESPACE TO ${tests.db.schema};
 				</tests.db.create.script>
 			</properties>
+			<dependencies>
+				<dependency>
+					<artifactId>ojdbc</artifactId>
+					<groupId>com.oracle.jdbc</groupId>
+					<version>${ojdbc.version}</version>
+					<scope>test</scope>
+				</dependency>
+			</dependencies>
 			<build>
 				<plugins>
 					<plugin>
