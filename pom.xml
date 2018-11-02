@@ -136,16 +136,36 @@
 			<artifactId>log4j-core</artifactId>
 			<groupId>org.apache.logging.log4j</groupId>
 			<version>2.11.1</version>
+			<scope>test</scope>
 		</dependency>
 		<dependency>
 			<artifactId>log4j-slf4j-impl</artifactId>
 			<groupId>org.apache.logging.log4j</groupId>
 			<version>2.11.1</version>
+			<scope>test</scope>
 		</dependency>
 		<dependency>
 			<artifactId>HikariCP</artifactId>
 			<groupId>com.zaxxer</groupId>
 			<version>${hikari.version}</version>
+			<scope>test</scope>
+		</dependency>
+		<dependency>
+			<artifactId>ojdbc</artifactId>
+			<groupId>com.oracle.jdbc</groupId>
+			<version>${ojdbc.version}</version>
+			<scope>test</scope>
+		</dependency>
+		<dependency>
+			<artifactId>mssql-jdbc</artifactId>
+			<groupId>com.microsoft.sqlserver</groupId>
+			<version>${mssql-jdbc.version}</version>
+			<scope>test</scope>
+		</dependency>
+		<dependency>
+			<artifactId>postgresql</artifactId>
+			<groupId>org.postgresql</groupId>
+			<version>${postgresql.version}</version>
 			<scope>test</scope>
 		</dependency>
 		<dependency>
@@ -343,14 +363,6 @@
 				<tests.db.drop.script>DROP DATABASE ${tests.db.schema}</tests.db.drop.script>
 				<tests.db.create.script>CREATE DATABASE ${tests.db.schema}</tests.db.create.script>
 			</properties>
-			<dependencies>
-				<dependency>
-					<artifactId>mssql-jdbc</artifactId>
-					<groupId>com.microsoft.sqlserver</groupId>
-					<version>${mssql-jdbc.version}</version>
-					<scope>test</scope>
-				</dependency>
-			</dependencies>
 			<build>
 				<plugins>
 					<plugin>
@@ -397,14 +409,6 @@
 					GRANT UNLIMITED TABLESPACE TO ${tests.db.schema};
 				</tests.db.create.script>
 			</properties>
-			<dependencies>
-				<dependency>
-					<artifactId>ojdbc</artifactId>
-					<groupId>com.oracle.jdbc</groupId>
-					<version>${ojdbc.version}</version>
-					<scope>test</scope>
-				</dependency>
-			</dependencies>
 			<build>
 				<plugins>
 					<plugin>
@@ -432,14 +436,6 @@
 				<tests.db.drop.script>DROP DATABASE ${tests.db.schema}</tests.db.drop.script>
 				<tests.db.create.script>CREATE DATABASE ${tests.db.schema}</tests.db.create.script>
 			</properties>
-			<dependencies>
-				<dependency>
-					<artifactId>postgresql</artifactId>
-					<groupId>org.postgresql</groupId>
-					<version>${postgresql.version}</version>
-					<scope>test</scope>
-				</dependency>
-			</dependencies>
 			<build>
 				<plugins>
 					<plugin>

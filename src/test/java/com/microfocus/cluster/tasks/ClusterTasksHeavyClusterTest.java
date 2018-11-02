@@ -39,8 +39,8 @@ import static org.junit.Assert.assertEquals;
 
 public class ClusterTasksHeavyClusterTest {
 	private static final Logger logger = LoggerFactory.getLogger(ClusterTasksHeavyClusterTest.class);
-	private int numberOfNodes = 8;
-	private int numberOfTasks = 100;
+	private int numberOfNodes = 16;
+	private int numberOfTasks = 500;
 
 	@Test
 	public void TestA_heavy_cluster() throws InterruptedException {
@@ -67,6 +67,7 @@ public class ClusterTasksHeavyClusterTest {
 		waitForAllInit.await();
 		logger.info(numberOfNodes + " nodes initialized successfully");
 
+		//  [YG] TODO: do better drain out
 		//  let's drain out any old tasks if present
 		ClusterTasksITUtils.sleepSafely(2000);
 
@@ -93,7 +94,7 @@ public class ClusterTasksHeavyClusterTest {
 				try {
 					for (int j = 0; j < numberOfTasks; j++) {
 						ClusterTasksService clusterTasksService = c.getBean(ClusterTasksService.class);
-						ClusterTask task = TaskBuilders.simpleTask().build();
+						ClusterTask task = TaskBuilders.simpleTask().setBody("some body to touch the body tables as well").build();
 						clusterTasksService.enqueueTasks(ClusterTasksDataProviderType.DB, ClusterTasksHC_A_test.class.getSimpleName(), task);
 						clusterTasksService.enqueueTasks(ClusterTasksDataProviderType.DB, ClusterTasksHC_B_test.class.getSimpleName(), task);
 						clusterTasksService.enqueueTasks(ClusterTasksDataProviderType.DB, ClusterTasksHC_C_test.class.getSimpleName(), task);
@@ -110,7 +111,7 @@ public class ClusterTasksHeavyClusterTest {
 		}
 		waitForAllTasksPush.await();
 		long timeToPush = System.currentTimeMillis() - startTime;
-		logger.info(numberOfNodes * numberOfTasks * 5 + " tasks has been pushed in " + timeToPush + "ms; average of " + (timeToPush / (numberOfNodes * numberOfTasks * 5)) + "ms for task");
+		logger.info(numberOfNodes * numberOfTasks * 5 + " tasks has been pushed in " + timeToPush + "ms; average of " + ((double) timeToPush / (numberOfNodes * numberOfTasks * 5)) + "ms for task");
 
 		//  wait for all tasks to be drained
 		CountDownLatch waitForAllTasksDone = new CountDownLatch(5);
@@ -119,44 +120,49 @@ public class ClusterTasksHeavyClusterTest {
 			while (ClusterTasksHC_A_test.taskIDs.size() != numberOfNodes * numberOfTasks) {
 				ClusterTasksITUtils.sleepSafely(100);
 			}
-			ClusterTasksITUtils.sleepSafely(300);
+			ClusterTasksITUtils.sleepSafely(1000);   //  verify no more interactions
 			assertEquals(numberOfNodes * numberOfTasks, ClusterTasksHC_A_test.taskIDs.size());
+			logger.info("ClusterTasksHC_A_test DONE with " + numberOfNodes * numberOfTasks + " (for all " + numberOfNodes + " nodes)");
 			waitForAllTasksDone.countDown();
 		});
 		tasksDonePool.execute(() -> {
 			while (ClusterTasksHC_B_test.taskIDs.size() != numberOfNodes * numberOfTasks) {
 				ClusterTasksITUtils.sleepSafely(100);
 			}
-			ClusterTasksITUtils.sleepSafely(300);
+			ClusterTasksITUtils.sleepSafely(1000);   //  verify no more interactions
 			assertEquals(numberOfNodes * numberOfTasks, ClusterTasksHC_B_test.taskIDs.size());
+			logger.info("ClusterTasksHC_B_test DONE with " + numberOfNodes * numberOfTasks + " (for all " + numberOfNodes + " nodes)");
 			waitForAllTasksDone.countDown();
 		});
 		tasksDonePool.execute(() -> {
 			while (ClusterTasksHC_C_test.taskIDs.size() != numberOfNodes * numberOfTasks) {
 				ClusterTasksITUtils.sleepSafely(100);
 			}
-			ClusterTasksITUtils.sleepSafely(300);
+			ClusterTasksITUtils.sleepSafely(1000);   //  verify no more interactions
 			assertEquals(numberOfNodes * numberOfTasks, ClusterTasksHC_C_test.taskIDs.size());
+			logger.info("ClusterTasksHC_C_test DONE with " + numberOfNodes * numberOfTasks + " (for all " + numberOfNodes + " nodes)");
 			waitForAllTasksDone.countDown();
 		});
 		tasksDonePool.execute(() -> {
 			while (ClusterTasksHC_D_test.taskIDs.size() != numberOfNodes * numberOfTasks) {
 				ClusterTasksITUtils.sleepSafely(100);
 			}
-			ClusterTasksITUtils.sleepSafely(300);
+			ClusterTasksITUtils.sleepSafely(1000);   //  verify no more interactions
 			assertEquals(numberOfNodes * numberOfTasks, ClusterTasksHC_D_test.taskIDs.size());
+			logger.info("ClusterTasksHC_D_test DONE with " + numberOfNodes * numberOfTasks + " (for all " + numberOfNodes + " nodes)");
 			waitForAllTasksDone.countDown();
 		});
 		tasksDonePool.execute(() -> {
 			while (ClusterTasksHC_E_test.taskIDs.size() != numberOfNodes * numberOfTasks) {
 				ClusterTasksITUtils.sleepSafely(100);
 			}
-			ClusterTasksITUtils.sleepSafely(300);
+			ClusterTasksITUtils.sleepSafely(1000);   //  verify no more interactions
 			assertEquals(numberOfNodes * numberOfTasks, ClusterTasksHC_E_test.taskIDs.size());
+			logger.info("ClusterTasksHC_E_test DONE with " + numberOfNodes * numberOfTasks + " (for all " + numberOfNodes + " nodes)");
 			waitForAllTasksDone.countDown();
 		});
 		waitForAllTasksDone.await();
 		long timeToDone = System.currentTimeMillis() - startTime - timeToPush;
-		logger.info(numberOfNodes * numberOfTasks * 5 + " tasks has been processed in " + timeToDone + "ms; average of " + (timeToDone / (numberOfNodes * numberOfTasks * 5)) + "ms for task");
+		logger.info(numberOfNodes * numberOfTasks * 5 + " tasks has been processed in " + timeToDone + "ms; average of " + ((double) timeToDone / (numberOfNodes * numberOfTasks * 5)) + "ms for task");
 	}
 }
