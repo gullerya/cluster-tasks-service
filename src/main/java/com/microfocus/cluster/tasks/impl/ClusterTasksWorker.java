@@ -27,7 +27,6 @@ import java.util.Collections;
 class ClusterTasksWorker implements Runnable {
 	private static final Logger logger = LoggerFactory.getLogger(ClusterTasksWorker.class);
 	private static final Counter ctsOwnErrorsCounter;
-	private static final Counter tasksPerProcessorCounter;
 	private static final Summary tasksPerProcessorDuration;
 	private static final Counter errorsPerProcessorCounter;
 	private static final String BODY_RETRIEVAL_PHASE = "body_retrieve";
@@ -42,11 +41,6 @@ class ClusterTasksWorker implements Runnable {
 				.name("cts_own_errors_total")
 				.help("CTS own errors counter")
 				.labelNames("phase", "error_type")
-				.register();
-		tasksPerProcessorCounter = Counter.build()
-				.name("cts_per_processor_tasks_total")
-				.help("CTS task counter (per processor type)")
-				.labelNames("processor_type")
 				.register();
 		tasksPerProcessorDuration = Summary.build()
 				.name("cts_per_processor_task_duration_seconds")
@@ -74,7 +68,6 @@ class ClusterTasksWorker implements Runnable {
 
 	@Override
 	public void run() {
-		tasksPerProcessorCounter.labels(processor.getType()).inc();                                         //  metric
 		if (task.partitionIndex != null) {
 			try {
 				task.body = dataProvider.retrieveTaskBody(task.id, task.partitionIndex);
