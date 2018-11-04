@@ -18,9 +18,6 @@ import com.microfocus.cluster.tasks.api.enums.CTPPersistStatus;
 import com.microfocus.cluster.tasks.api.enums.ClusterTaskStatus;
 import com.microfocus.cluster.tasks.api.enums.ClusterTaskType;
 import com.microfocus.cluster.tasks.api.enums.ClusterTasksDataProviderType;
-import io.prometheus.client.Counter;
-import io.prometheus.client.Gauge;
-import io.prometheus.client.Summary;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -47,40 +44,11 @@ public class ClusterTasksServiceImpl implements ClusterTasksService {
 	private final Map<String, ClusterTasksProcessorBase> processorsMap = new LinkedHashMap<>();
 	private final ExecutorService dispatcherExecutor = Executors.newSingleThreadExecutor(new ClusterTasksDispatcherThreadFactory());
 	private final ExecutorService maintainerExecutor = Executors.newSingleThreadExecutor(new ClusterTasksMaintainerThreadFactory());
-	private final ClusterTasksDispatcher dispatcher = new ClusterTasksDispatcher();
-	private final ClusterTasksMaintainer maintainer = new ClusterTasksMaintainer();
+	private final SystemWorkersConfigurer workersConfigurer = new SystemWorkersConfigurer();
+	private final ClusterTasksDispatcher dispatcher = new ClusterTasksDispatcher(workersConfigurer);
+	private final ClusterTasksMaintener maintainer = new ClusterTasksMaintener(workersConfigurer);
 	private ClusterTasksServiceConfigurerSPI serviceConfigurer;
 	private ClusterTasksServiceSchemaManager schemaManager;
-
-	private static final Counter dispatchErrors;
-	private static final Summary dispatchDurationSummary;
-	private static final Counter maintenanceErrors;
-	private static final Summary maintenanceDurationSummary;
-	private static final Gauge pendingTasksCounter;
-
-	static {
-		dispatchErrors = Counter.build()
-				.name("cts_dispatch_errors_total")
-				.help("CTS tasks' dispatch errors counter")
-				.register();
-		dispatchDurationSummary = Summary.build()
-				.name("cts_dispatch_duration_seconds")
-				.help("CTS tasks' dispatch duration summary")
-				.register();
-		maintenanceErrors = Counter.build()
-				.name("cts_gc_errors_total")
-				.help("CTS maintenance errors counter")
-				.register();
-		maintenanceDurationSummary = Summary.build()
-				.name("cts_gc_duration_seconds")
-				.help("CTS maintenance duration summary")
-				.register();
-		pendingTasksCounter = Gauge.build()
-				.name("cts_pending_tasks_counter")
-				.help("CTS pending tasks counter (by CTP type)")
-				.labelNames("processor_type")
-				.register();
-	}
 
 	private static final Long MAX_TIME_TO_RUN_DEFAULT = 1000 * 60L;
 
@@ -314,19 +282,6 @@ public class ClusterTasksServiceImpl implements ClusterTasksService {
 		return result;
 	}
 
-	private boolean isEnabled() {
-		long DURATION_THRESHOLD = 5;
-		long foreignCallStart = System.currentTimeMillis();
-		boolean isEnabled = serviceConfigurer.isEnabled();
-		long foreignCallDuration = System.currentTimeMillis() - foreignCallStart;
-		if (foreignCallDuration > DURATION_THRESHOLD) {
-			logger.warn("call to a foreign method 'isEnabled' took more than " + DURATION_THRESHOLD + "ms (" + foreignCallDuration + "ms)");
-		}
-		return isEnabled;
-	}
-
-	//  INTERNAL WORKERS: DISPATCHER AND MAINTAINER
-	//
 	private static final class ClusterTasksDispatcherThreadFactory implements ThreadFactory {
 		@Override
 		public Thread newThread(Runnable runnable) {
@@ -334,69 +289,6 @@ public class ClusterTasksServiceImpl implements ClusterTasksService {
 			result.setName("CTS Dispatcher; TID: " + result.getId());
 			result.setDaemon(true);
 			return result;
-		}
-	}
-
-	private final class ClusterTasksDispatcher implements Runnable {
-
-		@Override
-		public void run() {
-
-			//  infallible tasks dispatch round
-			while (true) {
-				//  dispatch round
-				Summary.Timer dispatchTimer = dispatchDurationSummary.startTimer();
-				try {
-					if (isEnabled()) {
-						runDispatch();
-					}
-				} catch (Throwable t) {
-					dispatchErrors.inc();
-					logger.error("failure within dispatch iteration; total failures: " + dispatchErrors.get(), t);
-				} finally {
-					dispatchTimer.observeDuration();
-					breathe();
-				}
-			}
-		}
-
-		private void runDispatch() {
-			dataProvidersMap.forEach((providerType, provider) -> {
-				if (provider.isReady()) {
-					Map<String, ClusterTasksProcessorBase> availableProcessorsOfDPType = new LinkedHashMap<>();
-					processorsMap.forEach((processorType, processor) -> {
-						if (processor.getDataProviderType().equals(providerType) && processor.isReadyToHandleTaskInternal()) {
-							availableProcessorsOfDPType.put(processorType, processor);
-						}
-					});
-					if (!availableProcessorsOfDPType.isEmpty()) {
-						try {
-							provider.retrieveAndDispatchTasks(availableProcessorsOfDPType);
-						} catch (Throwable t) {
-							dispatchErrors.inc();
-							logger.error("failed to dispatch tasks in " + providerType + "; total failures: " + dispatchErrors.get(), t);
-						}
-					} else {
-						logger.debug("no available processors powered by data provider " + providerType + " found, skipping this dispatch round");
-					}
-				}
-			});
-		}
-
-		private void breathe() {
-			Integer breathingInterval = null;
-			try {
-				breathingInterval = serviceConfigurer.getTasksPollIntervalMillis();
-			} catch (Throwable t) {
-				logger.warn("failed to obtain breathing interval from service configurer, falling back to DEFAULT (" + serviceConfigurer.DEFAULT_POLL_INTERVAL + ")", t);
-			}
-			breathingInterval = breathingInterval == null ? serviceConfigurer.DEFAULT_POLL_INTERVAL : breathingInterval;
-			breathingInterval = Math.max(breathingInterval, serviceConfigurer.MINIMAL_POLL_INTERVAL);
-			try {
-				Thread.sleep(breathingInterval);
-			} catch (InterruptedException ie) {
-				logger.warn("interrupted while breathing between dispatch rounds", ie);
-			}
 		}
 	}
 
@@ -410,64 +302,40 @@ public class ClusterTasksServiceImpl implements ClusterTasksService {
 		}
 	}
 
-	private final class ClusterTasksMaintainer implements Runnable {
-		private long lastTasksCountTime = 0;
+	/**
+	 * Configurer with a very limited creation access level but wider read access level for protected internal configuration flows
+	 * - for a most reasons this class is just a proxy for getting ClusterTasksService private properties in a safe way
+	 */
+	final class SystemWorkersConfigurer {
+		private SystemWorkersConfigurer() {
 
-		@Override
-		public void run() {
-
-			//  infallible maintenance round
-			while (true) {
-				Summary.Timer maintenanceTimer = maintenanceDurationSummary.startTimer();
-				try {
-					if (isEnabled()) {
-						dataProvidersMap.forEach((dpType, provider) -> {
-							if (provider.isReady()) {
-
-								//  [YG] TODO: split rescheduling from GC, this will most likely allow remove some locking
-								provider.handleGarbageAndStaled();
-
-								//  upon once-in-a-while decision - do count tasks
-								if (System.currentTimeMillis() - lastTasksCountTime > ClusterTasksServiceConfigurerSPI.DEFAULT_TASKS_COUNT_INTERVAL) {
-									lastTasksCountTime = System.currentTimeMillis();
-									countTasks(provider);
-								}
-							}
-						});
-					}
-				} catch (Throwable t) {
-					maintenanceErrors.inc();
-					logger.error("failed to perform maintenance round; total failures: " + maintenanceErrors.get(), t);
-				} finally {
-					maintenanceTimer.observeDuration();
-					breathe();
-				}
-			}
 		}
 
-		private void countTasks(ClusterTasksDataProvider dataProvider) {
-			try {
-				Map<String, Integer> pendingTasksCounters = dataProvider.countTasks(ClusterTaskStatus.PENDING);
-				pendingTasksCounters.forEach((processorType, count) -> pendingTasksCounter.labels(processorType).set(count));
-			} catch (Exception e) {
-				logger.error("failed to count tasks", e);
-			}
+		String getInstanceID() {
+			return RUNTIME_INSTANCE_ID;
 		}
 
-		private void breathe() {
-			Integer maintenanceInterval = null;
-			try {
-				maintenanceInterval = serviceConfigurer.getMaintenanceIntervalMillis();
-			} catch (Throwable t) {
-				logger.error("failed to obtain maintenance interval from hosting application, falling back to default (" + ClusterTasksServiceConfigurerSPI.DEFAULT_MAINTENANCE_INTERVAL + ")", t);
+		boolean isCTSServiceEnabled() {
+			long DURATION_THRESHOLD = 5;
+			long foreignCallStart = System.currentTimeMillis();
+			boolean isEnabled = serviceConfigurer.isEnabled();
+			long foreignCallDuration = System.currentTimeMillis() - foreignCallStart;
+			if (foreignCallDuration > DURATION_THRESHOLD) {
+				logger.warn("call to a foreign method 'isEnabled' took more than " + DURATION_THRESHOLD + "ms (" + foreignCallDuration + "ms)");
 			}
-			maintenanceInterval = maintenanceInterval == null ? ClusterTasksServiceConfigurerSPI.DEFAULT_MAINTENANCE_INTERVAL : maintenanceInterval;
-			maintenanceInterval = Math.max(maintenanceInterval, ClusterTasksServiceConfigurerSPI.MINIMAL_MAINTENANCE_INTERVAL);
-			try {
-				Thread.sleep(maintenanceInterval);
-			} catch (InterruptedException ie) {
-				logger.warn("interrupted while breathing between maintenance rounds", ie);
-			}
+			return isEnabled;
+		}
+
+		Map<ClusterTasksDataProviderType, ClusterTasksDataProvider> getDataProvidersMap() {
+			return dataProvidersMap;
+		}
+
+		Map<String, ClusterTasksProcessorBase> getProcessorsMap() {
+			return processorsMap;
+		}
+
+		ClusterTasksServiceConfigurerSPI getCTSServiceConfigurer() {
+			return serviceConfigurer;
 		}
 	}
 }
