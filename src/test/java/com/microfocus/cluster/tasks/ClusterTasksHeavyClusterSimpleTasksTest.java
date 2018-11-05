@@ -31,14 +31,14 @@ import static org.junit.Assert.assertEquals;
  * <p>
  * Collection of integration tests for Cluster Tasks Processor Service to check how the whole system performs in a 'heavy' cluster and load simulation
  * - we are raising a number nodes as specified below
- * - we are creating few scheduled tasks
+ * - we are creating many SIMPLE tasks
  * - we are creating few regular tasks processor and push the specified amount of tasks for each of those
  * - tasks' processor will do nothing except incrementing the counters, so the only time consuming logic here is the own CTS logic
  * - we will than be measuring the time when all of the tasks got drained
  */
 
-public class ClusterTasksHeavyClusterTest {
-	private static final Logger logger = LoggerFactory.getLogger(ClusterTasksHeavyClusterTest.class);
+public class ClusterTasksHeavyClusterSimpleTasksTest {
+	private static final Logger logger = LoggerFactory.getLogger(ClusterTasksHeavyClusterSimpleTasksTest.class);
 	private int numberOfNodes = 16;
 	private int numberOfTasks = 500;
 

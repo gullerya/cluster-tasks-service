@@ -85,17 +85,15 @@ final class MsSqlDbDataProvider extends ClusterTasksDbDataProvider {
 		String selectFields = String.join(",", META_ID, TASK_TYPE, PROCESSOR_TYPE, UNIQUENESS_KEY, CONCURRENCY_KEY, ORDERING_FACTOR, DELAY_BY_MILLIS, MAX_TIME_TO_RUN, BODY_PARTITION, STATUS);
 		for (int maxProcessorTypes : new Integer[]{20, 50, 100, 500}) {
 			String processorTypesInParameter = String.join(",", Collections.nCopies(maxProcessorTypes, "?"));
-			selectForUpdateTasksSQLs.put(maxProcessorTypes, "SELECT " + selectFields +
-					" FROM " + META_TABLE_NAME + " WHERE " + META_ID + " IN " +
-					"   (SELECT " + META_ID + " FROM" +
-					"       (SELECT " + META_ID + "," +
-					"               ROW_NUMBER() OVER (PARTITION BY COALESCE(" + CONCURRENCY_KEY + ",CAST(NEWID() AS VARCHAR(64))) ORDER BY " + ORDERING_FACTOR + "," + CREATED + "," + META_ID + " ASC) AS row_index," +
-					"               COUNT(CASE WHEN " + STATUS + " = " + ClusterTaskStatus.RUNNING.value + " THEN 1 ELSE NULL END) OVER (PARTITION BY COALESCE(" + CONCURRENCY_KEY + ",CAST(NEWID() AS VARCHAR(64)))) AS running_count" +
+			selectForUpdateTasksSQLs.put(maxProcessorTypes, "SELECT * FROM" +
+					"       (SELECT " + selectFields + "," +
+					"               ROW_NUMBER() OVER (PARTITION BY " + PROCESSOR_TYPE + ",COALESCE(" + CONCURRENCY_KEY + ",CAST(NEWID() AS VARCHAR(36))) ORDER BY " + ORDERING_FACTOR + "," + CREATED + "," + META_ID + " ASC) AS row_index," +
+					"               COUNT(CASE WHEN " + STATUS + " = " + ClusterTaskStatus.RUNNING.value + " THEN 1 ELSE NULL END) OVER (PARTITION BY " + PROCESSOR_TYPE + ",COALESCE(" + CONCURRENCY_KEY + ",CAST(NEWID() AS VARCHAR(36)))) AS running_count" +
 					"       FROM " + META_TABLE_NAME + " WITH (UPDLOCK)" +
 					"       WHERE " + PROCESSOR_TYPE + " IN(" + processorTypesInParameter + ")" +
 					"           AND " + STATUS + " < " + ClusterTaskStatus.FINISHED.value +
 					"           AND " + CREATED + " <= DATEADD(MILLISECOND, -" + DELAY_BY_MILLIS + ", GETDATE())) meta" +
-					"   WHERE meta.row_index <= 1 AND meta.running_count = 0)");
+					"   WHERE meta.row_index <= 1 AND meta.running_count = 0");
 		}
 		for (long partition = 0; partition < PARTITIONS_NUMBER; partition++) {
 			selectTaskBodyByPartitionSQLs.put(partition, "SELECT " + BODY + " FROM " + BODY_TABLE_NAME + partition +
@@ -109,7 +107,7 @@ final class MsSqlDbDataProvider extends ClusterTasksDbDataProvider {
 
 		updateTasksStartedSQL = "UPDATE " + META_TABLE_NAME + " SET " + STATUS + " = " + ClusterTaskStatus.RUNNING.value + ", " + STARTED + " = GETDATE(), " + RUNTIME_INSTANCE + " = ?" +
 				" WHERE " + META_ID + " = ?";
-		updateTaskFinishedSQL = "UPDATE " + META_TABLE_NAME + " SET " + String.join(",", STATUS + " = " + ClusterTaskStatus.FINISHED.value, UNIQUENESS_KEY + " = CAST(NEWID() AS VARCHAR(64))") +
+		updateTaskFinishedSQL = "UPDATE " + META_TABLE_NAME + " SET " + String.join(",", STATUS + " = " + ClusterTaskStatus.FINISHED.value, UNIQUENESS_KEY + " = CAST(NEWID() AS VARCHAR(36))") +
 				" WHERE " + META_ID + " = ?";
 
 		countScheduledPendingTasksSQL = "SELECT " + PROCESSOR_TYPE + ",COUNT(*) AS total FROM " + META_TABLE_NAME +
@@ -420,7 +418,7 @@ final class MsSqlDbDataProvider extends ClusterTasksDbDataProvider {
 	}
 
 	private Set<String> getCTSTableNames() {
-		return Stream.of(META_TABLE_NAME, BODY_TABLE_NAME + "0", BODY_TABLE_NAME + "1", BODY_TABLE_NAME + "2", BODY_TABLE_NAME + "3").collect(Collectors.toSet());
+		return Stream.of(ACTIVE_NODES_TABLE_NAME, META_TABLE_NAME, BODY_TABLE_NAME + "0", BODY_TABLE_NAME + "1", BODY_TABLE_NAME + "2", BODY_TABLE_NAME + "3").collect(Collectors.toSet());
 	}
 
 	private Set<String> getCTSIndexNames() {

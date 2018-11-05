@@ -54,6 +54,7 @@ abstract class ClusterTasksDbDataProvider implements ClusterTasksDataProvider {
 
 	//  Metadata table
 	private static final String META_COLUMNS_PREFIX = "CTSKM_";
+	static final String ACTIVE_NODES_TABLE_NAME = "CTS_ACTIVE_NODES";
 	static final String META_TABLE_NAME = "CLUSTER_TASK_META";
 	static final String CLUSTER_TASK_ID_SEQUENCE = "CLUSTER_TASK_ID";
 	static final String META_ID = META_COLUMNS_PREFIX.concat("ID");
