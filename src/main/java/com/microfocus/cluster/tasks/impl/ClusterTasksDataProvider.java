@@ -93,6 +93,13 @@ interface ClusterTasksDataProvider {
 	Map<String, Integer> countTasks(ClusterTaskStatus status);
 
 	/**
+	 * Implementation should provide a counter of all the bodies in all partitions mapped by partition name
+	 *
+	 * @return map of number of bodies per partition
+	 */
+	Map<String, Integer> countBodies();
+
+	/**
 	 * Implementation should provide a counter of all tasks existing in the Storage right to the moment of query
 	 * Counter always works within boundaries of a specific processor's tasks type
 	 * Counter should take into consideration OPTIONAL concurrency key parameter

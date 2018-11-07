@@ -20,12 +20,14 @@ import java.util.Map;
 
 final class ClusterTasksMaintener implements Runnable {
 	private final Logger logger = LoggerFactory.getLogger(ClusterTasksServiceImpl.class);
-	private long lastTasksCountTime = 0;
 	private final Counter maintenanceErrors;
 	private final Summary maintenanceDurationSummary;
 	private final Gauge pendingTasksCounter;
-
+	private final Gauge taskBodiesCounter;
 	private final ClusterTasksServiceImpl.SystemWorkersConfigurer configurer;
+
+	private volatile boolean shuttingDown = false;
+	private long lastTasksCountTime = 0;
 
 	ClusterTasksMaintener(ClusterTasksServiceImpl.SystemWorkersConfigurer configurer) {
 		if (configurer == null) {
@@ -46,29 +48,36 @@ final class ClusterTasksMaintener implements Runnable {
 				.help("CTS pending tasks counter (by CTP type)")
 				.labelNames("processor_type")
 				.register();
+		taskBodiesCounter = Gauge.build()
+				.name("cts_task_bodies_counter_" + configurer.getInstanceID().replaceAll("-", "_"))
+				.help("CTS task bodies counter (per partition)")
+				.labelNames("partition")
+				.register();
+
+		Runtime.getRuntime().addShutdownHook(new Thread(() -> shuttingDown = true, "CTS Maintainer shutdown listener"));
 	}
 
 	@Override
 	public void run() {
 
 		//  infallible maintenance round
-		while (true) {
+		while (!shuttingDown) {
 			Summary.Timer maintenanceTimer = maintenanceDurationSummary.startTimer();
 			try {
 				if (configurer.isCTSServiceEnabled()) {
-					configurer.getDataProvidersMap().forEach((dpType, provider) -> {
+					for (ClusterTasksDataProvider provider : configurer.getDataProvidersMap().values()) {
 						if (provider.isReady()) {
+
+							//  maintain active nodes
+							maintainActiveNodes(provider);
 
 							//  [YG] TODO: split rescheduling from GC, this will most likely allow remove some locking
 							provider.handleGarbageAndStaled();
 
-							//  upon once-in-a-while decision - do count tasks
-							if (System.currentTimeMillis() - lastTasksCountTime > ClusterTasksServiceConfigurerSPI.DEFAULT_TASKS_COUNT_INTERVAL) {
-								lastTasksCountTime = System.currentTimeMillis();
-								countTasks(provider);
-							}
+							//  update tasks related counters
+							maintainTasksCounters(provider);
 						}
-					});
+					}
 				}
 			} catch (Throwable t) {
 				maintenanceErrors.inc();
@@ -80,12 +89,36 @@ final class ClusterTasksMaintener implements Runnable {
 		}
 	}
 
-	private void countTasks(ClusterTasksDataProvider dataProvider) {
-		try {
-			Map<String, Integer> pendingTasksCounters = dataProvider.countTasks(ClusterTaskStatus.PENDING);
-			pendingTasksCounters.forEach((processorType, count) -> pendingTasksCounter.labels(processorType).set(count));
-		} catch (Exception e) {
-			logger.error("failed to count tasks", e);
+	private void maintainActiveNodes(ClusterTasksDataProvider dataProvider) {
+		//  update self as active
+
+		//  remove inactive nodes
+	}
+
+	private void maintainTasksCounters(ClusterTasksDataProvider dataProvider) {
+		if (System.currentTimeMillis() - lastTasksCountTime > ClusterTasksServiceConfigurerSPI.DEFAULT_TASKS_COUNT_INTERVAL) {
+
+			//  count pending tasks
+			try {
+				Map<String, Integer> pendingTasksCounters = dataProvider.countTasks(ClusterTaskStatus.PENDING);
+				for (Map.Entry<String, Integer> counter : pendingTasksCounters.entrySet()) {
+					pendingTasksCounter.labels(counter.getKey()).set(counter.getValue());
+				}
+			} catch (Exception e) {
+				logger.error("failed to count tasks", e);
+			}
+
+			//  count task bodies
+			try {
+				Map<String, Integer> taskBodiesCounters = dataProvider.countBodies();
+				for (Map.Entry<String, Integer> counter : taskBodiesCounters.entrySet()) {
+					taskBodiesCounter.labels(counter.getKey()).set(counter.getValue());
+				}
+			} catch (Exception e) {
+				logger.error("failed to count task bodies", e);
+			}
+
+			lastTasksCountTime = System.currentTimeMillis();
 		}
 	}
 

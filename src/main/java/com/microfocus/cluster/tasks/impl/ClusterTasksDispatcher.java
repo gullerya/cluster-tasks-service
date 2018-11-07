@@ -21,8 +21,9 @@ final class ClusterTasksDispatcher implements Runnable {
 	private final Logger logger = LoggerFactory.getLogger(ClusterTasksServiceImpl.class);
 	private final Counter dispatchErrors;
 	private final Summary dispatchDurationSummary;
-
 	private final ClusterTasksServiceImpl.SystemWorkersConfigurer configurer;
+
+	private volatile boolean shuttingDown = false;
 
 	ClusterTasksDispatcher(ClusterTasksServiceImpl.SystemWorkersConfigurer configurer) {
 		if (configurer == null) {
@@ -38,13 +39,15 @@ final class ClusterTasksDispatcher implements Runnable {
 				.name("cts_dispatch_duration_seconds_" + configurer.getInstanceID().replaceAll("-", "_"))
 				.help("CTS tasks' dispatch duration summary")
 				.register();
+
+		Runtime.getRuntime().addShutdownHook(new Thread(() -> shuttingDown = true, "CTS Dispatcher shutdown listener"));
 	}
 
 	@Override
 	public void run() {
 
 		//  infallible tasks dispatch round
-		while (true) {
+		while (!shuttingDown) {
 			//  dispatch round
 			Summary.Timer dispatchTimer = dispatchDurationSummary.startTimer();
 			try {

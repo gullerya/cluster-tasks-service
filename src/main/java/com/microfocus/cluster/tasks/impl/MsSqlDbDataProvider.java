@@ -65,8 +65,6 @@ final class MsSqlDbDataProvider extends ClusterTasksDbDataProvider {
 	private final String countScheduledPendingTasksSQL;
 	private final String selectGCValidTasksSQL;
 
-	private final Map<ClusterTaskStatus, String> countTasksByStatusSQLs = new LinkedHashMap<>();
-
 	MsSqlDbDataProvider(ClusterTasksService clusterTasksService, ClusterTasksServiceConfigurerSPI serviceConfigurer) {
 		super(clusterTasksService, serviceConfigurer);
 
@@ -117,11 +115,6 @@ final class MsSqlDbDataProvider extends ClusterTasksDbDataProvider {
 		selectGCValidTasksSQL = "SELECT " + selectedForGCFields + " FROM " + META_TABLE_NAME + " WITH (UPDLOCK)" +
 				" WHERE " + STATUS + " = " + ClusterTaskStatus.FINISHED.value +
 				" OR (" + STATUS + " = " + ClusterTaskStatus.RUNNING.value + " AND DATEDIFF(MILLISECOND, " + STARTED + ", GETDATE()) > " + MAX_TIME_TO_RUN + ")";
-
-		for (ClusterTaskStatus status : ClusterTaskStatus.values()) {
-			countTasksByStatusSQLs
-					.put(status, "SELECT COUNT(*) AS counter," + PROCESSOR_TYPE + " FROM " + META_TABLE_NAME + " WHERE " + STATUS + " = " + status.value + " GROUP BY " + PROCESSOR_TYPE);
-		}
 	}
 
 	@Override
@@ -399,22 +392,6 @@ final class MsSqlDbDataProvider extends ClusterTasksDbDataProvider {
 		if (!tasksToReschedule.isEmpty()) {
 			storeTasks(tasksToReschedule.toArray(new TaskInternal[0]));
 		}
-	}
-
-	@Override
-	public Map<String, Integer> countTasks(ClusterTaskStatus status) {
-		String countTasksSQL = countTasksByStatusSQLs.get(status);
-		return getJdbcTemplate().query(countTasksSQL, resultSet -> {
-			Map<String, Integer> result = new HashMap<>();
-			while (resultSet.next()) {
-				try {
-					result.put(resultSet.getString(PROCESSOR_TYPE), resultSet.getInt("counter"));
-				} catch (SQLException sqle) {
-					logger.error("failed to process counted tasks result", sqle);
-				}
-			}
-			return result;
-		});
 	}
 
 	private Set<String> getCTSTableNames() {

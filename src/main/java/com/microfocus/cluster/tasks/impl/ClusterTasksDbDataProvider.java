@@ -26,6 +26,7 @@ import java.sql.SQLException;
 import java.time.Duration;
 import java.time.ZoneOffset;
 import java.time.ZonedDateTime;
+import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
 import java.util.LinkedList;
@@ -85,6 +86,9 @@ abstract class ClusterTasksDbDataProvider implements ClusterTasksDataProvider {
 	private final Map<Long, String> deleteTaskBodyByPartitionSQLs = new LinkedHashMap<>();
 	private final Map<Long, String> truncateByPartitionSQLs = new LinkedHashMap<>();
 
+	private final Map<ClusterTaskStatus, String> countTasksByStatusSQLs = new LinkedHashMap<>();
+	private final Map<Long, String> countTaskBodiesByPartitionSQLs = new LinkedHashMap<>();
+
 	private ZonedDateTime lastTruncateTime;
 	private JdbcTemplate jdbcTemplate;
 	private TransactionTemplate transactionTemplate;
@@ -107,12 +111,62 @@ abstract class ClusterTasksDbDataProvider implements ClusterTasksDataProvider {
 			deleteTaskBodyByPartitionSQLs.put(partition, "DELETE FROM " + BODY_TABLE_NAME + partition +
 					" WHERE " + BODY_ID + " = ?");
 			truncateByPartitionSQLs.put(partition, "TRUNCATE TABLE " + BODY_TABLE_NAME + partition);
+			countTaskBodiesByPartitionSQLs.put(partition, "SELECT COUNT(*) AS counter FROM " + BODY_TABLE_NAME + partition);
+		}
+
+		for (ClusterTaskStatus status : ClusterTaskStatus.values()) {
+			countTasksByStatusSQLs
+					.put(status, "SELECT COUNT(*) AS counter," + PROCESSOR_TYPE + " FROM " + META_TABLE_NAME + " WHERE " + STATUS + " = " + status.value + " GROUP BY " + PROCESSOR_TYPE);
 		}
 	}
 
 	@Override
 	public ClusterTasksDataProviderType getType() {
 		return ClusterTasksDataProviderType.DB;
+	}
+
+	@Override
+	public Map<String, Integer> countTasks(ClusterTaskStatus status) {
+		String countTasksSQL = countTasksByStatusSQLs.get(status);
+		return getJdbcTemplate().query(countTasksSQL, resultSet -> {
+			Map<String, Integer> result = new HashMap<>();
+			while (resultSet.next()) {
+				try {
+					int counter = resultSet.getInt("counter");
+					if (!resultSet.wasNull()) {
+						result.put(resultSet.getString(PROCESSOR_TYPE), counter);
+					} else {
+						logger.error("received NULL value for count of pending tasks");
+					}
+				} catch (SQLException sqle) {
+					logger.error("failed to process counted tasks result", sqle);
+				}
+			}
+			return result;
+		});
+	}
+
+	@Override
+	public Map<String, Integer> countBodies() {
+		Map<String, Integer> result = new LinkedHashMap<>();
+		for (Map.Entry<Long, String> sql : countTaskBodiesByPartitionSQLs.entrySet()) {
+			getJdbcTemplate().query(sql.getValue(), resultSet -> {
+				if (resultSet.next()) {
+					try {
+						int count = resultSet.getInt("counter");
+						if (!resultSet.wasNull()) {
+							result.put(String.valueOf(sql.getKey()), count);
+						} else {
+							logger.error("received NULL value for count of bodies, partition " + sql.getKey());
+						}
+					} catch (SQLException sqle) {
+						logger.error("failed to process counted bodies result, partition " + sql.getKey(), sqle);
+					}
+				}
+				return null;
+			});
+		}
+		return result;
 	}
 
 	@Deprecated

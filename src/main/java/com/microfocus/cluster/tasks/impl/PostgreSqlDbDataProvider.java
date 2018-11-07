@@ -28,7 +28,6 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
 import java.util.Collections;
-import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
 import java.util.LinkedList;
@@ -63,8 +62,6 @@ final class PostgreSqlDbDataProvider extends ClusterTasksDbDataProvider {
 
 	private final String countScheduledPendingTasksSQL;
 	private final String selectGCValidTasksSQL;
-
-	private final Map<ClusterTaskStatus, String> countTasksByStatusSQLs = new LinkedHashMap<>();
 
 	PostgreSqlDbDataProvider(ClusterTasksService clusterTasksService, ClusterTasksServiceConfigurerSPI serviceConfigurer) {
 		super(clusterTasksService, serviceConfigurer);
@@ -111,11 +108,6 @@ final class PostgreSqlDbDataProvider extends ClusterTasksDbDataProvider {
 				" WHERE " + STATUS + " = " + ClusterTaskStatus.FINISHED.value +
 				" OR (" + STATUS + " = " + ClusterTaskStatus.RUNNING.value + " AND " + STARTED + " < LOCALTIMESTAMP - MAKE_INTERVAL(SECS := " + MAX_TIME_TO_RUN + " / 1000))" +
 				" FOR UPDATE";
-
-		for (ClusterTaskStatus status : ClusterTaskStatus.values()) {
-			countTasksByStatusSQLs
-					.put(status, "SELECT COUNT(*) AS counter," + PROCESSOR_TYPE + " FROM " + META_TABLE_NAME + " WHERE " + STATUS + " = " + status.value + " GROUP BY " + PROCESSOR_TYPE);
-		}
 	}
 
 	@Override
@@ -391,22 +383,6 @@ final class PostgreSqlDbDataProvider extends ClusterTasksDbDataProvider {
 		if (!tasksToReschedule.isEmpty()) {
 			storeTasks(tasksToReschedule.toArray(new TaskInternal[0]));
 		}
-	}
-
-	@Override
-	public Map<String, Integer> countTasks(ClusterTaskStatus status) {
-		String countTasksSQL = countTasksByStatusSQLs.get(status);
-		return getJdbcTemplate().query(countTasksSQL, resultSet -> {
-			Map<String, Integer> result = new HashMap<>();
-			while (resultSet.next()) {
-				try {
-					result.put(resultSet.getString(PROCESSOR_TYPE), resultSet.getInt("counter"));
-				} catch (SQLException sqle) {
-					logger.error("failed to process counted tasks result", sqle);
-				}
-			}
-			return result;
-		});
 	}
 
 	private Set<String> getCTSTableNames() {
