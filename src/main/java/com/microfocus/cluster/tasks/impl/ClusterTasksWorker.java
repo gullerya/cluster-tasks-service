@@ -72,9 +72,9 @@ class ClusterTasksWorker implements Runnable {
 			try {
 				task.body = dataProvider.retrieveTaskBody(task.id, task.partitionIndex);
 				logger.debug(task + " has body: " + task.body);
-			} catch (Exception e) {
-				logger.error("failed to retrieve body of the " + task + ", aborting task's execution");
-				ctsOwnErrorsCounter.labels(BODY_RETRIEVAL_PHASE, e.getClass().getSimpleName()).inc();      //  metric
+			} catch (Throwable t) {
+				logger.error("failed to retrieve body of the " + task + ", aborting task's execution", t);
+				ctsOwnErrorsCounter.labels(BODY_RETRIEVAL_PHASE, t.getClass().getSimpleName()).inc();      //  metric
 				return;
 			}
 		} else {
@@ -84,9 +84,9 @@ class ClusterTasksWorker implements Runnable {
 		Summary.Timer timer = tasksPerProcessorDuration.labels(processor.getType()).startTimer();           //  metric
 		try {
 			processor.processTask(ClusterTaskImpl.from(task));
-		} catch (Throwable e) {
-			logger.error("failed processing " + task + ", body: " + task.body, e);
-			errorsPerProcessorCounter.labels(processor.getType(), e.getClass().getSimpleName()).inc();      //  metric
+		} catch (Throwable t) {
+			logger.error("failed processing " + task + ", body: " + task.body, t);
+			errorsPerProcessorCounter.labels(processor.getType(), t.getClass().getSimpleName()).inc();      //  metric
 		} finally {
 			timer.observeDuration();                                                                        //  metric
 			try {
@@ -94,9 +94,9 @@ class ClusterTasksWorker implements Runnable {
 					dataProvider.reinsertScheduledTasks(Collections.singletonList(task));
 				}
 				dataProvider.updateTaskToFinished(task.id);
-			} catch (Exception e) {
-				logger.error("failed to update finished on " + task, e);
-				ctsOwnErrorsCounter.labels(TASK_FINALIZATION_PHASE, e.getClass().getSimpleName()).inc();   //  metric
+			} catch (Throwable t) {
+				logger.error("failed to update finished on " + task, t);
+				ctsOwnErrorsCounter.labels(TASK_FINALIZATION_PHASE, t.getClass().getSimpleName()).inc();   //  metric
 			} finally {
 				processor.notifyTaskWorkerFinished();
 			}

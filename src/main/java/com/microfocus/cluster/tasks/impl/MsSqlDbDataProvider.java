@@ -21,13 +21,11 @@ import org.springframework.dao.DataAccessException;
 import org.springframework.dao.DuplicateKeyException;
 import org.springframework.jdbc.core.JdbcTemplate;
 
-import java.sql.SQLException;
 import java.sql.Types;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
 import java.util.Collections;
-import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
 import java.util.LinkedList;
@@ -209,7 +207,9 @@ final class MsSqlDbDataProvider extends ClusterTasksDbDataProvider {
 					);
 
 					result.add(new ClusterTaskPersistenceResultImpl(CTPPersistStatus.SUCCESS));
-					logger.debug("successfully created " + task);
+					if (logger.isDebugEnabled()) {
+						logger.debug("successfully created " + task);
+					}
 				} catch (DuplicateKeyException dke) {
 					transactionStatus.setRollbackOnly();
 					result.add(new ClusterTaskPersistenceResultImpl(CTPPersistStatus.UNIQUE_CONSTRAINT_FAILURE));
@@ -320,8 +320,7 @@ final class MsSqlDbDataProvider extends ClusterTasksDbDataProvider {
 					new int[]{BIGINT},
 					this::rowToTaskBodyReader);
 		} catch (DataAccessException dae) {
-			logger.error(clusterTasksService.getInstanceID() + " failed to retrieve task's body", dae);
-			throw new CtsGeneralFailure("failed to retrieve task's body", dae);
+			throw new CtsGeneralFailure(clusterTasksService.getInstanceID() + "failed to retrieve task's body", dae);
 		}
 	}
 
@@ -338,7 +337,7 @@ final class MsSqlDbDataProvider extends ClusterTasksDbDataProvider {
 					new Object[]{taskId},
 					new int[]{BIGINT});
 		} catch (DataAccessException dae) {
-			logger.error(clusterTasksService.getInstanceID() + " failed to update task finished", dae);
+			throw new CtsGeneralFailure(clusterTasksService.getInstanceID() + " failed to update task finished", dae);
 		}
 	}
 
