@@ -26,8 +26,9 @@ final class ClusterTasksMaintener implements Runnable {
 	private final Gauge taskBodiesCounter;
 	private final ClusterTasksServiceImpl.SystemWorkersConfigurer configurer;
 
-	private volatile boolean shuttingDown = false;
 	private long lastTasksCountTime = 0;
+	private long lastTimeRemovedNonActiveNodes = 0;
+	private volatile boolean shuttingDown = false;
 
 	ClusterTasksMaintener(ClusterTasksServiceImpl.SystemWorkersConfigurer configurer) {
 		if (configurer == null) {
@@ -99,7 +100,11 @@ final class ClusterTasksMaintener implements Runnable {
 
 		//  remove inactive nodes (node will be considered inactive if it has not been see for X3 times maintenance interval)
 		try {
-			dataProvider.removeLongTimeNoSeeNodes(getEffectiveMaintenanceInterval() * 3);
+			long maxTimeNoSee = getEffectiveMaintenanceInterval() * 3;
+			if (System.currentTimeMillis() - lastTimeRemovedNonActiveNodes > maxTimeNoSee) {
+				dataProvider.removeLongTimeNoSeeNodes(getEffectiveMaintenanceInterval() * 3);
+				lastTimeRemovedNonActiveNodes = System.currentTimeMillis();
+			}
 		} catch (Exception e) {
 			logger.error("failed to remove long time no see nodes", e);
 		}

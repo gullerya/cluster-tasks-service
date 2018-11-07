@@ -31,7 +31,6 @@ import java.util.LinkedHashSet;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
-import java.util.Objects;
 import java.util.Set;
 import java.util.function.Function;
 import java.util.stream.Collectors;
@@ -65,6 +64,7 @@ final class MsSqlDbDataProvider extends ClusterTasksDbDataProvider {
 	private final String selectGCValidTasksSQL;
 
 	private final String upsertSelfLastSeenSQL;
+	private final String removeLongTimeNoSeeSQL;
 
 	MsSqlDbDataProvider(ClusterTasksService clusterTasksService, ClusterTasksServiceConfigurerSPI serviceConfigurer) {
 		super(clusterTasksService, serviceConfigurer);
@@ -117,17 +117,14 @@ final class MsSqlDbDataProvider extends ClusterTasksDbDataProvider {
 				" WHERE " + STATUS + " = " + ClusterTaskStatus.FINISHED.value +
 				" OR (" + STATUS + " = " + ClusterTaskStatus.RUNNING.value + " AND DATEDIFF(MILLISECOND, " + STARTED + ", GETDATE()) > " + MAX_TIME_TO_RUN + ")";
 
-		upsertSelfLastSeenSQL = "MERGE " + ACTIVE_NODES_TABLE_NAME + " AS ant" +
-				" USING (VALUES (?, ?))" +
-				"    AS source (field1, field2)" +
-				"    ON ant.idfield = 7" +
+		upsertSelfLastSeenSQL = "MERGE " + ACTIVE_NODES_TABLE_NAME + " AS target" +
+				" USING (VALUES (?)) AS source (" + ACTIVE_NODE_ID + ")" +
+				"    ON target." + ACTIVE_NODE_ID + " = source." + ACTIVE_NODE_ID +
 				" WHEN MATCHED THEN" +
-				"    UPDATE" +
-				"    SET field1 = source.field1" +
-				"        field2 = source.field2" +
+				"    UPDATE SET " + ACTIVE_NODE_LAST_SEEN + " = GETDATE()" +
 				" WHEN NOT MATCHED THEN" +
-				"    INSERT (field1, field2)" +
-				"    VALUES (source.field1, source.field2)";
+				"    INSERT (" + ACTIVE_NODE_ID + "," + ACTIVE_NODE_LAST_SEEN + ") VALUES (?, GETDATE());";
+		removeLongTimeNoSeeSQL = "DELETE FROM " + ACTIVE_NODES_TABLE_NAME + " WHERE " + ACTIVE_NODE_LAST_SEEN + " <= DATEADD(MILLISECOND, -?, GETDATE())";
 	}
 
 	@Override
@@ -410,12 +407,24 @@ final class MsSqlDbDataProvider extends ClusterTasksDbDataProvider {
 
 	@Override
 	public void updateSelfLastSeen(String nodeId) {
-		int result = getJdbcTemplate().update(upsertSelfLastSeenSQL, new Object[]{nodeId}, new int[]{Types.VARCHAR});
+		try {
+			int affected = getJdbcTemplate().update(upsertSelfLastSeenSQL, new Object[]{nodeId, nodeId}, new int[]{Types.VARCHAR, Types.VARCHAR});
+			if (affected != 1) {
+				logger.warn("expected to see exactly 1 record affected while updating last seen of " + nodeId + ", yet actual result is " + affected);
+			}
+		} catch (DataAccessException dae) {
+			throw new CtsGeneralFailure("failed to update last seen of " + nodeId, dae);
+		}
 	}
 
 	@Override
 	public void removeLongTimeNoSeeNodes(long maxTimeNoSeeMillis) {
-
+		try {
+			int affected = getJdbcTemplate().update(removeLongTimeNoSeeSQL, new Object[]{maxTimeNoSeeMillis}, new int[]{Types.BIGINT});
+			logger.debug("found and removed " + affected + " non-active nodes");
+		} catch (DataAccessException dae) {
+			throw new CtsGeneralFailure("failed while looking up and removing non-active nodes", dae);
+		}
 	}
 
 	private Set<String> getCTSTableNames() {
