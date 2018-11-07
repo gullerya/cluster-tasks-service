@@ -9,7 +9,6 @@ import com.microfocus.cluster.tasks.processors.ClusterTasksHC_B_test;
 import com.microfocus.cluster.tasks.processors.ClusterTasksHC_C_test;
 import com.microfocus.cluster.tasks.processors.ClusterTasksHC_D_test;
 import com.microfocus.cluster.tasks.processors.ClusterTasksHC_E_test;
-import org.junit.Assert;
 import org.junit.Test;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -20,7 +19,6 @@ import java.util.AbstractMap;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
-import java.util.UUID;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
@@ -68,13 +66,19 @@ public class ClusterTasksHeavyClusterChanneledTasksTest {
 		waitForAllInit.await();
 		logger.info(numberOfNodes + " nodes initialized successfully");
 
+		ClusterTasksHC_A_test.taskIDs.clear();
+		ClusterTasksHC_B_test.taskIDs.clear();
+		ClusterTasksHC_C_test.taskIDs.clear();
+		ClusterTasksHC_D_test.taskIDs.clear();
+		ClusterTasksHC_E_test.taskIDs.clear();
+
 		//  [YG] TODO: do better drain out
 		//  let's drain out any old tasks if present
 		ClusterTasksITUtils.sleepSafely(2000);
 
-		Assert.assertEquals(0, ClusterTasksHC_A_test.taskIDs.size());
-		Assert.assertEquals(0, ClusterTasksHC_B_test.taskIDs.size());
-		Assert.assertEquals(0, ClusterTasksHC_C_test.taskIDs.size());
+		assertEquals(0, ClusterTasksHC_A_test.taskIDs.size());
+		assertEquals(0, ClusterTasksHC_B_test.taskIDs.size());
+		assertEquals(0, ClusterTasksHC_C_test.taskIDs.size());
 		assertEquals(0, ClusterTasksHC_D_test.taskIDs.size());
 		assertEquals(0, ClusterTasksHC_E_test.taskIDs.size());
 		ClusterTasksHC_A_test.count = true;
@@ -88,22 +92,42 @@ public class ClusterTasksHeavyClusterChanneledTasksTest {
 		CountDownLatch waitForAllTasksPush = new CountDownLatch(numberOfNodes);
 		Map.Entry<Integer, Integer> tmp = new AbstractMap.SimpleEntry<>(0, 0);
 		ExecutorService tasksPushPool = Executors.newFixedThreadPool(numberOfNodes);
-		String concurrencyKey = UUID.randomUUID().toString();
 		for (int i = 0; i < contexts.size(); i++) {
 			ApplicationContext c = contexts.get(i);
 			tmp.setValue(i);
+			int cnt = i;
 			tasksPushPool.execute(() -> {
 				try {
 					for (int j = 0; j < numberOfTasks; j++) {
 						ClusterTasksService clusterTasksService = c.getBean(ClusterTasksService.class);
 						ClusterTask task = TaskBuilders
 								.channeledTask()
-								.setConcurrencyKey(concurrencyKey)
+								.setConcurrencyKey(ClusterTasksHC_A_test.class.getSimpleName() + cnt)
 								.setBody("some body to touch the body tables as well").build();
 						clusterTasksService.enqueueTasks(ClusterTasksDataProviderType.DB, ClusterTasksHC_A_test.class.getSimpleName(), task);
+
+						task = TaskBuilders
+								.channeledTask()
+								.setConcurrencyKey(ClusterTasksHC_B_test.class.getSimpleName() + cnt)
+								.setBody("some body to touch the body tables as well").build();
 						clusterTasksService.enqueueTasks(ClusterTasksDataProviderType.DB, ClusterTasksHC_B_test.class.getSimpleName(), task);
+
+						task = TaskBuilders
+								.channeledTask()
+								.setConcurrencyKey(ClusterTasksHC_C_test.class.getSimpleName() + cnt)
+								.setBody("some body to touch the body tables as well").build();
 						clusterTasksService.enqueueTasks(ClusterTasksDataProviderType.DB, ClusterTasksHC_C_test.class.getSimpleName(), task);
+
+						task = TaskBuilders
+								.channeledTask()
+								.setConcurrencyKey(ClusterTasksHC_D_test.class.getSimpleName() + cnt)
+								.setBody("some body to touch the body tables as well").build();
 						clusterTasksService.enqueueTasks(ClusterTasksDataProviderType.DB, ClusterTasksHC_D_test.class.getSimpleName(), task);
+
+						task = TaskBuilders
+								.channeledTask()
+								.setConcurrencyKey(ClusterTasksHC_E_test.class.getSimpleName() + cnt)
+								.setBody("some body to touch the body tables as well").build();
 						clusterTasksService.enqueueTasks(ClusterTasksDataProviderType.DB, ClusterTasksHC_E_test.class.getSimpleName(), task);
 					}
 				} catch (Exception e) {

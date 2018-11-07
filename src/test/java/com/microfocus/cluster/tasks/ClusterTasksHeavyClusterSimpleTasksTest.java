@@ -9,7 +9,6 @@ import com.microfocus.cluster.tasks.processors.ClusterTasksHC_B_test;
 import com.microfocus.cluster.tasks.processors.ClusterTasksHC_C_test;
 import com.microfocus.cluster.tasks.processors.ClusterTasksHC_D_test;
 import com.microfocus.cluster.tasks.processors.ClusterTasksHC_E_test;
-import org.junit.Assert;
 import org.junit.Test;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -67,13 +66,19 @@ public class ClusterTasksHeavyClusterSimpleTasksTest {
 		waitForAllInit.await();
 		logger.info(numberOfNodes + " nodes initialized successfully");
 
+		ClusterTasksHC_A_test.taskIDs.clear();
+		ClusterTasksHC_B_test.taskIDs.clear();
+		ClusterTasksHC_C_test.taskIDs.clear();
+		ClusterTasksHC_D_test.taskIDs.clear();
+		ClusterTasksHC_E_test.taskIDs.clear();
+
 		//  [YG] TODO: do better drain out
 		//  let's drain out any old tasks if present
 		ClusterTasksITUtils.sleepSafely(2000);
 
-		Assert.assertEquals(0, ClusterTasksHC_A_test.taskIDs.size());
-		Assert.assertEquals(0, ClusterTasksHC_B_test.taskIDs.size());
-		Assert.assertEquals(0, ClusterTasksHC_C_test.taskIDs.size());
+		assertEquals(0, ClusterTasksHC_A_test.taskIDs.size());
+		assertEquals(0, ClusterTasksHC_B_test.taskIDs.size());
+		assertEquals(0, ClusterTasksHC_C_test.taskIDs.size());
 		assertEquals(0, ClusterTasksHC_D_test.taskIDs.size());
 		assertEquals(0, ClusterTasksHC_E_test.taskIDs.size());
 		ClusterTasksHC_A_test.count = true;
