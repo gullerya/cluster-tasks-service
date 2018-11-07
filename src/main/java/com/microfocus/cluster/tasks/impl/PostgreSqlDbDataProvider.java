@@ -385,6 +385,16 @@ final class PostgreSqlDbDataProvider extends ClusterTasksDbDataProvider {
 		}
 	}
 
+	@Override
+	public void updateSelfLastSeen(String nodeId) {
+		throw new RuntimeException("not implemented");
+	}
+
+	@Override
+	public void removeLongTimeNoSeeNodes(long maxTimeNoSeeMillis) {
+		throw new RuntimeException("not implemented");
+	}
+
 	private Set<String> getCTSTableNames() {
 		return Stream.of(META_TABLE_NAME.toLowerCase(), BODY_TABLE_NAME.toLowerCase() + "0", BODY_TABLE_NAME.toLowerCase() + "1", BODY_TABLE_NAME.toLowerCase() + "2", BODY_TABLE_NAME.toLowerCase() + "3").collect(Collectors.toSet());
 	}

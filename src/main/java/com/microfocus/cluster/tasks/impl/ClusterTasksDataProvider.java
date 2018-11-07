@@ -100,6 +100,23 @@ interface ClusterTasksDataProvider {
 	Map<String, Integer> countBodies();
 
 	/**
+	 * CTS should maintain in each data provider the list of currently active nodes for the following use-cases:
+	 * - based on the node activity (last seen) it and its tasks will be verified for being staled (deprecating MAX TIME TO RUN)
+	 * - monitoring of the system scale
+	 * - possible in future smarter dispatch/maintenance logic across the cluster
+	 *
+	 * @param nodeId self ID
+	 */
+	void updateSelfLastSeen(String nodeId);
+
+	/**
+	 * Nodes, which last seen time is older than specified, should be removed from the registry of ACTIVE NODES
+	 *
+	 * @param maxTimeNoSeeMillis amount of millis to pass since last seen to consider node as inactive
+	 */
+	void removeLongTimeNoSeeNodes(long maxTimeNoSeeMillis);
+
+	/**
 	 * Implementation should provide a counter of all tasks existing in the Storage right to the moment of query
 	 * Counter always works within boundaries of a specific processor's tasks type
 	 * Counter should take into consideration OPTIONAL concurrency key parameter

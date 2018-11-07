@@ -31,6 +31,7 @@ import java.util.LinkedHashSet;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Set;
 import java.util.function.Function;
 import java.util.stream.Collectors;
@@ -62,6 +63,8 @@ final class MsSqlDbDataProvider extends ClusterTasksDbDataProvider {
 
 	private final String countScheduledPendingTasksSQL;
 	private final String selectGCValidTasksSQL;
+
+	private final String upsertSelfLastSeenSQL;
 
 	MsSqlDbDataProvider(ClusterTasksService clusterTasksService, ClusterTasksServiceConfigurerSPI serviceConfigurer) {
 		super(clusterTasksService, serviceConfigurer);
@@ -113,6 +116,18 @@ final class MsSqlDbDataProvider extends ClusterTasksDbDataProvider {
 		selectGCValidTasksSQL = "SELECT " + selectedForGCFields + " FROM " + META_TABLE_NAME + " WITH (UPDLOCK)" +
 				" WHERE " + STATUS + " = " + ClusterTaskStatus.FINISHED.value +
 				" OR (" + STATUS + " = " + ClusterTaskStatus.RUNNING.value + " AND DATEDIFF(MILLISECOND, " + STARTED + ", GETDATE()) > " + MAX_TIME_TO_RUN + ")";
+
+		upsertSelfLastSeenSQL = "MERGE " + ACTIVE_NODES_TABLE_NAME + " AS ant" +
+				" USING (VALUES (?, ?))" +
+				"    AS source (field1, field2)" +
+				"    ON ant.idfield = 7" +
+				" WHEN MATCHED THEN" +
+				"    UPDATE" +
+				"    SET field1 = source.field1" +
+				"        field2 = source.field2" +
+				" WHEN NOT MATCHED THEN" +
+				"    INSERT (field1, field2)" +
+				"    VALUES (source.field1, source.field2)";
 	}
 
 	@Override
@@ -391,6 +406,16 @@ final class MsSqlDbDataProvider extends ClusterTasksDbDataProvider {
 		if (!tasksToReschedule.isEmpty()) {
 			storeTasks(tasksToReschedule.toArray(new TaskInternal[0]));
 		}
+	}
+
+	@Override
+	public void updateSelfLastSeen(String nodeId) {
+		int result = getJdbcTemplate().update(upsertSelfLastSeenSQL, new Object[]{nodeId}, new int[]{Types.VARCHAR});
+	}
+
+	@Override
+	public void removeLongTimeNoSeeNodes(long maxTimeNoSeeMillis) {
+
 	}
 
 	private Set<String> getCTSTableNames() {

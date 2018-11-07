@@ -397,6 +397,16 @@ final class OracleDbDataProvider extends ClusterTasksDbDataProvider {
 		}
 	}
 
+	@Override
+	public void updateSelfLastSeen(String nodeId) {
+		throw new RuntimeException("not implemented");
+	}
+
+	@Override
+	public void removeLongTimeNoSeeNodes(long maxTimeNoSeeMillis) {
+		throw new RuntimeException("not implemented");
+	}
+
 	private Set<String> getCTSTableNames() {
 		return Stream.of(META_TABLE_NAME, BODY_TABLE_NAME + "0", BODY_TABLE_NAME + "1", BODY_TABLE_NAME + "2", BODY_TABLE_NAME + "3").collect(Collectors.toSet());
 	}

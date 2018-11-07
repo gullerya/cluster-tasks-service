@@ -91,8 +91,18 @@ final class ClusterTasksMaintener implements Runnable {
 
 	private void maintainActiveNodes(ClusterTasksDataProvider dataProvider) {
 		//  update self as active
+		try {
+			dataProvider.updateSelfLastSeen(configurer.getInstanceID());
+		} catch (Exception e) {
+			logger.error("failed to update this node's (" + configurer.getInstanceID() + ") last seen", e);
+		}
 
-		//  remove inactive nodes
+		//  remove inactive nodes (node will be considered inactive if it has not been see for X3 times maintenance interval)
+		try {
+			dataProvider.removeLongTimeNoSeeNodes(getEffectiveMaintenanceInterval() * 3);
+		} catch (Exception e) {
+			logger.error("failed to remove long time no see nodes", e);
+		}
 	}
 
 	private void maintainTasksCounters(ClusterTasksDataProvider dataProvider) {
@@ -123,18 +133,24 @@ final class ClusterTasksMaintener implements Runnable {
 	}
 
 	private void breathe() {
-		Integer maintenanceInterval = null;
 		try {
-			maintenanceInterval = configurer.getCTSServiceConfigurer().getMaintenanceIntervalMillis();
-		} catch (Throwable t) {
-			logger.error("failed to obtain maintenance interval from hosting application, falling back to default (" + ClusterTasksServiceConfigurerSPI.DEFAULT_MAINTENANCE_INTERVAL + ")", t);
-		}
-		maintenanceInterval = maintenanceInterval == null ? ClusterTasksServiceConfigurerSPI.DEFAULT_MAINTENANCE_INTERVAL : maintenanceInterval;
-		maintenanceInterval = Math.max(maintenanceInterval, ClusterTasksServiceConfigurerSPI.MINIMAL_MAINTENANCE_INTERVAL);
-		try {
+			Integer maintenanceInterval = getEffectiveMaintenanceInterval();
 			Thread.sleep(maintenanceInterval);
 		} catch (InterruptedException ie) {
 			logger.warn("interrupted while breathing between maintenance rounds", ie);
 		}
+	}
+
+	private Integer getEffectiveMaintenanceInterval() {
+		Integer result = null;
+		try {
+			result = configurer.getCTSServiceConfigurer().getMaintenanceIntervalMillis();
+		} catch (Throwable t) {
+			logger.error("failed to obtain maintenance interval from hosting application, falling back to default (" + ClusterTasksServiceConfigurerSPI.DEFAULT_MAINTENANCE_INTERVAL + ")", t);
+		}
+		result = result == null
+				? ClusterTasksServiceConfigurerSPI.DEFAULT_MAINTENANCE_INTERVAL
+				: Math.max(result, ClusterTasksServiceConfigurerSPI.MINIMAL_MAINTENANCE_INTERVAL);
+		return result;
 	}
 }
