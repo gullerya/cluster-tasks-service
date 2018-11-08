@@ -56,6 +56,7 @@ abstract class ClusterTasksDbDataProvider implements ClusterTasksDataProvider {
 	//  Active nodes table
 	static final String ACTIVE_NODES_TABLE_NAME = "CTS_ACTIVE_NODES";
 	static final String ACTIVE_NODE_ID = "CTSAN_NODE_ID";
+	static final String ACTIVE_NODE_SINCE = "CTSAN_SINCE";
 	static final String ACTIVE_NODE_LAST_SEEN = "CTSAN_LAST_SEEN";
 
 	//  Metadata table

@@ -123,7 +123,7 @@ final class MsSqlDbDataProvider extends ClusterTasksDbDataProvider {
 				" WHEN MATCHED THEN" +
 				"    UPDATE SET " + ACTIVE_NODE_LAST_SEEN + " = GETDATE()" +
 				" WHEN NOT MATCHED THEN" +
-				"    INSERT (" + ACTIVE_NODE_ID + "," + ACTIVE_NODE_LAST_SEEN + ") VALUES (?, GETDATE());";
+				"    INSERT (" + ACTIVE_NODE_ID + "," + ACTIVE_NODE_SINCE + "," + ACTIVE_NODE_LAST_SEEN + ") VALUES (?, GETDATE(), GETDATE());";
 		removeLongTimeNoSeeSQL = "DELETE FROM " + ACTIVE_NODES_TABLE_NAME + " WHERE " + ACTIVE_NODE_LAST_SEEN + " <= DATEADD(MILLISECOND, -?, GETDATE())";
 	}
 

@@ -112,8 +112,9 @@ final class PostgreSqlDbDataProvider extends ClusterTasksDbDataProvider {
 				" OR (" + STATUS + " = " + ClusterTaskStatus.RUNNING.value + " AND " + STARTED + " < LOCALTIMESTAMP - MAKE_INTERVAL(SECS := " + MAX_TIME_TO_RUN + " / 1000))" +
 				" FOR UPDATE";
 
-		upsertSelfLastSeenSQL = "INSERT INTO " + ACTIVE_NODES_TABLE_NAME + " (" + ACTIVE_NODE_ID + "," + ACTIVE_NODE_LAST_SEEN + ")" +
-				" VALUES (?, LOCALTIMESTAMP)" +
+		upsertSelfLastSeenSQL = "INSERT INTO " + ACTIVE_NODES_TABLE_NAME +
+				" (" + ACTIVE_NODE_ID + "," + "," + ACTIVE_NODE_SINCE + "," + ACTIVE_NODE_LAST_SEEN + ")" +
+				" VALUES (?, LOCALTIMESTAMP, LOCALTIMESTAMP)" +
 				" ON CONFLICT (" + ACTIVE_NODE_ID + ") DO UPDATE SET " + ACTIVE_NODE_LAST_SEEN + " = LOCALTIMESTAMP";
 		removeLongTimeNoSeeSQL = "DELETE FROM " + ACTIVE_NODES_TABLE_NAME + " WHERE " + ACTIVE_NODE_LAST_SEEN + " <= LOCALTIMESTAMP - MAKE_INTERVAL(SECS := ? / 1000)";
 	}
