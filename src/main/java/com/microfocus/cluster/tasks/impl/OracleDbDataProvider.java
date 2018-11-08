@@ -63,6 +63,9 @@ final class OracleDbDataProvider extends ClusterTasksDbDataProvider {
 	private final String countScheduledPendingTasksSQL;
 	private final String selectGCValidTasksSQL;
 
+	private final String upsertSelfLastSeenSQL;
+	private final String removeLongTimeNoSeeSQL;
+
 	OracleDbDataProvider(ClusterTasksService clusterTasksService, ClusterTasksServiceConfigurerSPI serviceConfigurer) {
 		super(clusterTasksService, serviceConfigurer);
 
@@ -118,6 +121,15 @@ final class OracleDbDataProvider extends ClusterTasksDbDataProvider {
 				" WHERE " + STATUS + " = " + ClusterTaskStatus.FINISHED.value +
 				" OR (" + STATUS + " = " + ClusterTaskStatus.RUNNING.value + " AND " + STARTED + " < SYSDATE - NUMTODSINTERVAL(" + MAX_TIME_TO_RUN + " / 1000, 'SECOND'))" +
 				" FOR UPDATE";
+
+		upsertSelfLastSeenSQL = "MERGE INTO " + ACTIVE_NODES_TABLE_NAME + " target" +
+				" USING (SELECT ? " + ACTIVE_NODE_ID + " FROM DUAL) source" +
+				"   ON (target." + ACTIVE_NODE_ID + " = source." + ACTIVE_NODE_ID + ")" +
+				" WHEN MATCHED THEN" +
+				"   UPDATE SET " + ACTIVE_NODE_LAST_SEEN + " = SYSDATE" +
+				" WHEN NOT MATCHED THEN" +
+				"   INSERT (" + ACTIVE_NODE_ID + "," + ACTIVE_NODE_SINCE + "," + ACTIVE_NODE_LAST_SEEN + ") VALUES (source." + ACTIVE_NODE_ID + ", SYSDATE, SYSDATE)";
+		removeLongTimeNoSeeSQL = "DELETE FROM " + ACTIVE_NODES_TABLE_NAME + " WHERE " + ACTIVE_NODE_LAST_SEEN + " < (SYSDATE - NUMTODSINTERVAL(? / 1000, 'SECOND'))";
 	}
 
 	@Override
@@ -399,12 +411,24 @@ final class OracleDbDataProvider extends ClusterTasksDbDataProvider {
 
 	@Override
 	public void updateSelfLastSeen(String nodeId) {
-		throw new RuntimeException("not implemented");
+		try {
+			int affected = getJdbcTemplate().update(upsertSelfLastSeenSQL, new Object[]{nodeId}, new int[]{Types.VARCHAR});
+			if (affected != 1) {
+				logger.warn("expected to see exactly 1 record affected while updating last seen of " + nodeId + ", yet actual result is " + affected);
+			}
+		} catch (DataAccessException dae) {
+			throw new CtsGeneralFailure("failed to update last seen of " + nodeId, dae);
+		}
 	}
 
 	@Override
 	public void removeLongTimeNoSeeNodes(long maxTimeNoSeeMillis) {
-		throw new RuntimeException("not implemented");
+		try {
+			int affected = getJdbcTemplate().update(removeLongTimeNoSeeSQL, new Object[]{maxTimeNoSeeMillis}, new int[]{Types.BIGINT});
+			logger.info("found and removed " + affected + " non-active nodes");
+		} catch (DataAccessException dae) {
+			throw new CtsGeneralFailure("failed while looking up and removing non-active nodes", dae);
+		}
 	}
 
 	private Set<String> getCTSTableNames() {

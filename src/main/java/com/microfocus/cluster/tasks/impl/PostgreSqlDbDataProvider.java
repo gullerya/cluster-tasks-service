@@ -89,7 +89,7 @@ final class PostgreSqlDbDataProvider extends ClusterTasksDbDataProvider {
 					"       FROM " + META_TABLE_NAME +
 					"       WHERE " + PROCESSOR_TYPE + " IN(" + processorTypesInParameter + ")" +
 					"           AND " + STATUS + " < " + ClusterTaskStatus.FINISHED.value +
-					"           AND " + CREATED + " <= LOCALTIMESTAMP - MAKE_INTERVAL(SECS := " + DELAY_BY_MILLIS + " / 1000)) meta" +
+					"           AND " + CREATED + " < LOCALTIMESTAMP - MAKE_INTERVAL(SECS := " + DELAY_BY_MILLIS + " / 1000)) meta" +
 					"   WHERE meta.row_index <= 1 AND meta.running_count = 0)" +
 					" FOR UPDATE");
 		}
@@ -116,7 +116,7 @@ final class PostgreSqlDbDataProvider extends ClusterTasksDbDataProvider {
 				" (" + ACTIVE_NODE_ID + "," + "," + ACTIVE_NODE_SINCE + "," + ACTIVE_NODE_LAST_SEEN + ")" +
 				" VALUES (?, LOCALTIMESTAMP, LOCALTIMESTAMP)" +
 				" ON CONFLICT (" + ACTIVE_NODE_ID + ") DO UPDATE SET " + ACTIVE_NODE_LAST_SEEN + " = LOCALTIMESTAMP";
-		removeLongTimeNoSeeSQL = "DELETE FROM " + ACTIVE_NODES_TABLE_NAME + " WHERE " + ACTIVE_NODE_LAST_SEEN + " <= LOCALTIMESTAMP - MAKE_INTERVAL(SECS := ? / 1000)";
+		removeLongTimeNoSeeSQL = "DELETE FROM " + ACTIVE_NODES_TABLE_NAME + " WHERE " + ACTIVE_NODE_LAST_SEEN + " < LOCALTIMESTAMP - MAKE_INTERVAL(SECS := ? / 1000)";
 	}
 
 	@Override
@@ -410,7 +410,7 @@ final class PostgreSqlDbDataProvider extends ClusterTasksDbDataProvider {
 	public void removeLongTimeNoSeeNodes(long maxTimeNoSeeMillis) {
 		try {
 			int affected = getJdbcTemplate().update(removeLongTimeNoSeeSQL, new Object[]{maxTimeNoSeeMillis}, new int[]{Types.BIGINT});
-			logger.debug("found and removed " + affected + " non-active nodes");
+			logger.info("found and removed " + affected + " non-active nodes");
 		} catch (DataAccessException dae) {
 			throw new CtsGeneralFailure("failed while looking up and removing non-active nodes", dae);
 		}

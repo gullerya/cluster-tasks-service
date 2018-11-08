@@ -91,7 +91,7 @@ final class MsSqlDbDataProvider extends ClusterTasksDbDataProvider {
 					"       FROM " + META_TABLE_NAME + " WITH (UPDLOCK)" +
 					"       WHERE " + PROCESSOR_TYPE + " IN(" + processorTypesInParameter + ")" +
 					"           AND " + STATUS + " < " + ClusterTaskStatus.FINISHED.value +
-					"           AND " + CREATED + " <= DATEADD(MILLISECOND, -" + DELAY_BY_MILLIS + ", GETDATE())) meta" +
+					"           AND " + CREATED + " < DATEADD(MILLISECOND, -" + DELAY_BY_MILLIS + ", GETDATE())) meta" +
 					"   WHERE meta.row_index <= 1 AND meta.running_count = 0");
 		}
 		for (long partition = 0; partition < PARTITIONS_NUMBER; partition++) {
@@ -123,8 +123,8 @@ final class MsSqlDbDataProvider extends ClusterTasksDbDataProvider {
 				" WHEN MATCHED THEN" +
 				"    UPDATE SET " + ACTIVE_NODE_LAST_SEEN + " = GETDATE()" +
 				" WHEN NOT MATCHED THEN" +
-				"    INSERT (" + ACTIVE_NODE_ID + "," + ACTIVE_NODE_SINCE + "," + ACTIVE_NODE_LAST_SEEN + ") VALUES (?, GETDATE(), GETDATE());";
-		removeLongTimeNoSeeSQL = "DELETE FROM " + ACTIVE_NODES_TABLE_NAME + " WHERE " + ACTIVE_NODE_LAST_SEEN + " <= DATEADD(MILLISECOND, -?, GETDATE())";
+				"    INSERT (" + ACTIVE_NODE_ID + "," + ACTIVE_NODE_SINCE + "," + ACTIVE_NODE_LAST_SEEN + ") VALUES (source." + ACTIVE_NODE_ID + ", GETDATE(), GETDATE());";
+		removeLongTimeNoSeeSQL = "DELETE FROM " + ACTIVE_NODES_TABLE_NAME + " WHERE " + ACTIVE_NODE_LAST_SEEN + " < DATEADD(MILLISECOND, -?, GETDATE())";
 	}
 
 	@Override
@@ -408,7 +408,7 @@ final class MsSqlDbDataProvider extends ClusterTasksDbDataProvider {
 	@Override
 	public void updateSelfLastSeen(String nodeId) {
 		try {
-			int affected = getJdbcTemplate().update(upsertSelfLastSeenSQL, new Object[]{nodeId, nodeId}, new int[]{Types.VARCHAR, Types.VARCHAR});
+			int affected = getJdbcTemplate().update(upsertSelfLastSeenSQL, new Object[]{nodeId}, new int[]{Types.VARCHAR});
 			if (affected != 1) {
 				logger.warn("expected to see exactly 1 record affected while updating last seen of " + nodeId + ", yet actual result is " + affected);
 			}
@@ -421,7 +421,7 @@ final class MsSqlDbDataProvider extends ClusterTasksDbDataProvider {
 	public void removeLongTimeNoSeeNodes(long maxTimeNoSeeMillis) {
 		try {
 			int affected = getJdbcTemplate().update(removeLongTimeNoSeeSQL, new Object[]{maxTimeNoSeeMillis}, new int[]{Types.BIGINT});
-			logger.debug("found and removed " + affected + " non-active nodes");
+			logger.info("found and removed " + affected + " non-active nodes");
 		} catch (DataAccessException dae) {
 			throw new CtsGeneralFailure("failed while looking up and removing non-active nodes", dae);
 		}
