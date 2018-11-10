@@ -182,41 +182,66 @@ final class MsSqlDbDataProvider extends ClusterTasksDbDataProvider {
 			getTransactionTemplate().execute(transactionStatus -> {
 				try {
 					JdbcTemplate jdbcTemplate = getJdbcTemplate();
+
+					//  prepare contents
 					String insertTaskSql;
+					Object[] paramValues;
+					int[] paramTypes;
 					boolean hasBody = task.body != null;
 					if (hasBody) {
 						task.partitionIndex = resolveBodyTablePartitionIndex();
 						insertTaskSql = insertTaskWithBodySQLs.get(task.partitionIndex);
+						paramValues = new Object[]{
+								task.body,
+								task.taskType.value,
+								task.processorType,
+								task.uniquenessKey,
+								task.concurrencyKey,
+								task.delayByMillis,
+								task.maxTimeToRunMillis,
+								task.partitionIndex,
+								task.orderingFactor,
+								task.delayByMillis
+						};
+						paramTypes = new int[]{
+								Types.CLOB,                 //  task body -  will be used only if actually has body
+								Types.BIGINT,               //  task type
+								Types.VARCHAR,              //  processor type
+								Types.VARCHAR,              //  uniqueness key
+								Types.VARCHAR,              //  concurrency key
+								Types.BIGINT,               //  delay by millis
+								Types.BIGINT,               //  max time to run millis
+								Types.BIGINT,               //  partition index
+								Types.BIGINT,               //  ordering factor
+								Types.BIGINT                //  delay by millis (second time for potential ordering calculation based on creation time when ordering is NULL)
+						};
 					} else {
 						insertTaskSql = insertTaskWithoutBodySQL;
+						paramValues = new Object[]{
+								task.taskType.value,
+								task.processorType,
+								task.uniquenessKey,
+								task.concurrencyKey,
+								task.delayByMillis,
+								task.maxTimeToRunMillis,
+								task.partitionIndex,
+								task.orderingFactor,
+								task.delayByMillis
+						};
+						paramTypes = new int[]{
+								Types.BIGINT,               //  task type
+								Types.VARCHAR,              //  processor type
+								Types.VARCHAR,              //  uniqueness key
+								Types.VARCHAR,              //  concurrency key
+								Types.BIGINT,               //  delay by millis
+								Types.BIGINT,               //  max time to run millis
+								Types.BIGINT,               //  partition index
+								Types.BIGINT,               //  ordering factor
+								Types.BIGINT                //  delay by millis (second time for potential ordering calculation based on creation time when ordering is NULL)
+						};
 					}
 
 					//  insert task
-					Object[] paramValues = new Object[]{
-							task.body,
-							task.taskType.value,
-							task.processorType,
-							task.uniquenessKey,
-							task.concurrencyKey,
-							task.delayByMillis,
-							task.maxTimeToRunMillis,
-							task.partitionIndex,
-							task.orderingFactor,
-							task.delayByMillis
-					};
-					int[] paramTypes = new int[]{
-							Types.CLOB,                 //  task body -  will be used only if actually has body
-							Types.BIGINT,               //  task type
-							Types.VARCHAR,              //  processor type
-							Types.VARCHAR,              //  uniqueness key
-							Types.VARCHAR,              //  concurrency key
-							Types.BIGINT,               //  delay by millis
-							Types.BIGINT,               //  max time to run millis
-							Types.BIGINT,               //  partition index
-							Types.BIGINT,               //  ordering factor
-							Types.BIGINT                //  delay by millis (second time for potential ordering calculation based on creation time when ordering is NULL)
-					};
-
 					jdbcTemplate.update(
 							insertTaskSql,
 							hasBody ? paramValues : Arrays.copyOfRange(paramValues, 0, paramValues.length - 1),
