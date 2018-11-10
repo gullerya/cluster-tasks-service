@@ -66,7 +66,7 @@ public class ClusterTasksProcessorUniquenessTest extends CTSTestsBase {
 		assertEquals(CTPPersistStatus.UNIQUE_CONSTRAINT_FAILURE, results[0].getStatus());
 
 		//  wait to ensure first task started to run
-		ClusterTasksITUtils.sleepSafely(2500);
+		ClusterTasksTestsUtils.sleepSafely(2500);
 
 		//  attempt to enqueue third task - should succeed and due to the first task is already running
 		task = TaskBuilders.uniqueTask()
@@ -93,7 +93,7 @@ public class ClusterTasksProcessorUniquenessTest extends CTSTestsBase {
 		assertEquals("4000", ClusterTasksProcessorUniqueness_test.bodies.get(0));
 		assertEquals("0", ClusterTasksProcessorUniqueness_test.bodies.get(1));
 
-		ClusterTasksITUtils.sleepSafely(1500);
+		ClusterTasksTestsUtils.sleepSafely(1500);
 	}
 
 	private void drainTasks() {
@@ -105,7 +105,7 @@ public class ClusterTasksProcessorUniquenessTest extends CTSTestsBase {
 				ClusterTasksDataProviderType.DB, ClusterTasksProcessorUniqueness_test.class.getSimpleName(),
 				ClusterTaskStatus.PENDING, ClusterTaskStatus.RUNNING)) > 0 &&
 				System.currentTimeMillis() - startTime < maxTimeToWait) {
-			ClusterTasksITUtils.sleepSafely(300);
+			ClusterTasksTestsUtils.sleepSafely(300);
 		}
 		ClusterTasksProcessorUniqueness_test.bodies.clear();
 		ClusterTasksProcessorUniqueness_test.draining = false;
@@ -117,7 +117,7 @@ public class ClusterTasksProcessorUniquenessTest extends CTSTestsBase {
 		long timePassed = 0;
 		long pauseInterval = 100;
 		while (ClusterTasksProcessorUniqueness_test.bodies.size() != expectedSize && timePassed < maxTimeToWait) {
-			ClusterTasksITUtils.sleepSafely(pauseInterval);
+			ClusterTasksTestsUtils.sleepSafely(pauseInterval);
 			timePassed += pauseInterval;
 		}
 		if (ClusterTasksProcessorUniqueness_test.bodies.size() == expectedSize) {

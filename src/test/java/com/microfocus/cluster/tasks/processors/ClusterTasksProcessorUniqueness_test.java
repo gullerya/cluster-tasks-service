@@ -3,7 +3,7 @@ package com.microfocus.cluster.tasks.processors;
 import com.microfocus.cluster.tasks.api.ClusterTasksProcessorSimple;
 import com.microfocus.cluster.tasks.api.dto.ClusterTask;
 import com.microfocus.cluster.tasks.api.enums.ClusterTasksDataProviderType;
-import com.microfocus.cluster.tasks.ClusterTasksITUtils;
+import com.microfocus.cluster.tasks.ClusterTasksTestsUtils;
 
 import java.util.LinkedList;
 import java.util.List;
@@ -23,7 +23,7 @@ public class ClusterTasksProcessorUniqueness_test extends ClusterTasksProcessorS
 	@Override
 	public void processTask(ClusterTask task) {
 		if (!draining) {
-			ClusterTasksITUtils.sleepSafely(Long.parseLong(task.getBody()));
+			ClusterTasksTestsUtils.sleepSafely(Long.parseLong(task.getBody()));
 			bodies.add(task.getBody());
 		}
 	}

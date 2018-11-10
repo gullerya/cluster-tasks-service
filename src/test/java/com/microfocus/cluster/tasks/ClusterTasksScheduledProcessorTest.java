@@ -32,7 +32,7 @@ public class ClusterTasksScheduledProcessorTest extends CTSTestsBase {
 		ClusterTasksSchedProcB_test.suspended = false;      // this CTP's self duration is ~2000 ms
 		ClusterTasksSchedProcC_test.suspended = false;      // this CTP's self duration is ~3000 ms
 
-		ClusterTasksITUtils.sleepSafely(7000);
+		ClusterTasksTestsUtils.sleepSafely(7000);
 
 		//  suspend processors
 		ClusterTasksSchedProcA_test.suspended = true;

@@ -16,9 +16,12 @@ import io.prometheus.client.Summary;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 
-final class ClusterTasksMaintener implements Runnable {
+final class ClusterTasksMaintainer implements Runnable {
 	private final Logger logger = LoggerFactory.getLogger(ClusterTasksServiceImpl.class);
 	private final Counter maintenanceErrors;
 	private final Summary maintenanceDurationSummary;
@@ -26,22 +29,24 @@ final class ClusterTasksMaintener implements Runnable {
 	private final Gauge taskBodiesCounter;
 	private final ClusterTasksServiceImpl.SystemWorkersConfigurer configurer;
 
+	private final Map<ClusterTasksDataProvider, Map<Long, List<Long>>> taskBodiesToRemove = new HashMap<>();
+
 	private long lastTasksCountTime = 0;
 	private long lastTimeRemovedNonActiveNodes = 0;
 	private volatile boolean shuttingDown = false;
 
-	ClusterTasksMaintener(ClusterTasksServiceImpl.SystemWorkersConfigurer configurer) {
+	ClusterTasksMaintainer(ClusterTasksServiceImpl.SystemWorkersConfigurer configurer) {
 		if (configurer == null) {
 			throw new IllegalArgumentException("configurer MUST NOT be null");
 		}
 		this.configurer = configurer;
 
 		maintenanceErrors = Counter.build()
-				.name("cts_gc_errors_total_" + configurer.getInstanceID().replaceAll("-", "_"))
+				.name("cts_maintenance_errors_total_" + configurer.getInstanceID().replaceAll("-", "_"))
 				.help("CTS maintenance errors counter")
 				.register();
 		maintenanceDurationSummary = Summary.build()
-				.name("cts_gc_duration_seconds_" + configurer.getInstanceID().replaceAll("-", "_"))
+				.name("cts_maintenance_duration_seconds_" + configurer.getInstanceID().replaceAll("-", "_"))
 				.help("CTS maintenance duration summary")
 				.register();
 		pendingTasksCounter = Gauge.build()
@@ -68,14 +73,8 @@ final class ClusterTasksMaintener implements Runnable {
 				if (configurer.isCTSServiceEnabled()) {
 					for (ClusterTasksDataProvider provider : configurer.getDataProvidersMap().values()) {
 						if (provider.isReady()) {
-
-							//  maintain active nodes
 							maintainActiveNodes(provider);
-
-							//  [YG] TODO: split rescheduling from GC, this will most likely allow remove some locking
-							provider.handleGarbageAndStaled();
-
-							//  update tasks related counters
+							maintainFinishedAndStale(provider);
 							maintainTasksCounters(provider);
 						}
 					}
@@ -86,6 +85,18 @@ final class ClusterTasksMaintener implements Runnable {
 			} finally {
 				maintenanceTimer.observeDuration();
 				breathe();
+			}
+		}
+	}
+
+	void submitTaskToRemove(ClusterTasksDataProvider dataProvider, TaskInternal task) {
+		//  store data to remove task's body
+		if (task.partitionIndex != null) {
+			synchronized (taskBodiesToRemove) {
+				taskBodiesToRemove
+						.computeIfAbsent(dataProvider, dp -> new HashMap<>())
+						.computeIfAbsent(task.partitionIndex, pi -> new ArrayList<>())
+						.add(task.id);
 			}
 		}
 	}
@@ -102,12 +113,34 @@ final class ClusterTasksMaintener implements Runnable {
 		try {
 			long maxTimeNoSee = getEffectiveMaintenanceInterval() * 3;
 			if (System.currentTimeMillis() - lastTimeRemovedNonActiveNodes > maxTimeNoSee) {
-				dataProvider.removeLongTimeNoSeeNodes(getEffectiveMaintenanceInterval() * 3);
+				int affected = dataProvider.removeLongTimeNoSeeNodes(getEffectiveMaintenanceInterval() * 3);
+				if (affected > 0) {
+					logger.info("found and removed " + affected + " non-active nodes");
+				}
 				lastTimeRemovedNonActiveNodes = System.currentTimeMillis();
 			}
 		} catch (Exception e) {
 			logger.error("failed to remove long time no see nodes", e);
 		}
+	}
+
+	private void maintainFinishedAndStale(ClusterTasksDataProvider dataProvider) {
+		//  clean up bodies KNOWN to be pending for removal (accumulated in memory)
+		if (taskBodiesToRemove.containsKey(dataProvider)) {
+			taskBodiesToRemove.get(dataProvider).forEach((partitionIndex, taskBodies) -> {
+				if (!taskBodies.isEmpty()) {
+					Long[] tmpTaskBodies;
+					synchronized (taskBodiesToRemove) {
+						tmpTaskBodies = taskBodies.toArray(new Long[0]);
+						taskBodies.clear();
+					}
+					dataProvider.cleanFinishedTaskBodiesByIDs(partitionIndex, tmpTaskBodies);
+				}
+			});
+		}
+
+		//  collect and process staled tasks
+		dataProvider.handleStaledTasks();
 	}
 
 	private void maintainTasksCounters(ClusterTasksDataProvider dataProvider) {

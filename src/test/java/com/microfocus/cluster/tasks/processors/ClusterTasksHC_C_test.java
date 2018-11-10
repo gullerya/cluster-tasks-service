@@ -3,6 +3,7 @@ package com.microfocus.cluster.tasks.processors;
 import com.microfocus.cluster.tasks.api.ClusterTasksProcessorSimple;
 import com.microfocus.cluster.tasks.api.dto.ClusterTask;
 import com.microfocus.cluster.tasks.api.enums.ClusterTasksDataProviderType;
+import org.junit.Assert;
 
 import java.util.LinkedHashMap;
 import java.util.Map;
@@ -23,6 +24,7 @@ public class ClusterTasksHC_C_test extends ClusterTasksProcessorSimple {
 	@Override
 	public void processTask(ClusterTask task) {
 		if (count) {
+			Assert.assertEquals("some body to touch the body tables as well", task.getBody());
 			synchronized (COUNT_LOCK) {
 				if (taskIDs.containsKey(task.getId())) {
 					System.out.println(System.currentTimeMillis() + " - " + task.getId() + " - " + Thread.currentThread().getId() + ", " + taskIDs.get(task.getId()));

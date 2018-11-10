@@ -158,7 +158,7 @@ public class ClusterTasksProcessorFairnessTest extends CTSTestsBase {
 		long timePassed = 0;
 		long pauseInterval = 100;
 		while (eventStore.size() < expectedSize && timePassed < maxTimeToWait) {
-			ClusterTasksITUtils.sleepSafely(pauseInterval);
+			ClusterTasksTestsUtils.sleepSafely(pauseInterval);
 			timePassed += pauseInterval;
 		}
 		if (eventStore.size() == expectedSize) {

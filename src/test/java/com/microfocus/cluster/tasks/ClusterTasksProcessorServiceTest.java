@@ -249,7 +249,7 @@ public class ClusterTasksProcessorServiceTest extends CTSTestsBase {
 		long timePassed = 0;
 		long pauseInterval = 50;
 		while (container.size() != expectedSize && timePassed < maxTimeToWait) {
-			ClusterTasksITUtils.sleepSafely(pauseInterval);
+			ClusterTasksTestsUtils.sleepSafely(pauseInterval);
 			timePassed += pauseInterval;
 		}
 		if (container.size() == expectedSize) {

@@ -117,7 +117,7 @@ public class ClusterTasksProcessorCountTasksTest extends CTSTestsBase {
 		//  release tasks (1 will be taken because of concurrency key) and check
 		clusterTasksProcessorCount_test.holdTaskForMillis = 5000;
 		clusterTasksProcessorCount_test.readyToTakeTasks = true;
-		ClusterTasksITUtils.sleepSafely(2000);
+		ClusterTasksTestsUtils.sleepSafely(2000);
 
 //		assertEquals(1, clusterTasksProcessorCount_test.countTasks(ClusterTaskStatus.RUNNING));
 //		assertEquals(2, clusterTasksProcessorCount_test.countTasks(ClusterTaskStatus.PENDING));
@@ -156,7 +156,7 @@ public class ClusterTasksProcessorCountTasksTest extends CTSTestsBase {
 		//  release tasks (2 will be taken because of 2 workers) and check
 		clusterTasksProcessorCount_test.holdTaskForMillis = 7000;
 		clusterTasksProcessorCount_test.readyToTakeTasks = true;
-		ClusterTasksITUtils.sleepSafely(4000);
+		ClusterTasksTestsUtils.sleepSafely(4000);
 
 //		assertEquals(2, clusterTasksProcessorCount_test.countTasks(ClusterTaskStatus.RUNNING));
 //		assertEquals(1, clusterTasksProcessorCount_test.countTasks(ClusterTaskStatus.PENDING));

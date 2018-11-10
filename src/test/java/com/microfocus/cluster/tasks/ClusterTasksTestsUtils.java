@@ -4,9 +4,9 @@ package com.microfocus.cluster.tasks;
  * Created by gullery on 08/06/2017
  */
 
-public class ClusterTasksITUtils {
+public class ClusterTasksTestsUtils {
 
-	private ClusterTasksITUtils() {
+	private ClusterTasksTestsUtils() {
 	}
 
 	public static void sleepSafely(long millisToSleep) {

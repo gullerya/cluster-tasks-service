@@ -26,9 +26,8 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
 import java.util.Collections;
-import java.util.LinkedHashMap;
-import java.util.LinkedHashSet;
-import java.util.LinkedList;
+import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -53,15 +52,19 @@ final class MsSqlDbDataProvider extends ClusterTasksDbDataProvider {
 	private final String areSequencesReadySQL;
 
 	private final String insertTaskWithoutBodySQL;
-	private final Map<Long, String> insertTaskWithBodySQL = new LinkedHashMap<>();
-	private final Map<Integer, String> selectForUpdateTasksSQLs = new LinkedHashMap<>();
-	private final Map<Long, String> selectTaskBodyByPartitionSQLs = new LinkedHashMap<>();
+	private final Map<Long, String> insertTaskWithBodySQLs = new HashMap<>();
+	private final Map<Integer, String> selectForUpdateTasksSQLs = new HashMap<>();
+	private final Map<Long, String> selectTaskBodyByPartitionSQLs = new HashMap<>();
 
 	private final String updateTasksStartedSQL;
 	private final String updateTaskFinishedSQL;
 
 	private final String countScheduledPendingTasksSQL;
-	private final String selectGCValidTasksSQL;
+
+	private final Map<Long, String> selectDanglingBodiesSQLs = new HashMap<>();
+	private final Map<Long, String> removeDanglingBodiesSQLs = new HashMap<>();
+	private final int removeDanglingBodiesBulkSize = 50;
+	private final String selectStaledTasksSQL;
 
 	private final String upsertSelfLastSeenSQL;
 	private final String removeLongTimeNoSeeSQL;
@@ -97,11 +100,14 @@ final class MsSqlDbDataProvider extends ClusterTasksDbDataProvider {
 		for (long partition = 0; partition < PARTITIONS_NUMBER; partition++) {
 			selectTaskBodyByPartitionSQLs.put(partition, "SELECT " + BODY + " FROM " + BODY_TABLE_NAME + partition +
 					" WHERE " + BODY_ID + " = ?");
-			insertTaskWithBodySQL.put(partition, "DECLARE @taskId BIGINT = NEXT VALUE FOR " + CLUSTER_TASK_ID_SEQUENCE + ";" +
+			insertTaskWithBodySQLs.put(partition, "DECLARE @taskId BIGINT = NEXT VALUE FOR " + CLUSTER_TASK_ID_SEQUENCE + ";" +
+					" INSERT INTO " + BODY_TABLE_NAME + partition + " (" + BODY_ID + "," + BODY + ") VALUES (@taskId, ?);" +
 					" INSERT INTO " + META_TABLE_NAME + " (" + insertFields + ")" +
-					" VALUES (@taskId, ?, ?, ?, ?, ?, ?, ?, COALESCE(?, CAST(FORMAT(CURRENT_TIMESTAMP,'yyyyMMddHHmmssfff') AS BIGINT) + ?), GETDATE(), " + ClusterTaskStatus.PENDING.value + ");" +
-					" INSERT INTO " + BODY_TABLE_NAME + partition + " (" + String.join(",", BODY_ID, BODY) + ") VALUES (@taskId, ?);"
+					" VALUES (@taskId, ?, ?, ?, ?, ?, ?, ?, COALESCE(?, CAST(FORMAT(CURRENT_TIMESTAMP,'yyyyMMddHHmmssfff') AS BIGINT) + ?), GETDATE(), " + ClusterTaskStatus.PENDING.value + ");"
 			);
+			selectDanglingBodiesSQLs.put(partition, "SELECT " + BODY_ID + " AS bodyId FROM " + BODY_TABLE_NAME + partition +
+					" WHERE NOT EXISTS (SELECT 1 FROM " + META_TABLE_NAME + " WHERE " + META_ID + " = " + BODY_ID + ")");
+			removeDanglingBodiesSQLs.put(partition, "DELETE FROM " + BODY_TABLE_NAME + partition + " WHERE " + BODY_ID + " IN (" + String.join(",", Collections.nCopies(removeDanglingBodiesBulkSize, "?")) + ")");
 		}
 
 		updateTasksStartedSQL = "UPDATE " + META_TABLE_NAME + " SET " + STATUS + " = " + ClusterTaskStatus.RUNNING.value + ", " + STARTED + " = GETDATE(), " + RUNTIME_INSTANCE + " = ?" +
@@ -112,10 +118,10 @@ final class MsSqlDbDataProvider extends ClusterTasksDbDataProvider {
 		countScheduledPendingTasksSQL = "SELECT " + PROCESSOR_TYPE + ",COUNT(*) AS total FROM " + META_TABLE_NAME +
 				" WHERE " + TASK_TYPE + " = " + ClusterTaskType.SCHEDULED.value + " AND " + STATUS + " = " + ClusterTaskStatus.PENDING.value + " GROUP BY " + PROCESSOR_TYPE;
 
-		String selectedForGCFields = String.join(",", META_ID, BODY_PARTITION, TASK_TYPE, PROCESSOR_TYPE, STATUS, MAX_TIME_TO_RUN);
-		selectGCValidTasksSQL = "SELECT " + selectedForGCFields + " FROM " + META_TABLE_NAME + " WITH (UPDLOCK)" +
-				" WHERE " + STATUS + " = " + ClusterTaskStatus.FINISHED.value +
-				" OR (" + STATUS + " = " + ClusterTaskStatus.RUNNING.value + " AND DATEDIFF(MILLISECOND, " + STARTED + ", GETDATE()) > " + MAX_TIME_TO_RUN + ")";
+		String selectedForGCFields = String.join(",", META_ID, BODY_PARTITION, TASK_TYPE, PROCESSOR_TYPE, STATUS, MAX_TIME_TO_RUN, RUNTIME_INSTANCE);
+		selectStaledTasksSQL = "SELECT " + selectedForGCFields + " FROM " + META_TABLE_NAME + " WITH (UPDLOCK)" +
+				" WHERE " + RUNTIME_INSTANCE + " IS NOT NULL" +
+				"   AND NOT EXISTS (SELECT 1 FROM " + ACTIVE_NODES_TABLE_NAME + " WHERE " + ACTIVE_NODE_ID + " = " + RUNTIME_INSTANCE + ")";
 
 		upsertSelfLastSeenSQL = "MERGE " + ACTIVE_NODES_TABLE_NAME + " AS target" +
 				" USING (VALUES (?)) AS source (" + ACTIVE_NODE_ID + ")" +
@@ -168,7 +174,6 @@ final class MsSqlDbDataProvider extends ClusterTasksDbDataProvider {
 		return isReady;
 	}
 
-	//  TODO: support bulk insert here
 	@Override
 	public ClusterTaskPersistenceResult[] storeTasks(TaskInternal... tasks) {
 		List<ClusterTaskPersistenceResult> result = new ArrayList<>(tasks.length);
@@ -181,13 +186,14 @@ final class MsSqlDbDataProvider extends ClusterTasksDbDataProvider {
 					boolean hasBody = task.body != null;
 					if (hasBody) {
 						task.partitionIndex = resolveBodyTablePartitionIndex();
-						insertTaskSql = insertTaskWithBodySQL.get(task.partitionIndex);
+						insertTaskSql = insertTaskWithBodySQLs.get(task.partitionIndex);
 					} else {
 						insertTaskSql = insertTaskWithoutBodySQL;
 					}
 
 					//  insert task
 					Object[] paramValues = new Object[]{
+							task.body,
 							task.taskType.value,
 							task.processorType,
 							task.uniquenessKey,
@@ -196,10 +202,10 @@ final class MsSqlDbDataProvider extends ClusterTasksDbDataProvider {
 							task.maxTimeToRunMillis,
 							task.partitionIndex,
 							task.orderingFactor,
-							task.delayByMillis,
-							task.body
+							task.delayByMillis
 					};
 					int[] paramTypes = new int[]{
+							Types.CLOB,                 //  task body -  will be used only if actually has body
 							Types.BIGINT,               //  task type
 							Types.VARCHAR,              //  processor type
 							Types.VARCHAR,              //  uniqueness key
@@ -208,8 +214,7 @@ final class MsSqlDbDataProvider extends ClusterTasksDbDataProvider {
 							Types.BIGINT,               //  max time to run millis
 							Types.BIGINT,               //  partition index
 							Types.BIGINT,               //  ordering factor
-							Types.BIGINT,               //  delay by millis (second time for potential ordering calculation based on creation time when ordering is NULL)
-							Types.CLOB                  //  task body -  will be used only if actually has body
+							Types.BIGINT                //  delay by millis (second time for potential ordering calculation based on creation time when ordering is NULL)
 					};
 
 					jdbcTemplate.update(
@@ -240,7 +245,7 @@ final class MsSqlDbDataProvider extends ClusterTasksDbDataProvider {
 
 	@Override
 	public void retrieveAndDispatchTasks(Map<String, ClusterTasksProcessorBase> availableProcessors) {
-		Map<ClusterTasksProcessorBase, Collection<TaskInternal>> tasksToRun = new LinkedHashMap<>();
+		Map<ClusterTasksProcessorBase, Collection<TaskInternal>> tasksToRun = new HashMap<>();
 
 		//  within the same transaction do:
 		//  - SELECT candidate tasks to be run
@@ -275,7 +280,7 @@ final class MsSqlDbDataProvider extends ClusterTasksDbDataProvider {
 				tasks = jdbcTemplate.query(sql, params, paramTypes, this::tasksMetadataReader);
 				if (!tasks.isEmpty()) {
 					Map<String, List<TaskInternal>> tasksByProcessor = tasks.stream().collect(Collectors.groupingBy(ti -> ti.processorType));
-					Set<Long> tasksToRunIDs = new LinkedHashSet<>();
+					Set<Long> tasksToRunIDs = new HashSet<>();
 
 					//  let processors decide which tasks will be processed from all available
 					tasksByProcessor.forEach((processorType, processorTasks) -> {
@@ -331,49 +336,99 @@ final class MsSqlDbDataProvider extends ClusterTasksDbDataProvider {
 					new Object[]{taskId},
 					new int[]{BIGINT},
 					this::rowToTaskBodyReader);
-		} catch (DataAccessException dae) {
-			throw new CtsGeneralFailure(clusterTasksService.getInstanceID() + "failed to retrieve task's body", dae);
+		} catch (Exception e) {
+			throw new CtsGeneralFailure(clusterTasksService.getInstanceID() + " failed to retrieve task's body", e);
 		}
 	}
 
 	@Override
 	public void updateTaskToFinished(Long taskId) {
-		if (taskId == null) {
-			throw new IllegalArgumentException("task ID MUST NOT be null");
-		}
-
 		try {
-			JdbcTemplate jdbcTemplate = getJdbcTemplate();
-			jdbcTemplate.update(
-					updateTaskFinishedSQL,
-					new Object[]{taskId},
-					new int[]{BIGINT});
+			getJdbcTemplate().update(updateTaskFinishedSQL, new Object[]{taskId}, new int[]{BIGINT});
 		} catch (DataAccessException dae) {
 			throw new CtsGeneralFailure(clusterTasksService.getInstanceID() + " failed to update task finished", dae);
 		}
 	}
 
 	@Override
-	public void handleGarbageAndStaled() {
-		List<TaskInternal> dataSetToReschedule = new LinkedList<>();
+	public void cleanFinishedTaskBodiesByIDs(long partitionIndex, Long[] taskBodies) {
+		try {
+			int index = 0;
+			Object[] params = new Object[removeDanglingBodiesBulkSize];
+			int[] types = new int[removeDanglingBodiesBulkSize];
+			for (int i = 0; i < removeDanglingBodiesBulkSize; i++) types[i] = Types.BIGINT;
+			while (index < taskBodies.length) {
+				System.arraycopy(taskBodies, index, params, 0, Math.min(taskBodies.length - index, removeDanglingBodiesBulkSize));
+				int removed = getJdbcTemplate().update(removeDanglingBodiesSQLs.get(partitionIndex), params, types);
+				logger.debug("removed " + removed + " bodies from partition " + partitionIndex);
+				index += removeDanglingBodiesBulkSize;
+			}
+		} catch (DataAccessException dae) {
+			logger.error("failed during cleaning dangling task bodies", dae);
+		}
+	}
+
+	@Override
+	public void removeFinishedTaskBodiesByQuery() {
+		long partitionIndex = resolveBodyTablePartitionIndex();
+		try {
+			List<Long> toBeRemoved = getJdbcTemplate().query(selectDanglingBodiesSQLs.get(partitionIndex), resultSet -> {
+				List<Long> result = new ArrayList<>();
+				while (resultSet.next()) {
+					long bodyId = resultSet.getLong("bodyId");
+					if (!resultSet.wasNull()) {
+						result.add(bodyId);
+					}
+				}
+				resultSet.close();
+				return result;
+			});
+			if (!toBeRemoved.isEmpty()) {
+				logger.debug("found " + toBeRemoved.size() + " dangling bodies to be removed from partition " + partitionIndex);
+				Object[] params = new Object[removeDanglingBodiesBulkSize];
+				Integer[] types = Collections.nCopies(removeDanglingBodiesBulkSize, Types.BIGINT).toArray(new Integer[0]);
+				while (toBeRemoved.size() > 0) {
+					List<Long> bulk = toBeRemoved.subList(0, Math.min(removeDanglingBodiesBulkSize, toBeRemoved.size()));
+					Object[] bulkAsArray = bulk.toArray(new Long[0]);
+					System.arraycopy(bulkAsArray, 0, params, 0, bulkAsArray.length);
+					int removed = getJdbcTemplate().update(removeDanglingBodiesSQLs.get(partitionIndex), params, types);
+					logger.debug("removed " + removed + " dangling bodies from partition " + partitionIndex);
+					toBeRemoved.removeAll(bulk);
+				}
+			}
+		} catch (DataAccessException dae) {
+			logger.error("failed during cleaning dangling task bodies", dae);
+		}
+	}
+
+	@Override
+	public void handleStaledTasks() {
 		getTransactionTemplate().execute(transactionStatus -> {
 			try {
 				JdbcTemplate jdbcTemplate = getJdbcTemplate();
-				List<TaskInternal> gcCandidates = jdbcTemplate.query(selectGCValidTasksSQL, this::gcCandidatesReader);
+				List<TaskInternal> gcCandidates = jdbcTemplate.query(selectStaledTasksSQL, this::gcCandidatesReader);
+				if (gcCandidates.size() > 0) {
+					logger.info("found " + gcCandidates.size() + " tasks as staled, processing...");
 
-				//  delete garbage tasks data
-				Map<Long, Long> dataSetToDelete = new LinkedHashMap<>();
-				gcCandidates.forEach(candidate -> dataSetToDelete.put(candidate.id, candidate.partitionIndex));
-				if (!dataSetToDelete.isEmpty()) {
-					deleteGarbageTasksData(jdbcTemplate, dataSetToDelete);
+					//  collect tasks valid for re-enqueue
+					//  [YG] TODO: keep this data by partition, otherwise - broken
+					Collection<TaskInternal> tasksToReschedule = gcCandidates.stream()
+							.filter(task -> task.taskType == ClusterTaskType.SCHEDULED)
+							.collect(Collectors.toMap(task -> task.processorType, Function.identity(), (t1, t2) -> t2))
+							.values();
+
+					//  reschedule tasks of SCHEDULED type
+					if (!tasksToReschedule.isEmpty()) {
+						reinsertScheduledTasks(tasksToReschedule);
+					}
+
+					//  delete garbage tasks data
+					Map<Long, Long> dataSetToDelete = new HashMap<>();
+					gcCandidates.forEach(candidate -> dataSetToDelete.put(candidate.id, candidate.partitionIndex));
+					if (!dataSetToDelete.isEmpty()) {
+						deleteGarbageTasksData(jdbcTemplate, dataSetToDelete);
+					}
 				}
-
-				//  collect tasks for rescheduling
-				dataSetToReschedule.addAll(gcCandidates.stream()
-						.filter(task -> task.taskType == ClusterTaskType.SCHEDULED)
-						.collect(Collectors.toMap(task -> task.processorType, Function.identity(), (t1, t2) -> t2))
-						.values()
-				);
 			} catch (Exception e) {
 				transactionStatus.setRollbackOnly();
 				throw new CtsGeneralFailure("failed to cleanup cluster tasks", e);
@@ -381,17 +436,12 @@ final class MsSqlDbDataProvider extends ClusterTasksDbDataProvider {
 
 			return null;
 		});
-
-		//  reschedule tasks of SCHEDULED type
-		if (!dataSetToReschedule.isEmpty()) {
-			reinsertScheduledTasks(dataSetToReschedule);
-		}
 	}
 
 	@Override
-	public void reinsertScheduledTasks(List<TaskInternal> candidatesToReschedule) {
+	public void reinsertScheduledTasks(Collection<TaskInternal> candidatesToReschedule) {
 		Map<String, Integer> pendingCount = getJdbcTemplate().query(countScheduledPendingTasksSQL, this::scheduledPendingReader);
-		List<TaskInternal> tasksToReschedule = new LinkedList<>();
+		List<TaskInternal> tasksToReschedule = new ArrayList<>();
 		candidatesToReschedule.forEach(task -> {
 			if (!pendingCount.containsKey(task.processorType) || pendingCount.get(task.processorType) == 0) {
 				task.uniquenessKey = task.processorType;
@@ -418,10 +468,9 @@ final class MsSqlDbDataProvider extends ClusterTasksDbDataProvider {
 	}
 
 	@Override
-	public void removeLongTimeNoSeeNodes(long maxTimeNoSeeMillis) {
+	public int removeLongTimeNoSeeNodes(long maxTimeNoSeeMillis) {
 		try {
-			int affected = getJdbcTemplate().update(removeLongTimeNoSeeSQL, new Object[]{maxTimeNoSeeMillis}, new int[]{Types.BIGINT});
-			logger.info("found and removed " + affected + " non-active nodes");
+			return getJdbcTemplate().update(removeLongTimeNoSeeSQL, new Object[]{maxTimeNoSeeMillis}, new int[]{Types.BIGINT});
 		} catch (DataAccessException dae) {
 			throw new CtsGeneralFailure("failed while looking up and removing non-active nodes", dae);
 		}

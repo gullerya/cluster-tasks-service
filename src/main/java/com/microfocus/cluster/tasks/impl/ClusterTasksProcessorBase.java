@@ -14,6 +14,7 @@ import com.microfocus.cluster.tasks.api.enums.ClusterTasksDataProviderType;
 import io.prometheus.client.Gauge;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Autowired;
 
 import javax.annotation.PostConstruct;
 import java.util.ArrayList;
@@ -48,6 +49,9 @@ public abstract class ClusterTasksProcessorBase {
 	private int minimalTasksTakeInterval;
 	private long lastTaskHandledLocalTime;
 	private ExecutorService workersThreadPool;
+
+	@Autowired
+	private ClusterTasksServiceImpl clusterTasksService;
 
 	static {
 		threadsUtilizationGauge = Gauge.build()
@@ -205,10 +209,13 @@ public abstract class ClusterTasksProcessorBase {
 				.set(((double) (numberOfWorkersPerNode - availableWorkers.get())) / ((double) numberOfWorkersPerNode));
 	}
 
-	final void notifyTaskWorkerFinished() {
+	final void notifyTaskWorkerFinished(ClusterTasksDataProvider dataProvider, TaskInternal task) {
 		int aWorkers = availableWorkers.incrementAndGet();
 		lastTaskHandledLocalTime = System.currentTimeMillis();
 		logger.debug(type + " available workers " + aWorkers);
+
+		//  submit task for removal
+		clusterTasksService.getMaintainer().submitTaskToRemove(dataProvider, task);
 	}
 
 	private boolean handoutTaskToWorker(ClusterTasksDataProvider dataProvider, TaskInternal task) {

@@ -46,7 +46,7 @@ public class ClusterTasksServiceImpl implements ClusterTasksService {
 	private final ExecutorService maintainerExecutor = Executors.newSingleThreadExecutor(new ClusterTasksMaintainerThreadFactory());
 	private final SystemWorkersConfigurer workersConfigurer = new SystemWorkersConfigurer();
 	private final ClusterTasksDispatcher dispatcher = new ClusterTasksDispatcher(workersConfigurer);
-	private final ClusterTasksMaintener maintainer = new ClusterTasksMaintener(workersConfigurer);
+	private final ClusterTasksMaintainer maintainer = new ClusterTasksMaintainer(workersConfigurer);
 	private ClusterTasksServiceConfigurerSPI serviceConfigurer;
 	private ClusterTasksServiceSchemaManager schemaManager;
 
@@ -158,6 +158,10 @@ public class ClusterTasksServiceImpl implements ClusterTasksService {
 	public int countTasks(ClusterTasksDataProviderType dataProviderType, String processorType, ClusterTaskStatus... statuses) {
 		Set<ClusterTaskStatus> statusSet = Arrays.stream(statuses).collect(Collectors.toSet());
 		return dataProvidersMap.get(dataProviderType).countTasks(processorType, statusSet);
+	}
+
+	ClusterTasksMaintainer getMaintainer() {
+		return maintainer;
 	}
 
 	private void initService() {
@@ -308,7 +312,6 @@ public class ClusterTasksServiceImpl implements ClusterTasksService {
 	 */
 	final class SystemWorkersConfigurer {
 		private SystemWorkersConfigurer() {
-
 		}
 
 		String getInstanceID() {

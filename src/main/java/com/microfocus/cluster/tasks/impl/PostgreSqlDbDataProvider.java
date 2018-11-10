@@ -343,7 +343,17 @@ final class PostgreSqlDbDataProvider extends ClusterTasksDbDataProvider {
 	}
 
 	@Override
-	public void handleGarbageAndStaled() {
+	public void cleanFinishedTaskBodiesByIDs(long partitionIndex, Long[] taskBodies) {
+		logger.error("not implemented");
+	}
+
+	@Override
+	public void removeFinishedTaskBodiesByQuery() {
+		logger.error("not implemented");
+	}
+
+	@Override
+	public void handleStaledTasks() {
 		List<TaskInternal> dataSetToReschedule = new LinkedList<>();
 		getTransactionTemplate().execute(transactionStatus -> {
 			try {
@@ -378,7 +388,7 @@ final class PostgreSqlDbDataProvider extends ClusterTasksDbDataProvider {
 	}
 
 	@Override
-	public void reinsertScheduledTasks(List<TaskInternal> candidatesToReschedule) {
+	public void reinsertScheduledTasks(Collection<TaskInternal> candidatesToReschedule) {
 		Map<String, Integer> pendingCount = getJdbcTemplate().query(countScheduledPendingTasksSQL, this::scheduledPendingReader);
 		List<TaskInternal> tasksToReschedule = new LinkedList<>();
 		candidatesToReschedule.forEach(task -> {
@@ -407,10 +417,9 @@ final class PostgreSqlDbDataProvider extends ClusterTasksDbDataProvider {
 	}
 
 	@Override
-	public void removeLongTimeNoSeeNodes(long maxTimeNoSeeMillis) {
+	public int removeLongTimeNoSeeNodes(long maxTimeNoSeeMillis) {
 		try {
-			int affected = getJdbcTemplate().update(removeLongTimeNoSeeSQL, new Object[]{maxTimeNoSeeMillis}, new int[]{Types.BIGINT});
-			logger.info("found and removed " + affected + " non-active nodes");
+			return getJdbcTemplate().update(removeLongTimeNoSeeSQL, new Object[]{maxTimeNoSeeMillis}, new int[]{Types.BIGINT});
 		} catch (DataAccessException dae) {
 			throw new CtsGeneralFailure("failed while looking up and removing non-active nodes", dae);
 		}
