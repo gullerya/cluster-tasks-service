@@ -105,7 +105,7 @@ public class ClusterTasksHeavyClusterSimpleTasksTest {
 						clusterTasksService.enqueueTasks(ClusterTasksDataProviderType.DB, ClusterTasksHC_C_test.class.getSimpleName(), task);
 						clusterTasksService.enqueueTasks(ClusterTasksDataProviderType.DB, ClusterTasksHC_D_test.class.getSimpleName(), task);
 						clusterTasksService.enqueueTasks(ClusterTasksDataProviderType.DB, ClusterTasksHC_E_test.class.getSimpleName(), task);
-						ClusterTasksTestsUtils.sleepSafely(300);
+						ClusterTasksTestsUtils.sleepSafely(400);
 					}
 				} catch (Exception e) {
 					logger.error("one of the nodes' task push failed", e);
