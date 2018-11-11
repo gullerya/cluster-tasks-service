@@ -357,16 +357,6 @@ final class OracleDbDataProvider extends ClusterTasksDbDataProvider {
 	}
 
 	@Override
-	public void cleanFinishedTaskBodiesByIDs(long partitionIndex, Long[] taskBodies) {
-		logger.error("not implemented");
-	}
-
-	@Override
-	public void removeFinishedTaskBodiesByQuery() {
-		logger.error("not implemented");
-	}
-
-	@Override
 	public void handleStaledTasks() {
 		List<TaskInternal> dataSetToReschedule = new LinkedList<>();
 		getTransactionTemplate().execute(transactionStatus -> {

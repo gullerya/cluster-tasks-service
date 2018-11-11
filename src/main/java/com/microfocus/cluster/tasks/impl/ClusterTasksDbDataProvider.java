@@ -28,6 +28,8 @@ import java.sql.Types;
 import java.time.Duration;
 import java.time.ZoneOffset;
 import java.time.ZonedDateTime;
+import java.util.ArrayList;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
@@ -90,6 +92,9 @@ abstract class ClusterTasksDbDataProvider implements ClusterTasksDataProvider {
 
 	private final String removeFinishedTaskSQL;
 	private final String removeFinishedTasksByQuerySQL;
+	private final Map<Long, String> selectDanglingBodiesSQLs = new HashMap<>();
+	private final Map<Long, String> removeDanglingBodiesSQLs = new HashMap<>();
+	private final int removeDanglingBodiesBulkSize = 50;
 
 	private final Map<Long, String> lookupOrphansByPartitionSQLs = new LinkedHashMap<>();
 	private final Map<Long, String> deleteTaskBodyByPartitionSQLs = new LinkedHashMap<>();
@@ -121,6 +126,11 @@ abstract class ClusterTasksDbDataProvider implements ClusterTasksDataProvider {
 					" LEFT OUTER JOIN " + META_TABLE_NAME + " ON " + META_ID + " = " + BODY_ID);
 			deleteTaskBodyByPartitionSQLs.put(partition, "DELETE FROM " + BODY_TABLE_NAME + partition +
 					" WHERE " + BODY_ID + " = ?");
+
+			selectDanglingBodiesSQLs.put(partition, "SELECT " + BODY_ID + " AS bodyId FROM " + BODY_TABLE_NAME + partition +
+					" WHERE NOT EXISTS (SELECT 1 FROM " + META_TABLE_NAME + " WHERE " + META_ID + " = " + BODY_ID + ")");
+			removeDanglingBodiesSQLs.put(partition, "DELETE FROM " + BODY_TABLE_NAME + partition + " WHERE " + BODY_ID + " IN (" + String.join(",", Collections.nCopies(removeDanglingBodiesBulkSize, "?")) + ")");
+
 			truncateByPartitionSQLs.put(partition, "TRUNCATE TABLE " + BODY_TABLE_NAME + partition);
 			countTaskBodiesByPartitionSQLs.put(partition, "SELECT COUNT(*) AS counter FROM " + BODY_TABLE_NAME + partition);
 		}
@@ -148,6 +158,57 @@ abstract class ClusterTasksDbDataProvider implements ClusterTasksDataProvider {
 			}
 		} catch (DataAccessException dae) {
 			logger.error("failed during removal of finished tasks by query", dae);
+		}
+	}
+
+	@Override
+	public void cleanFinishedTaskBodiesByIDs(long partitionIndex, Long[] taskBodies) {
+		try {
+			int index = 0;
+			Object[] params = new Object[removeDanglingBodiesBulkSize];
+			int[] types = new int[removeDanglingBodiesBulkSize];
+			for (int i = 0; i < removeDanglingBodiesBulkSize; i++) types[i] = Types.BIGINT;
+			while (index < taskBodies.length) {
+				System.arraycopy(taskBodies, index, params, 0, Math.min(taskBodies.length - index, removeDanglingBodiesBulkSize));
+				int removed = getJdbcTemplate().update(removeDanglingBodiesSQLs.get(partitionIndex), params, types);
+				logger.debug("removed " + removed + " bodies from partition " + partitionIndex);
+				index += removeDanglingBodiesBulkSize;
+			}
+		} catch (DataAccessException dae) {
+			logger.error("failed during cleaning dangling task bodies", dae);
+		}
+	}
+
+	@Override
+	public void removeFinishedTaskBodiesByQuery() {
+		long partitionIndex = resolveBodyTablePartitionIndex();
+		try {
+			List<Long> toBeRemoved = getJdbcTemplate().query(selectDanglingBodiesSQLs.get(partitionIndex), resultSet -> {
+				List<Long> result = new ArrayList<>();
+				while (resultSet.next()) {
+					long bodyId = resultSet.getLong("bodyId");
+					if (!resultSet.wasNull()) {
+						result.add(bodyId);
+					}
+				}
+				resultSet.close();
+				return result;
+			});
+			if (!toBeRemoved.isEmpty()) {
+				logger.debug("found " + toBeRemoved.size() + " dangling bodies to be removed from partition " + partitionIndex);
+				Object[] params = new Object[removeDanglingBodiesBulkSize];
+				Integer[] types = Collections.nCopies(removeDanglingBodiesBulkSize, Types.BIGINT).toArray(new Integer[0]);
+				while (toBeRemoved.size() > 0) {
+					List<Long> bulk = toBeRemoved.subList(0, Math.min(removeDanglingBodiesBulkSize, toBeRemoved.size()));
+					Object[] bulkAsArray = bulk.toArray(new Long[0]);
+					System.arraycopy(bulkAsArray, 0, params, 0, bulkAsArray.length);
+					int removed = getJdbcTemplate().update(removeDanglingBodiesSQLs.get(partitionIndex), params, types);
+					logger.debug("removed " + removed + " dangling bodies from partition " + partitionIndex);
+					toBeRemoved.removeAll(bulk);
+				}
+			}
+		} catch (DataAccessException dae) {
+			logger.error("failed during cleaning dangling task bodies", dae);
 		}
 	}
 

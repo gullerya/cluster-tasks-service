@@ -61,9 +61,6 @@ final class MsSqlDbDataProvider extends ClusterTasksDbDataProvider {
 
 	private final String countScheduledPendingTasksSQL;
 
-	private final Map<Long, String> selectDanglingBodiesSQLs = new HashMap<>();
-	private final Map<Long, String> removeDanglingBodiesSQLs = new HashMap<>();
-	private final int removeDanglingBodiesBulkSize = 50;
 	private final String selectStaledTasksSQL;
 
 	private final String upsertSelfLastSeenSQL;
@@ -105,9 +102,6 @@ final class MsSqlDbDataProvider extends ClusterTasksDbDataProvider {
 					" INSERT INTO " + META_TABLE_NAME + " (" + insertFields + ")" +
 					" VALUES (@taskId, ?, ?, ?, ?, ?, ?, ?, COALESCE(?, CAST(FORMAT(CURRENT_TIMESTAMP,'yyyyMMddHHmmssfff') AS BIGINT) + ?), GETDATE(), " + ClusterTaskStatus.PENDING.value + ");"
 			);
-			selectDanglingBodiesSQLs.put(partition, "SELECT " + BODY_ID + " AS bodyId FROM " + BODY_TABLE_NAME + partition +
-					" WHERE NOT EXISTS (SELECT 1 FROM " + META_TABLE_NAME + " WHERE " + META_ID + " = " + BODY_ID + ")");
-			removeDanglingBodiesSQLs.put(partition, "DELETE FROM " + BODY_TABLE_NAME + partition + " WHERE " + BODY_ID + " IN (" + String.join(",", Collections.nCopies(removeDanglingBodiesBulkSize, "?")) + ")");
 		}
 
 		updateTasksStartedSQL = "UPDATE " + META_TABLE_NAME + " SET " + STATUS + " = " + ClusterTaskStatus.RUNNING.value + ", " + STARTED + " = GETDATE(), " + RUNTIME_INSTANCE + " = ?" +
@@ -372,57 +366,6 @@ final class MsSqlDbDataProvider extends ClusterTasksDbDataProvider {
 			getJdbcTemplate().update(updateTaskFinishedSQL, new Object[]{taskId}, new int[]{BIGINT});
 		} catch (DataAccessException dae) {
 			throw new CtsGeneralFailure(clusterTasksService.getInstanceID() + " failed to update task finished", dae);
-		}
-	}
-
-	@Override
-	public void cleanFinishedTaskBodiesByIDs(long partitionIndex, Long[] taskBodies) {
-		try {
-			int index = 0;
-			Object[] params = new Object[removeDanglingBodiesBulkSize];
-			int[] types = new int[removeDanglingBodiesBulkSize];
-			for (int i = 0; i < removeDanglingBodiesBulkSize; i++) types[i] = Types.BIGINT;
-			while (index < taskBodies.length) {
-				System.arraycopy(taskBodies, index, params, 0, Math.min(taskBodies.length - index, removeDanglingBodiesBulkSize));
-				int removed = getJdbcTemplate().update(removeDanglingBodiesSQLs.get(partitionIndex), params, types);
-				logger.debug("removed " + removed + " bodies from partition " + partitionIndex);
-				index += removeDanglingBodiesBulkSize;
-			}
-		} catch (DataAccessException dae) {
-			logger.error("failed during cleaning dangling task bodies", dae);
-		}
-	}
-
-	@Override
-	public void removeFinishedTaskBodiesByQuery() {
-		long partitionIndex = resolveBodyTablePartitionIndex();
-		try {
-			List<Long> toBeRemoved = getJdbcTemplate().query(selectDanglingBodiesSQLs.get(partitionIndex), resultSet -> {
-				List<Long> result = new ArrayList<>();
-				while (resultSet.next()) {
-					long bodyId = resultSet.getLong("bodyId");
-					if (!resultSet.wasNull()) {
-						result.add(bodyId);
-					}
-				}
-				resultSet.close();
-				return result;
-			});
-			if (!toBeRemoved.isEmpty()) {
-				logger.debug("found " + toBeRemoved.size() + " dangling bodies to be removed from partition " + partitionIndex);
-				Object[] params = new Object[removeDanglingBodiesBulkSize];
-				Integer[] types = Collections.nCopies(removeDanglingBodiesBulkSize, Types.BIGINT).toArray(new Integer[0]);
-				while (toBeRemoved.size() > 0) {
-					List<Long> bulk = toBeRemoved.subList(0, Math.min(removeDanglingBodiesBulkSize, toBeRemoved.size()));
-					Object[] bulkAsArray = bulk.toArray(new Long[0]);
-					System.arraycopy(bulkAsArray, 0, params, 0, bulkAsArray.length);
-					int removed = getJdbcTemplate().update(removeDanglingBodiesSQLs.get(partitionIndex), params, types);
-					logger.debug("removed " + removed + " dangling bodies from partition " + partitionIndex);
-					toBeRemoved.removeAll(bulk);
-				}
-			}
-		} catch (DataAccessException dae) {
-			logger.error("failed during cleaning dangling task bodies", dae);
 		}
 	}
 

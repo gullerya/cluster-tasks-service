@@ -25,12 +25,10 @@ import org.springframework.jdbc.core.JdbcTemplate;
 import java.sql.SQLException;
 import java.sql.Types;
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.Collection;
 import java.util.Collections;
-import java.util.LinkedHashMap;
-import java.util.LinkedHashSet;
-import java.util.LinkedList;
+import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -54,14 +52,15 @@ final class PostgreSqlDbDataProvider extends ClusterTasksDbDataProvider {
 	private final String areIndicesReadySQL;
 
 	private final String insertTaskSQL;
-	private final Map<Integer, String> selectForUpdateTasksSQLs = new LinkedHashMap<>();
-	private final Map<Long, String> selectTaskBodyByPartitionSQLs = new LinkedHashMap<>();
+	private final Map<Integer, String> selectForUpdateTasksSQLs = new HashMap<>();
+	private final Map<Long, String> selectTaskBodyByPartitionSQLs = new HashMap<>();
 
 	private final String updateTasksStartedSQL;
 	private final String updateTaskFinishedSQL;
 
 	private final String countScheduledPendingTasksSQL;
-	private final String selectGCValidTasksSQL;
+
+	private final String selectStaledTasksSQL;
 
 	private final String upsertSelfLastSeenSQL;
 	private final String removeLongTimeNoSeeSQL;
@@ -107,13 +106,13 @@ final class PostgreSqlDbDataProvider extends ClusterTasksDbDataProvider {
 				" WHERE " + TASK_TYPE + " = " + ClusterTaskType.SCHEDULED.value + " AND " + STATUS + " = " + ClusterTaskStatus.PENDING.value + " GROUP BY " + PROCESSOR_TYPE;
 
 		String selectedForGCFields = String.join(",", META_ID, BODY_PARTITION, TASK_TYPE, PROCESSOR_TYPE, STATUS, MAX_TIME_TO_RUN);
-		selectGCValidTasksSQL = "SELECT " + selectedForGCFields + " FROM " + META_TABLE_NAME +
-				" WHERE " + STATUS + " = " + ClusterTaskStatus.FINISHED.value +
-				" OR (" + STATUS + " = " + ClusterTaskStatus.RUNNING.value + " AND " + STARTED + " < LOCALTIMESTAMP - MAKE_INTERVAL(SECS := " + MAX_TIME_TO_RUN + " / 1000))" +
+		selectStaledTasksSQL = "SELECT " + selectedForGCFields + " FROM " + META_TABLE_NAME +
+				" WHERE " + RUNTIME_INSTANCE + " IS NOT NULL" +
+				"   AND NOT EXISTS (SELECT 1 FROM " + ACTIVE_NODES_TABLE_NAME + " WHERE " + ACTIVE_NODE_ID + " = " + RUNTIME_INSTANCE + ")" +
 				" FOR UPDATE";
 
 		upsertSelfLastSeenSQL = "INSERT INTO " + ACTIVE_NODES_TABLE_NAME +
-				" (" + ACTIVE_NODE_ID + "," + "," + ACTIVE_NODE_SINCE + "," + ACTIVE_NODE_LAST_SEEN + ")" +
+				" (" + ACTIVE_NODE_ID + "," + ACTIVE_NODE_SINCE + "," + ACTIVE_NODE_LAST_SEEN + ")" +
 				" VALUES (?, LOCALTIMESTAMP, LOCALTIMESTAMP)" +
 				" ON CONFLICT (" + ACTIVE_NODE_ID + ") DO UPDATE SET " + ACTIVE_NODE_LAST_SEEN + " = LOCALTIMESTAMP";
 		removeLongTimeNoSeeSQL = "DELETE FROM " + ACTIVE_NODES_TABLE_NAME + " WHERE " + ACTIVE_NODE_LAST_SEEN + " < LOCALTIMESTAMP - MAKE_INTERVAL(SECS := ? / 1000)";
@@ -188,7 +187,7 @@ final class PostgreSqlDbDataProvider extends ClusterTasksDbDataProvider {
 							Types.VARCHAR               //  task body -  will be used only if actually has body
 					};
 
-					Long newTaskId = jdbcTemplate.query(insertTaskSQL, paramValues, paramTypes, rs -> {
+					task.id = jdbcTemplate.query(insertTaskSQL, paramValues, paramTypes, rs -> {
 						if (rs.next()) {
 							return (rs.getLong(1));
 						} else {
@@ -216,7 +215,7 @@ final class PostgreSqlDbDataProvider extends ClusterTasksDbDataProvider {
 
 	@Override
 	public void retrieveAndDispatchTasks(Map<String, ClusterTasksProcessorBase> availableProcessors) {
-		Map<ClusterTasksProcessorBase, Collection<TaskInternal>> tasksToRun = new LinkedHashMap<>();
+		Map<ClusterTasksProcessorBase, Collection<TaskInternal>> tasksToRun = new HashMap<>();
 
 		//  within the same transaction do:
 		//  - SELECT candidate tasks to be run
@@ -251,7 +250,7 @@ final class PostgreSqlDbDataProvider extends ClusterTasksDbDataProvider {
 				tasks = jdbcTemplate.query(sql, params, paramTypes, this::tasksMetadataReader);
 				if (!tasks.isEmpty()) {
 					Map<String, List<TaskInternal>> tasksByProcessor = tasks.stream().collect(Collectors.groupingBy(ti -> ti.processorType));
-					Set<Long> tasksToRunIDs = new LinkedHashSet<>();
+					Set<Long> tasksToRunIDs = new HashSet<>();
 
 					//  let processors decide which tasks will be processed from all available
 					tasksByProcessor.forEach((processorType, processorTasks) -> {
@@ -270,7 +269,7 @@ final class PostgreSqlDbDataProvider extends ClusterTasksDbDataProvider {
 								.collect(Collectors.toList());
 						int[] updateResults = jdbcTemplate.batchUpdate(updateTasksStartedSQL, updateParams, new int[]{VARCHAR, BIGINT});
 						if (logger.isDebugEnabled()) {
-							logger.debug("update tasks to RUNNING result: " + Arrays.toString(updateResults));
+							logger.debug("update tasks to RUNNING results: " + String.join(", ", Stream.of(updateResults).map(String::valueOf).collect(Collectors.toList())));
 							logger.debug("from a total of " + tasks.size() + " available tasks " + tasksToRunIDs.size() + " has been started");
 						}
 					} else {
@@ -343,25 +342,15 @@ final class PostgreSqlDbDataProvider extends ClusterTasksDbDataProvider {
 	}
 
 	@Override
-	public void cleanFinishedTaskBodiesByIDs(long partitionIndex, Long[] taskBodies) {
-		logger.error("not implemented");
-	}
-
-	@Override
-	public void removeFinishedTaskBodiesByQuery() {
-		logger.error("not implemented");
-	}
-
-	@Override
 	public void handleStaledTasks() {
-		List<TaskInternal> dataSetToReschedule = new LinkedList<>();
+		List<TaskInternal> dataSetToReschedule = new ArrayList<>();
 		getTransactionTemplate().execute(transactionStatus -> {
 			try {
 				JdbcTemplate jdbcTemplate = getJdbcTemplate();
-				List<TaskInternal> gcCandidates = jdbcTemplate.query(selectGCValidTasksSQL, this::gcCandidatesReader);
+				List<TaskInternal> gcCandidates = jdbcTemplate.query(selectStaledTasksSQL, this::gcCandidatesReader);
 
 				//  delete garbage tasks data
-				Map<Long, Long> dataSetToDelete = new LinkedHashMap<>();
+				Map<Long, Long> dataSetToDelete = new HashMap<>();
 				gcCandidates.forEach(candidate -> dataSetToDelete.put(candidate.id, candidate.partitionIndex));
 				if (!dataSetToDelete.isEmpty()) {
 					deleteGarbageTasksData(jdbcTemplate, dataSetToDelete);
@@ -390,7 +379,7 @@ final class PostgreSqlDbDataProvider extends ClusterTasksDbDataProvider {
 	@Override
 	public void reinsertScheduledTasks(Collection<TaskInternal> candidatesToReschedule) {
 		Map<String, Integer> pendingCount = getJdbcTemplate().query(countScheduledPendingTasksSQL, this::scheduledPendingReader);
-		List<TaskInternal> tasksToReschedule = new LinkedList<>();
+		List<TaskInternal> tasksToReschedule = new ArrayList<>();
 		candidatesToReschedule.forEach(task -> {
 			if (!pendingCount.containsKey(task.processorType) || pendingCount.get(task.processorType) == 0) {
 				task.uniquenessKey = task.processorType;
