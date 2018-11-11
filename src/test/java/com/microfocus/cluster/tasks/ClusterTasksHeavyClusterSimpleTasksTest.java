@@ -40,10 +40,9 @@ import static org.junit.Assert.assertEquals;
 public class ClusterTasksHeavyClusterSimpleTasksTest {
 	private static final Logger logger = LoggerFactory.getLogger(ClusterTasksHeavyClusterSimpleTasksTest.class);
 	private int numberOfNodes = 32;
-	private int numberOfTasks = 500;
+	private int numberOfTasks = 200;
 
 	@Test
-	@Ignore
 	public void TestA_heavy_cluster() throws InterruptedException {
 		//  load contexts to simulate cluster of a multiple nodes
 		CountDownLatch waitForAllInit = new CountDownLatch(numberOfNodes);
@@ -107,7 +106,7 @@ public class ClusterTasksHeavyClusterSimpleTasksTest {
 						clusterTasksService.enqueueTasks(ClusterTasksDataProviderType.DB, ClusterTasksHC_C_test.class.getSimpleName(), task);
 						clusterTasksService.enqueueTasks(ClusterTasksDataProviderType.DB, ClusterTasksHC_D_test.class.getSimpleName(), task);
 						clusterTasksService.enqueueTasks(ClusterTasksDataProviderType.DB, ClusterTasksHC_E_test.class.getSimpleName(), task);
-						ClusterTasksTestsUtils.sleepSafely(300);
+						ClusterTasksTestsUtils.sleepSafely(200);
 					}
 				} catch (Exception e) {
 					logger.error("one of the nodes' task push failed", e);

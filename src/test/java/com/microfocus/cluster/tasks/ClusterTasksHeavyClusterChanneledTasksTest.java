@@ -39,7 +39,7 @@ import static org.junit.Assert.assertEquals;
 public class ClusterTasksHeavyClusterChanneledTasksTest {
 	private static final Logger logger = LoggerFactory.getLogger(ClusterTasksHeavyClusterChanneledTasksTest.class);
 	private int numberOfNodes = 32;
-	private int numberOfTasks = 300;
+	private int numberOfTasks = 200;
 
 	@Test
 	public void TestA_heavy_cluster() throws InterruptedException {
