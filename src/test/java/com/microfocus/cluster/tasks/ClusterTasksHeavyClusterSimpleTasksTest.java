@@ -123,8 +123,13 @@ public class ClusterTasksHeavyClusterSimpleTasksTest {
 		CountDownLatch waitForAllTasksDone = new CountDownLatch(5);
 		ExecutorService tasksDonePool = Executors.newFixedThreadPool(5);
 		tasksDonePool.execute(() -> {
+			int cnt = 0;
 			while (ClusterTasksHC_A_test.taskIDs.size() != numberOfNodes * numberOfTasks) {
+				cnt++;
 				ClusterTasksTestsUtils.sleepSafely(100);
+				if (cnt % 1000 == 0) {
+					logger.info(cnt / 10 + "secs passed...");
+				}
 			}
 			ClusterTasksTestsUtils.sleepSafely(1000);   //  verify no more interactions
 			assertEquals(numberOfNodes * numberOfTasks, ClusterTasksHC_A_test.taskIDs.size());
