@@ -415,10 +415,10 @@ final class PostgreSqlDbDataProvider extends ClusterTasksDbDataProvider {
 	}
 
 	private Set<String> getCTSTableNames() {
-		return Stream.of(META_TABLE_NAME.toLowerCase(), BODY_TABLE_NAME.toLowerCase() + "0", BODY_TABLE_NAME.toLowerCase() + "1", BODY_TABLE_NAME.toLowerCase() + "2", BODY_TABLE_NAME.toLowerCase() + "3").collect(Collectors.toSet());
+		return Stream.of(ACTIVE_NODES_TABLE_NAME.toLowerCase(), META_TABLE_NAME.toLowerCase(), BODY_TABLE_NAME.toLowerCase() + "0", BODY_TABLE_NAME.toLowerCase() + "1", BODY_TABLE_NAME.toLowerCase() + "2", BODY_TABLE_NAME.toLowerCase() + "3").collect(Collectors.toSet());
 	}
 
 	private Set<String> getCTSIndexNames() {
-		return Stream.of("ctskm_pk", "ctskb_pk_p0", "ctskb_pk_p1", "ctskb_pk_p2", "ctskb_pk_p3").collect(Collectors.toSet());
+		return Stream.of("ctskm_pk", "ctskb_pk_p0", "ctskb_pk_p1", "ctskb_pk_p2", "ctskb_pk_p3", "ctsan_idx_1").collect(Collectors.toSet());
 	}
 }
