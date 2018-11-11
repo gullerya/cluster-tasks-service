@@ -39,7 +39,7 @@ import static org.junit.Assert.assertEquals;
 public class ClusterTasksHeavyClusterChanneledTasksTest {
 	private static final Logger logger = LoggerFactory.getLogger(ClusterTasksHeavyClusterChanneledTasksTest.class);
 	private int numberOfNodes = 32;
-	private int numberOfTasks = 100;
+	private int numberOfTasks = 200;
 
 	@Test
 	public void TestA_heavy_cluster() throws InterruptedException {
@@ -146,8 +146,13 @@ public class ClusterTasksHeavyClusterChanneledTasksTest {
 		CountDownLatch waitForAllTasksDone = new CountDownLatch(5);
 		ExecutorService tasksDonePool = Executors.newFixedThreadPool(5);
 		tasksDonePool.execute(() -> {
+			int cnt = 0;
 			while (ClusterTasksHC_A_test.taskIDs.size() != numberOfNodes * numberOfTasks) {
+				cnt++;
 				ClusterTasksTestsUtils.sleepSafely(100);
+				if (cnt % 1000 == 0) {
+					logger.info(cnt / 10 + " secs passed...");
+				}
 			}
 			ClusterTasksTestsUtils.sleepSafely(1000);   //  verify no more interactions
 			assertEquals(numberOfNodes * numberOfTasks, ClusterTasksHC_A_test.taskIDs.size());

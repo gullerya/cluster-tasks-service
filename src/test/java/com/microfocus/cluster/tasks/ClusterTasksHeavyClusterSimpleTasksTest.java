@@ -128,7 +128,7 @@ public class ClusterTasksHeavyClusterSimpleTasksTest {
 				cnt++;
 				ClusterTasksTestsUtils.sleepSafely(100);
 				if (cnt % 1000 == 0) {
-					logger.info(cnt / 10 + "secs passed...");
+					logger.info(cnt / 10 + " secs passed...");
 				}
 			}
 			ClusterTasksTestsUtils.sleepSafely(1000);   //  verify no more interactions
