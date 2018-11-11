@@ -324,7 +324,7 @@ final class MsSqlDbDataProvider extends ClusterTasksDbDataProvider {
 								.collect(Collectors.toList());
 						int[] updateResults = jdbcTemplate.batchUpdate(updateTasksStartedSQL, updateParams, new int[]{VARCHAR, BIGINT});
 						if (logger.isDebugEnabled()) {
-							logger.debug("update tasks to RUNNING result: " + Arrays.toString(updateResults));
+							logger.debug("update tasks to RUNNING results: " + String.join(", ", Stream.of(updateResults).map(String::valueOf).collect(Collectors.toList())));
 							logger.debug("from a total of " + tasks.size() + " available tasks " + tasksToRunIDs.size() + " has been started");
 						}
 					} else {
@@ -436,7 +436,6 @@ final class MsSqlDbDataProvider extends ClusterTasksDbDataProvider {
 					logger.info("found " + gcCandidates.size() + " tasks as staled, processing...");
 
 					//  collect tasks valid for re-enqueue
-					//  [YG] TODO: keep this data by partition, otherwise - broken
 					Collection<TaskInternal> tasksToReschedule = gcCandidates.stream()
 							.filter(task -> task.taskType == ClusterTaskType.SCHEDULED)
 							.collect(Collectors.toMap(task -> task.processorType, Function.identity(), (t1, t2) -> t2))
