@@ -21,7 +21,6 @@ before_install:
 # POSTGRESQL DB
 - sudo sed -i -e '/local.*peer/s/postgres/all/' -e 's/peer\|md5/trust/g' /etc/postgresql/*/main/pg_hba.conf
 - sudo sed -i 's/max_connections = 100/max_connections = 1000/g' /etc/postgresql/10/main/postgresql.conf
-- sudo cat /etc/postgresql/10/main/postgresql.conf
 - sudo service postgresql restart
 
 # WAIT
