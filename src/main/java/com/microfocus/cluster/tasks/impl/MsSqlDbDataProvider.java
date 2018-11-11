@@ -236,12 +236,7 @@ final class MsSqlDbDataProvider extends ClusterTasksDbDataProvider {
 					}
 
 					//  insert task
-					jdbcTemplate.update(
-							insertTaskSql,
-							hasBody ? paramValues : Arrays.copyOfRange(paramValues, 0, paramValues.length - 1),
-							hasBody ? paramTypes : Arrays.copyOfRange(paramTypes, 0, paramTypes.length - 1)
-					);
-
+					jdbcTemplate.update(insertTaskSql, paramValues, paramTypes);
 					result.add(new ClusterTaskPersistenceResultImpl(CTPPersistStatus.SUCCESS));
 					if (logger.isDebugEnabled()) {
 						logger.debug("successfully created " + task);
