@@ -151,7 +151,7 @@ public class ClusterTasksHeavyClusterChanneledTasksTest {
 				cnt++;
 				ClusterTasksTestsUtils.sleepSafely(100);
 				if (cnt % 1000 == 0) {
-					logger.info(cnt / 10 + " secs passed...");
+					logger.info(cnt / 10 + " secs passed, processed " + ClusterTasksHC_A_test.taskIDs.size() + " of " + numberOfNodes * numberOfTasks + " per processor");
 				}
 			}
 			ClusterTasksTestsUtils.sleepSafely(1000);   //  verify no more interactions
