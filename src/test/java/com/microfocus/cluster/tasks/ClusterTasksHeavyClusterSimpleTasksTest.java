@@ -9,6 +9,7 @@ import com.microfocus.cluster.tasks.processors.ClusterTasksHC_B_test;
 import com.microfocus.cluster.tasks.processors.ClusterTasksHC_C_test;
 import com.microfocus.cluster.tasks.processors.ClusterTasksHC_D_test;
 import com.microfocus.cluster.tasks.processors.ClusterTasksHC_E_test;
+import org.junit.Ignore;
 import org.junit.Test;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -42,6 +43,7 @@ public class ClusterTasksHeavyClusterSimpleTasksTest {
 	private int numberOfTasks = 500;
 
 	@Test
+	@Ignore
 	public void TestA_heavy_cluster() throws InterruptedException {
 		//  load contexts to simulate cluster of a multiple nodes
 		CountDownLatch waitForAllInit = new CountDownLatch(numberOfNodes);
@@ -105,7 +107,7 @@ public class ClusterTasksHeavyClusterSimpleTasksTest {
 						clusterTasksService.enqueueTasks(ClusterTasksDataProviderType.DB, ClusterTasksHC_C_test.class.getSimpleName(), task);
 						clusterTasksService.enqueueTasks(ClusterTasksDataProviderType.DB, ClusterTasksHC_D_test.class.getSimpleName(), task);
 						clusterTasksService.enqueueTasks(ClusterTasksDataProviderType.DB, ClusterTasksHC_E_test.class.getSimpleName(), task);
-						ClusterTasksTestsUtils.sleepSafely(400);
+						ClusterTasksTestsUtils.sleepSafely(300);
 					}
 				} catch (Exception e) {
 					logger.error("one of the nodes' task push failed", e);
