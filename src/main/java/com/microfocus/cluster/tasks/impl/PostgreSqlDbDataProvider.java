@@ -51,6 +51,9 @@ final class PostgreSqlDbDataProvider extends ClusterTasksDbDataProvider {
 	private final String areTablesReadySQL;
 	private final String areIndicesReadySQL;
 
+	private final String upsertSelfLastSeenSQL;
+	private final String removeLongTimeNoSeeSQL;
+
 	private final String insertTaskSQL;
 	private final Map<Integer, String> selectForUpdateTasksSQLs = new HashMap<>();
 	private final Map<Long, String> selectTaskBodyByPartitionSQLs = new HashMap<>();
@@ -62,9 +65,6 @@ final class PostgreSqlDbDataProvider extends ClusterTasksDbDataProvider {
 
 	private final String selectStaledTasksSQL;
 
-	private final String upsertSelfLastSeenSQL;
-	private final String removeLongTimeNoSeeSQL;
-
 	PostgreSqlDbDataProvider(ClusterTasksService clusterTasksService, ClusterTasksServiceConfigurerSPI serviceConfigurer) {
 		super(clusterTasksService, serviceConfigurer);
 
@@ -74,11 +74,17 @@ final class PostgreSqlDbDataProvider extends ClusterTasksDbDataProvider {
 		areIndicesReadySQL = "SELECT COUNT(*) AS cts_indices_count FROM pg_indexes WHERE indexname IN(" +
 				String.join(",", getCTSIndexNames().stream().map(in -> "'" + in + "'").collect(Collectors.toSet())) + ")";
 
+		upsertSelfLastSeenSQL = "INSERT INTO " + ACTIVE_NODES_TABLE_NAME +
+				" (" + ACTIVE_NODE_ID + "," + ACTIVE_NODE_SINCE + "," + ACTIVE_NODE_LAST_SEEN + ")" +
+				" VALUES (?, LOCALTIMESTAMP, LOCALTIMESTAMP)" +
+				" ON CONFLICT (" + ACTIVE_NODE_ID + ") DO UPDATE SET " + ACTIVE_NODE_LAST_SEEN + " = LOCALTIMESTAMP";
+		removeLongTimeNoSeeSQL = "DELETE FROM " + ACTIVE_NODES_TABLE_NAME + " WHERE " + ACTIVE_NODE_LAST_SEEN + " < LOCALTIMESTAMP - MAKE_INTERVAL(SECS := ? / 1000)";
+
 		insertTaskSQL = "SELECT insert_task(" + String.join(",", Collections.nCopies(9, "?")) + ")";
 
 		String selectForRunFields = String.join(",", META_ID, TASK_TYPE, PROCESSOR_TYPE, UNIQUENESS_KEY, CONCURRENCY_KEY, ORDERING_FACTOR, DELAY_BY_MILLIS, MAX_TIME_TO_RUN, BODY_PARTITION, STATUS);
 		for (int maxProcessorTypes : new Integer[]{20, 50, 100, 500}) {
-			String processorTypesInParameter = String.join(",", Collections.nCopies(maxProcessorTypes, "?"));
+			String processorTypesInParameter = String.join(",", Collections.nCopies(maxProcessorTypes, "(?)"));
 			selectForUpdateTasksSQLs.put(maxProcessorTypes, "SELECT " + selectForRunFields +
 					" FROM " + META_TABLE_NAME + " WHERE ctid IN " +
 					"   (SELECT row_id FROM" +
@@ -86,7 +92,7 @@ final class PostgreSqlDbDataProvider extends ClusterTasksDbDataProvider {
 					"               ROW_NUMBER() OVER (PARTITION BY COALESCE(" + CONCURRENCY_KEY + ",MD5(RANDOM()::TEXT || CLOCK_TIMESTAMP()::TEXT)) ORDER BY " + ORDERING_FACTOR + "," + CREATED + "," + META_ID + " ASC) AS row_index," +
 					"               COUNT(CASE WHEN " + STATUS + " = " + ClusterTaskStatus.RUNNING.value + " THEN 1 ELSE NULL END) OVER (PARTITION BY COALESCE(" + CONCURRENCY_KEY + ",MD5(RANDOM()::TEXT || CLOCK_TIMESTAMP()::TEXT))) AS running_count" +
 					"       FROM " + META_TABLE_NAME +
-					"       WHERE " + PROCESSOR_TYPE + " IN(" + processorTypesInParameter + ")" +
+					"       WHERE " + PROCESSOR_TYPE + " = ANY(VALUES " + processorTypesInParameter + ")" +
 					"           AND " + STATUS + " < " + ClusterTaskStatus.FINISHED.value +
 					"           AND " + CREATED + " < LOCALTIMESTAMP - MAKE_INTERVAL(SECS := " + DELAY_BY_MILLIS + " / 1000)) meta" +
 					"   WHERE meta.row_index <= 1 AND meta.running_count = 0)" +
@@ -110,12 +116,6 @@ final class PostgreSqlDbDataProvider extends ClusterTasksDbDataProvider {
 				" WHERE " + RUNTIME_INSTANCE + " IS NOT NULL" +
 				"   AND NOT EXISTS (SELECT 1 FROM " + ACTIVE_NODES_TABLE_NAME + " WHERE " + ACTIVE_NODE_ID + " = " + RUNTIME_INSTANCE + ")" +
 				" FOR UPDATE";
-
-		upsertSelfLastSeenSQL = "INSERT INTO " + ACTIVE_NODES_TABLE_NAME +
-				" (" + ACTIVE_NODE_ID + "," + ACTIVE_NODE_SINCE + "," + ACTIVE_NODE_LAST_SEEN + ")" +
-				" VALUES (?, LOCALTIMESTAMP, LOCALTIMESTAMP)" +
-				" ON CONFLICT (" + ACTIVE_NODE_ID + ") DO UPDATE SET " + ACTIVE_NODE_LAST_SEEN + " = LOCALTIMESTAMP";
-		removeLongTimeNoSeeSQL = "DELETE FROM " + ACTIVE_NODES_TABLE_NAME + " WHERE " + ACTIVE_NODE_LAST_SEEN + " < LOCALTIMESTAMP - MAKE_INTERVAL(SECS := ? / 1000)";
 	}
 
 	@Override
@@ -419,6 +419,6 @@ final class PostgreSqlDbDataProvider extends ClusterTasksDbDataProvider {
 	}
 
 	private Set<String> getCTSIndexNames() {
-		return Stream.of("ctskm_pk", "ctskm_idx_1", "ctskb_pk_p0", "ctskb_pk_p1", "ctskb_pk_p2", "ctskb_pk_p3").collect(Collectors.toSet());
+		return Stream.of("ctskm_pk", "ctskb_pk_p0", "ctskb_pk_p1", "ctskb_pk_p2", "ctskb_pk_p3").collect(Collectors.toSet());
 	}
 }
