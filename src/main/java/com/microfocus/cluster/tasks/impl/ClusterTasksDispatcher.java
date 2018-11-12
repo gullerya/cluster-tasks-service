@@ -16,23 +16,14 @@ import org.slf4j.LoggerFactory;
 
 import java.util.LinkedHashMap;
 import java.util.Map;
-import java.util.concurrent.CompletableFuture;
-import java.util.concurrent.Future;
 
-final class ClusterTasksDispatcher implements Runnable {
-	private final Logger logger = LoggerFactory.getLogger(ClusterTasksServiceImpl.class);
+final class ClusterTasksDispatcher extends ClusterTasksInternalWorker {
+	private final Logger logger = LoggerFactory.getLogger(ClusterTasksDispatcher.class);
 	private final Counter dispatchErrors;
 	private final Summary dispatchDurationSummary;
-	private final ClusterTasksServiceImpl.SystemWorkersConfigurer configurer;
-
-	private final Object HALT_MONITOR = new Object();
-	private volatile CompletableFuture<Object> haltPromise;
 
 	ClusterTasksDispatcher(ClusterTasksServiceImpl.SystemWorkersConfigurer configurer) {
-		if (configurer == null) {
-			throw new IllegalArgumentException("configurer MUST NOT be null");
-		}
-		this.configurer = configurer;
+		super(configurer);
 
 		dispatchErrors = Counter.build()
 				.name("cts_dispatch_errors_total_" + configurer.getInstanceID().replaceAll("-", "_"))
@@ -42,76 +33,50 @@ final class ClusterTasksDispatcher implements Runnable {
 				.name("cts_dispatch_duration_seconds_" + configurer.getInstanceID().replaceAll("-", "_"))
 				.help("CTS tasks' dispatch duration summary")
 				.register();
-
-		Runtime.getRuntime().addShutdownHook(new Thread(this::halt, "CTS Dispatcher shutdown listener"));
 	}
 
 	@Override
-	public void run() {
-		haltPromise = null;
-
-		while (haltPromise == null) {
-			Summary.Timer dispatchTimer = dispatchDurationSummary.startTimer();
-			try {
-				if (configurer.isCTSServiceEnabled()) {
-					runDispatch();
-				}
-			} catch (Throwable t) {
-				dispatchErrors.inc();
-				logger.error("failure within dispatch iteration; total failures: " + dispatchErrors.get(), t);
-			} finally {
-				dispatchTimer.observeDuration();
-				breathe();
-			}
-		}
-
-		haltPromise.complete(null);
-	}
-
-	CompletableFuture<Object> halt() {
-		logger.info("halt requested, initiating sequence...");
-		haltPromise = new CompletableFuture<>();
-		HALT_MONITOR.notify();
-		return haltPromise;
-	}
-
-	private void runDispatch() {
-		configurer.getDataProvidersMap().forEach((providerType, provider) -> {
-			if (provider.isReady()) {
-				Map<String, ClusterTasksProcessorBase> availableProcessorsOfDPType = new LinkedHashMap<>();
-				configurer.getProcessorsMap().forEach((processorType, processor) -> {
-					if (processor.getDataProviderType().equals(providerType) && processor.isReadyToHandleTaskInternal()) {
-						availableProcessorsOfDPType.put(processorType, processor);
-					}
-				});
-				if (!availableProcessorsOfDPType.isEmpty()) {
-					try {
-						provider.retrieveAndDispatchTasks(availableProcessorsOfDPType);
-					} catch (Throwable t) {
-						dispatchErrors.inc();
-						logger.error("failed to dispatch tasks in " + providerType + "; total failures: " + dispatchErrors.get(), t);
-					}
-				} else {
-					logger.debug("no available processors powered by data provider " + providerType + " found, skipping this dispatch round");
-				}
-			}
-		});
-	}
-
-	//  TODO: make this breath breakable to be able to shut down fast
-	private void breathe() {
-		Integer breathingInterval = null;
+	void performWorkCycle() {
+		Summary.Timer dispatchTimer = dispatchDurationSummary.startTimer();
 		try {
-			breathingInterval = configurer.getCTSServiceConfigurer().getTasksPollIntervalMillis();
+			configurer.getDataProvidersMap().forEach((providerType, provider) -> {
+				if (provider.isReady()) {
+					Map<String, ClusterTasksProcessorBase> availableProcessorsOfDPType = new LinkedHashMap<>();
+					configurer.getProcessorsMap().forEach((processorType, processor) -> {
+						if (processor.getDataProviderType().equals(providerType) && processor.isReadyToHandleTaskInternal()) {
+							availableProcessorsOfDPType.put(processorType, processor);
+						}
+					});
+					if (!availableProcessorsOfDPType.isEmpty()) {
+						try {
+							provider.retrieveAndDispatchTasks(availableProcessorsOfDPType);
+						} catch (Throwable t) {
+							dispatchErrors.inc();
+							logger.error("failed to dispatch tasks in " + providerType + "; total failures: " + dispatchErrors.get(), t);
+						}
+					} else {
+						logger.debug("no available processors powered by data provider " + providerType + " found, skipping this dispatch round");
+					}
+				}
+			});
+		} catch (Throwable t) {
+			dispatchErrors.inc();
+			logger.error("failure within dispatch iteration; total failures: " + dispatchErrors.get(), t);
+		} finally {
+			dispatchTimer.observeDuration();
+		}
+	}
+
+	Integer getEffectiveBreathingInterval() {
+		Integer result = null;
+		try {
+			result = configurer.getCTSServiceConfigurer().getTasksPollIntervalMillis();
 		} catch (Throwable t) {
 			logger.warn("failed to obtain breathing interval from service configurer, falling back to DEFAULT (" + ClusterTasksServiceConfigurerSPI.DEFAULT_POLL_INTERVAL + ")", t);
 		}
-		breathingInterval = breathingInterval == null ? ClusterTasksServiceConfigurerSPI.DEFAULT_POLL_INTERVAL : breathingInterval;
-		breathingInterval = Math.max(breathingInterval, ClusterTasksServiceConfigurerSPI.MINIMAL_POLL_INTERVAL);
-		try {
-			HALT_MONITOR.wait(breathingInterval);
-		} catch (InterruptedException ie) {
-			logger.warn("interrupted while breathing between dispatch rounds", ie);
-		}
+		result = result == null
+				? ClusterTasksServiceConfigurerSPI.DEFAULT_POLL_INTERVAL
+				: Math.max(result, ClusterTasksServiceConfigurerSPI.MINIMAL_POLL_INTERVAL);
+		return result;
 	}
 }

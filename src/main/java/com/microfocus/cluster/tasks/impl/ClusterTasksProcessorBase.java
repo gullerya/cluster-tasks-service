@@ -220,7 +220,7 @@ public abstract class ClusterTasksProcessorBase {
 
 	private boolean handoutTaskToWorker(ClusterTasksDataProvider dataProvider, TaskInternal task) {
 		try {
-			ClusterTasksWorker worker = new ClusterTasksWorker(dataProvider, this, task);
+			ClusterTasksProcessorWorker worker = new ClusterTasksProcessorWorker(dataProvider, this, task);
 			workersThreadPool.execute(worker);
 			int aWorkers = availableWorkers.decrementAndGet();
 			if (logger.isDebugEnabled()) {

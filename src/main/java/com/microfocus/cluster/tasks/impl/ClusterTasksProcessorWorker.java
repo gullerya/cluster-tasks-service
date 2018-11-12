@@ -24,8 +24,8 @@ import java.util.Collections;
  * Prometheus counters are static as they are once and for all
  */
 
-class ClusterTasksWorker implements Runnable {
-	private static final Logger logger = LoggerFactory.getLogger(ClusterTasksWorker.class);
+class ClusterTasksProcessorWorker implements Runnable {
+	private static final Logger logger = LoggerFactory.getLogger(ClusterTasksProcessorWorker.class);
 	private static final Counter ctsOwnErrorsCounter;
 	private static final Summary tasksPerProcessorDuration;
 	private static final Counter errorsPerProcessorCounter;
@@ -54,7 +54,7 @@ class ClusterTasksWorker implements Runnable {
 				.register();
 	}
 
-	ClusterTasksWorker(ClusterTasksDataProvider dataProvider, ClusterTasksProcessorBase processor, TaskInternal task) {
+	ClusterTasksProcessorWorker(ClusterTasksDataProvider dataProvider, ClusterTasksProcessorBase processor, TaskInternal task) {
 		if (processor == null) {
 			throw new IllegalArgumentException("processor MUST NOT be null");
 		}

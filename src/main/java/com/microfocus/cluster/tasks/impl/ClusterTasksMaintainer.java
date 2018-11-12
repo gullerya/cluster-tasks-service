@@ -20,30 +20,21 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.concurrent.CompletableFuture;
-import java.util.concurrent.Future;
 
-final class ClusterTasksMaintainer implements Runnable {
-	private final Logger logger = LoggerFactory.getLogger(ClusterTasksServiceImpl.class);
+final class ClusterTasksMaintainer extends ClusterTasksInternalWorker {
+	private final Logger logger = LoggerFactory.getLogger(ClusterTasksMaintainer.class);
 	private final Counter maintenanceErrors;
 	private final Summary maintenanceDurationSummary;
 	private final Gauge pendingTasksCounter;
 	private final Gauge taskBodiesCounter;
-	private final ClusterTasksServiceImpl.SystemWorkersConfigurer configurer;
 
 	private final Map<ClusterTasksDataProvider, Map<Long, List<Long>>> taskBodiesToRemove = new HashMap<>();
 
 	private long lastTasksCountTime = 0;
 	private long lastTimeRemovedNonActiveNodes = 0;
 
-	private final Object HALT_MONITOR = new Object();
-	private volatile CompletableFuture<Object> haltPromise;
-
 	ClusterTasksMaintainer(ClusterTasksServiceImpl.SystemWorkersConfigurer configurer) {
-		if (configurer == null) {
-			throw new IllegalArgumentException("configurer MUST NOT be null");
-		}
-		this.configurer = configurer;
+		super(configurer);
 
 		maintenanceErrors = Counter.build()
 				.name("cts_maintenance_errors_total_" + configurer.getInstanceID().replaceAll("-", "_"))
@@ -63,44 +54,39 @@ final class ClusterTasksMaintainer implements Runnable {
 				.help("CTS task bodies counter (per partition)")
 				.labelNames("partition")
 				.register();
-
-		Runtime.getRuntime().addShutdownHook(new Thread(this::halt, "CTS Maintainer shutdown listener"));
 	}
 
 	@Override
-	public void run() {
-		haltPromise = null;
-
-		//  infallible maintenance round
-		while (haltPromise == null) {
-			Summary.Timer maintenanceTimer = maintenanceDurationSummary.startTimer();
-			try {
-				if (configurer.isCTSServiceEnabled()) {
-					for (ClusterTasksDataProvider provider : configurer.getDataProvidersMap().values()) {
-						if (provider.isReady()) {
-							maintainActiveNodes(provider);
-							maintainFinishedAndStale(provider);
-							maintainTasksCounters(provider);
-						}
-					}
+	void performWorkCycle() {
+		Summary.Timer maintenanceTimer = maintenanceDurationSummary.startTimer();
+		try {
+			for (ClusterTasksDataProvider provider : configurer.getDataProvidersMap().values()) {
+				if (provider.isReady()) {
+					maintainActiveNodes(provider);
+					maintainFinishedAndStale(provider);
+					maintainTasksCounters(provider);
 				}
-			} catch (Throwable t) {
-				maintenanceErrors.inc();
-				logger.error("failed to perform maintenance round; total failures: " + maintenanceErrors.get(), t);
-			} finally {
-				maintenanceTimer.observeDuration();
-				breathe();
 			}
+		} catch (Throwable t) {
+			maintenanceErrors.inc();
+			logger.error("failed to perform maintenance round; total failures: " + maintenanceErrors.get(), t);
+		} finally {
+			maintenanceTimer.observeDuration();
 		}
-
-		haltPromise.complete(null);
 	}
 
-	CompletableFuture<Object> halt() {
-		logger.info("halt requested, initiating sequence...");
-		haltPromise = new CompletableFuture<>();
-		HALT_MONITOR.notify();
-		return haltPromise;
+	@Override
+	Integer getEffectiveBreathingInterval() {
+		Integer result = null;
+		try {
+			result = configurer.getCTSServiceConfigurer().getMaintenanceIntervalMillis();
+		} catch (Throwable t) {
+			logger.error("failed to obtain maintenance interval from hosting application, falling back to default (" + ClusterTasksServiceConfigurerSPI.DEFAULT_MAINTENANCE_INTERVAL + ")", t);
+		}
+		result = result == null
+				? ClusterTasksServiceConfigurerSPI.DEFAULT_MAINTENANCE_INTERVAL
+				: Math.max(result, ClusterTasksServiceConfigurerSPI.MINIMAL_MAINTENANCE_INTERVAL);
+		return result;
 	}
 
 	void submitTaskToRemove(ClusterTasksDataProvider dataProvider, TaskInternal task) {
@@ -125,9 +111,9 @@ final class ClusterTasksMaintainer implements Runnable {
 
 		//  remove inactive nodes (node will be considered inactive if it has not been see for X3 times maintenance interval)
 		try {
-			long maxTimeNoSee = getEffectiveMaintenanceInterval() * 3;
+			long maxTimeNoSee = getEffectiveBreathingInterval() * 3;
 			if (System.currentTimeMillis() - lastTimeRemovedNonActiveNodes > maxTimeNoSee) {
-				int affected = dataProvider.removeLongTimeNoSeeNodes(getEffectiveMaintenanceInterval() * 3);
+				int affected = dataProvider.removeLongTimeNoSeeNodes(getEffectiveBreathingInterval() * 3);
 				if (affected > 0) {
 					logger.info("found and removed " + affected + " non-active nodes");
 				}
@@ -182,27 +168,5 @@ final class ClusterTasksMaintainer implements Runnable {
 
 			lastTasksCountTime = System.currentTimeMillis();
 		}
-	}
-
-	private void breathe() {
-		try {
-			Integer maintenanceInterval = getEffectiveMaintenanceInterval();
-			HALT_MONITOR.wait(maintenanceInterval);
-		} catch (InterruptedException ie) {
-			logger.warn("interrupted while breathing between maintenance rounds", ie);
-		}
-	}
-
-	private Integer getEffectiveMaintenanceInterval() {
-		Integer result = null;
-		try {
-			result = configurer.getCTSServiceConfigurer().getMaintenanceIntervalMillis();
-		} catch (Throwable t) {
-			logger.error("failed to obtain maintenance interval from hosting application, falling back to default (" + ClusterTasksServiceConfigurerSPI.DEFAULT_MAINTENANCE_INTERVAL + ")", t);
-		}
-		result = result == null
-				? ClusterTasksServiceConfigurerSPI.DEFAULT_MAINTENANCE_INTERVAL
-				: Math.max(result, ClusterTasksServiceConfigurerSPI.MINIMAL_MAINTENANCE_INTERVAL);
-		return result;
 	}
 }
