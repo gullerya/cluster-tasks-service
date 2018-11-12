@@ -37,7 +37,7 @@ abstract class ClusterTasksInternalWorker implements Runnable {
 	}
 
 	CompletableFuture<Object> halt() {
-		logger.info("performing halt upon request");
+		System.out.println(getClass().getSimpleName() + " of " + configurer.getInstanceID() + " is halting");
 		haltPromise = new CompletableFuture<>();
 		synchronized (HALT_MONITOR) {
 			HALT_MONITOR.notify();

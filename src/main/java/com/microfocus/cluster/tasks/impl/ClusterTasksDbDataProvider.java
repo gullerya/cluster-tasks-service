@@ -432,7 +432,7 @@ abstract class ClusterTasksDbDataProvider implements ClusterTasksDataProvider {
 		}
 	}
 
-	private void checkAndTruncateBodyTables() {
+	void checkAndTruncateBodyTables() {
 		ZonedDateTime now = ZonedDateTime.now(ZoneOffset.UTC);
 		int hour = now.getHour();
 		int shiftDuration = 24 / PARTITIONS_NUMBER;

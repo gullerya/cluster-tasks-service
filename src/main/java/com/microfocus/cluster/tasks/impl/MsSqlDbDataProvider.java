@@ -60,7 +60,8 @@ final class MsSqlDbDataProvider extends ClusterTasksDbDataProvider {
 
 	private final String countScheduledPendingTasksSQL;
 
-	private final String selectStaledTasksSQL;
+	private final String selectStaledRerunnableTasksSQL;
+	private final String removeStaledTasksSQL;
 
 	private final String upsertSelfLastSeenSQL;
 	private final String removeLongTimeNoSeeSQL;
@@ -112,8 +113,13 @@ final class MsSqlDbDataProvider extends ClusterTasksDbDataProvider {
 				" WHERE " + TASK_TYPE + " = " + ClusterTaskType.SCHEDULED.value + " AND " + STATUS + " = " + ClusterTaskStatus.PENDING.value + " GROUP BY " + PROCESSOR_TYPE;
 
 		String selectedForGCFields = String.join(",", META_ID, BODY_PARTITION, TASK_TYPE, PROCESSOR_TYPE, STATUS, MAX_TIME_TO_RUN, RUNTIME_INSTANCE);
-		selectStaledTasksSQL = "SELECT " + selectedForGCFields + " FROM " + META_TABLE_NAME + " WITH (UPDLOCK)" +
-				" WHERE " + RUNTIME_INSTANCE + " IS NOT NULL" +
+		selectStaledRerunnableTasksSQL = "SELECT " + selectedForGCFields + " FROM " + META_TABLE_NAME + " WITH (UPDLOCK)" +
+				" WHERE " + TASK_TYPE + " = " + ClusterTaskType.SCHEDULED.value +
+				"   AND " + RUNTIME_INSTANCE + " IS NOT NULL" +
+				"   AND NOT EXISTS (SELECT 1 FROM " + ACTIVE_NODES_TABLE_NAME + " WHERE " + ACTIVE_NODE_ID + " = " + RUNTIME_INSTANCE + ")";
+		removeStaledTasksSQL = "DELETE FROM " + META_TABLE_NAME +
+				" WHERE " + TASK_TYPE + " = " + ClusterTaskType.REGULAR.value +
+				"   AND" + RUNTIME_INSTANCE + " IS NOT NULL" +
 				"   AND NOT EXISTS (SELECT 1 FROM " + ACTIVE_NODES_TABLE_NAME + " WHERE " + ACTIVE_NODE_ID + " = " + RUNTIME_INSTANCE + ")";
 
 		upsertSelfLastSeenSQL = "MERGE " + ACTIVE_NODES_TABLE_NAME + " AS target" +
@@ -368,26 +374,22 @@ final class MsSqlDbDataProvider extends ClusterTasksDbDataProvider {
 		getTransactionTemplate().execute(transactionStatus -> {
 			try {
 				JdbcTemplate jdbcTemplate = getJdbcTemplate();
-				List<TaskInternal> gcCandidates = jdbcTemplate.query(selectStaledTasksSQL, this::gcCandidatesReader);
+				List<TaskInternal> gcCandidates = jdbcTemplate.query(selectStaledRerunnableTasksSQL, this::gcCandidatesReader);
 				if (gcCandidates.size() > 0) {
-					logger.info("found " + gcCandidates.size() + " tasks as staled, processing...");
+					logger.info("found " + gcCandidates.size() + " re-runnable tasks as staled, processing...");
 
 					//  collect tasks valid for re-enqueue
 					Collection<TaskInternal> tasksToReschedule = gcCandidates.stream()
-							.filter(task -> task.taskType == ClusterTaskType.SCHEDULED)
 							.collect(Collectors.toMap(task -> task.processorType, Function.identity(), (t1, t2) -> t2))
 							.values();
 
 					//  reschedule tasks of SCHEDULED type
-					if (!tasksToReschedule.isEmpty()) {
-						reinsertScheduledTasks(tasksToReschedule);
-					}
+					reinsertScheduledTasks(tasksToReschedule);
 
 					//  delete garbage tasks data
-					Map<Long, Long> dataSetToDelete = new HashMap<>();
-					gcCandidates.forEach(candidate -> dataSetToDelete.put(candidate.id, candidate.partitionIndex));
-					if (!dataSetToDelete.isEmpty()) {
-						deleteGarbageTasksData(jdbcTemplate, dataSetToDelete);
+					int removed = jdbcTemplate.update(removeStaledTasksSQL);
+					if (removed > 0) {
+						logger.info("found and removed " + removed + " staled tasks");
 					}
 				}
 			} catch (Exception e) {
@@ -397,6 +399,8 @@ final class MsSqlDbDataProvider extends ClusterTasksDbDataProvider {
 
 			return null;
 		});
+
+		checkAndTruncateBodyTables();
 	}
 
 	@Override
@@ -442,7 +446,7 @@ final class MsSqlDbDataProvider extends ClusterTasksDbDataProvider {
 	}
 
 	private Set<String> getCTSIndexNames() {
-		return Stream.of("CTSKM_PK", "CTSKM_IDX_2", "CTSKM_IDX_5", "CTSKB_PK_P0", "CTSKB_PK_P1", "CTSKB_PK_P2", "CTSKB_PK_P3").collect(Collectors.toSet());
+		return Stream.of("CTSKM_PK", "CTSKM_IDX_2", "CTSKM_IDX_5", "CTSKM_IDX_6", "CTSKB_PK_P0", "CTSKB_PK_P1", "CTSKB_PK_P2", "CTSKB_PK_P3").collect(Collectors.toSet());
 	}
 
 	private Set<String> getCTSSequenceNames() {
