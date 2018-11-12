@@ -26,7 +26,6 @@ import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.HashMap;
-import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -299,43 +298,38 @@ final class MsSqlDbDataProvider extends ClusterTasksDbDataProvider {
 				tasks = jdbcTemplate.query(sql, params, paramTypes, this::tasksMetadataReader);
 				if (!tasks.isEmpty()) {
 					Map<String, List<TaskInternal>> tasksByProcessor = tasks.stream().collect(Collectors.groupingBy(ti -> ti.processorType));
-					Set<Long> tasksToRunIDs = new HashSet<>();
 
 					//  let processors decide which tasks will be processed from all available
 					tasksByProcessor.forEach((processorType, processorTasks) -> {
 						ClusterTasksProcessorBase processor = availableProcessors.get(processorType);
 						Collection<TaskInternal> tmpTasks = processor.selectTasksToRun(processorTasks);
 						tasksToRun.put(processor, tmpTasks);
-						tasksToRunIDs.addAll(tmpTasks.stream().map(task -> task.id).collect(Collectors.toList()));
 					});
 
-					//  update selected tasks to RUNNING
-					if (!tasksToRunIDs.isEmpty()) {
-						String runtimeInstanceID = clusterTasksService.getInstanceID();
-						List<Object[]> updateParams = tasksToRunIDs.stream()
-								.sorted()
-								.map(id -> new Object[]{runtimeInstanceID, id})
-								.collect(Collectors.toList());
-						int[] updateResults = jdbcTemplate.batchUpdate(updateTasksStartedSQL, updateParams, new int[]{VARCHAR, BIGINT});
-						if (logger.isDebugEnabled()) {
-							logger.debug("update tasks to RUNNING results: " + String.join(", ", Stream.of(updateResults).map(String::valueOf).collect(Collectors.toList())));
-							logger.debug("from a total of " + tasks.size() + " available tasks " + tasksToRunIDs.size() + " has been started");
-						}
-					} else {
-						logger.warn("from a total of " + tasks.size() + " available tasks none has been started");
-					}
+					String runtimeInstanceID = clusterTasksService.getInstanceID();
+					tasksToRun.forEach((p, ts) -> {
+						ts.forEach(task -> {
+							try {
+								//  update task to RUNNING
+								int updateResults = jdbcTemplate.update(updateTasksStartedSQL, new Object[]{runtimeInstanceID, task.id}, new int[]{VARCHAR, BIGINT});
+								if (updateResults == 1) {
+									//  deliver task to worker
+									p.handleTasks(Collections.singletonList(task), this);
+								} else {
+									logger.error("expected to have 1 task update to RUNNING, found " + updateResults);
+								}
+							} catch (Throwable t) {
+								logger.error("failed to update " + task + " to RUNNING state", t);
+							}
+						});
+					});
 				}
 			} catch (Throwable t) {
-				transactionStatus.setRollbackOnly();
-				tasksToRun.clear();
 				throw new CtsGeneralFailure("failed to retrieve and execute tasks", t);
 			}
 
 			return null;
 		});
-
-		//  actually deliver tasks to processors
-		tasksToRun.forEach((processor, tasks) -> processor.handleTasks(tasks, this));
 	}
 
 	@Override
@@ -446,7 +440,7 @@ final class MsSqlDbDataProvider extends ClusterTasksDbDataProvider {
 	}
 
 	private Set<String> getCTSIndexNames() {
-		return Stream.of("CTSKM_PK", "CTSKM_IDX_2", "CTSKM_IDX_5", "CTSKM_IDX_6", "CTSKB_PK_P0", "CTSKB_PK_P1", "CTSKB_PK_P2", "CTSKB_PK_P3").collect(Collectors.toSet());
+		return Stream.of("CTSKM_PK", "CTSKM_IDX_2", "CTSKM_IDX_5", "CTSKB_PK_P0", "CTSKB_PK_P1", "CTSKB_PK_P2", "CTSKB_PK_P3").collect(Collectors.toSet());
 	}
 
 	private Set<String> getCTSSequenceNames() {
