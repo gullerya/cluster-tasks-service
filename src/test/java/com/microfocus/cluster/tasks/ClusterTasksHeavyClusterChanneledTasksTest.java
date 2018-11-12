@@ -103,31 +103,31 @@ public class ClusterTasksHeavyClusterChanneledTasksTest {
 						ClusterTask task = TaskBuilders
 								.channeledTask()
 								.setConcurrencyKey(ClusterTasksHC_A_test.class.getSimpleName() + cnt)
-								.setBody("some body to touch the body tables as well").build();
+								.setBody(ClusterTasksHC_A_test.CONTENT).build();
 						clusterTasksService.enqueueTasks(ClusterTasksDataProviderType.DB, ClusterTasksHC_A_test.class.getSimpleName(), task);
 
 						task = TaskBuilders
 								.channeledTask()
 								.setConcurrencyKey(ClusterTasksHC_B_test.class.getSimpleName() + cnt)
-								.setBody("some body to touch the body tables as well").build();
+								.setBody(ClusterTasksHC_B_test.CONTENT).build();
 						clusterTasksService.enqueueTasks(ClusterTasksDataProviderType.DB, ClusterTasksHC_B_test.class.getSimpleName(), task);
 
 						task = TaskBuilders
 								.channeledTask()
 								.setConcurrencyKey(ClusterTasksHC_C_test.class.getSimpleName() + cnt)
-								.setBody("some body to touch the body tables as well").build();
+								.setBody(ClusterTasksHC_C_test.CONTENT).build();
 						clusterTasksService.enqueueTasks(ClusterTasksDataProviderType.DB, ClusterTasksHC_C_test.class.getSimpleName(), task);
 
 						task = TaskBuilders
 								.channeledTask()
 								.setConcurrencyKey(ClusterTasksHC_D_test.class.getSimpleName() + cnt)
-								.setBody("some body to touch the body tables as well").build();
+								.setBody(ClusterTasksHC_D_test.CONTENT).build();
 						clusterTasksService.enqueueTasks(ClusterTasksDataProviderType.DB, ClusterTasksHC_D_test.class.getSimpleName(), task);
 
 						task = TaskBuilders
 								.channeledTask()
 								.setConcurrencyKey(ClusterTasksHC_E_test.class.getSimpleName() + cnt)
-								.setBody("some body to touch the body tables as well").build();
+								.setBody(ClusterTasksHC_E_test.CONTENT).build();
 						clusterTasksService.enqueueTasks(ClusterTasksDataProviderType.DB, ClusterTasksHC_E_test.class.getSimpleName(), task);
 					}
 				} catch (Exception e) {

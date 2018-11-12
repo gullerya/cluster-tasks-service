@@ -99,11 +99,20 @@ public class ClusterTasksHeavyClusterSimpleTasksTest {
 				try {
 					for (int j = 0; j < numberOfTasks; j++) {
 						ClusterTasksService clusterTasksService = c.getBean(ClusterTasksService.class);
-						ClusterTask task = TaskBuilders.simpleTask().setBody("some body to touch the body tables as well").build();
+
+						ClusterTask task = TaskBuilders.simpleTask().setBody(ClusterTasksHC_A_test.CONTENT).build();
 						clusterTasksService.enqueueTasks(ClusterTasksDataProviderType.DB, ClusterTasksHC_A_test.class.getSimpleName(), task);
+
+						task = TaskBuilders.simpleTask().setBody(ClusterTasksHC_B_test.CONTENT).build();
 						clusterTasksService.enqueueTasks(ClusterTasksDataProviderType.DB, ClusterTasksHC_B_test.class.getSimpleName(), task);
+
+						task = TaskBuilders.simpleTask().setBody(ClusterTasksHC_C_test.CONTENT).build();
 						clusterTasksService.enqueueTasks(ClusterTasksDataProviderType.DB, ClusterTasksHC_C_test.class.getSimpleName(), task);
+
+						task = TaskBuilders.simpleTask().setBody(ClusterTasksHC_D_test.CONTENT).build();
 						clusterTasksService.enqueueTasks(ClusterTasksDataProviderType.DB, ClusterTasksHC_D_test.class.getSimpleName(), task);
+
+						task = TaskBuilders.simpleTask().setBody(ClusterTasksHC_E_test.CONTENT).build();
 						clusterTasksService.enqueueTasks(ClusterTasksDataProviderType.DB, ClusterTasksHC_E_test.class.getSimpleName(), task);
 						ClusterTasksTestsUtils.sleepSafely(200);
 					}

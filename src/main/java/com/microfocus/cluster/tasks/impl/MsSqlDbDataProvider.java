@@ -440,7 +440,7 @@ final class MsSqlDbDataProvider extends ClusterTasksDbDataProvider {
 	}
 
 	private Set<String> getCTSIndexNames() {
-		return Stream.of("CTSKM_PK", "CTSKM_IDX_2", "CTSKM_IDX_5", "CTSKB_PK_P0", "CTSKB_PK_P1", "CTSKB_PK_P2", "CTSKB_PK_P3").collect(Collectors.toSet());
+		return Stream.of("CTSKM_PK", "CTSKM_IDX_2", "CTSKB_PK_P0", "CTSKB_PK_P1", "CTSKB_PK_P2", "CTSKB_PK_P3").collect(Collectors.toSet());
 	}
 
 	private Set<String> getCTSSequenceNames() {
