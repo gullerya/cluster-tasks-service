@@ -49,6 +49,10 @@ final class MsSqlDbDataProvider extends ClusterTasksDbDataProvider {
 	private final String areIndicesReadySQL;
 	private final String areSequencesReadySQL;
 
+	private final String insertSelfLastSeenSQL;
+	private final String updateSelfLastSeenSQL;
+	private final String removeLongTimeNoSeeSQL;
+
 	private final String insertTaskWithoutBodySQL;
 	private final Map<Long, String> insertTaskWithBodySQLs = new HashMap<>();
 	private final Map<Integer, String> selectForUpdateTasksSQLs = new HashMap<>();
@@ -62,9 +66,6 @@ final class MsSqlDbDataProvider extends ClusterTasksDbDataProvider {
 	private final String selectStaledRerunnableTasksSQL;
 	private final String removeStaledTasksSQL;
 
-	private final String upsertSelfLastSeenSQL;
-	private final String removeLongTimeNoSeeSQL;
-
 	MsSqlDbDataProvider(ClusterTasksService clusterTasksService, ClusterTasksServiceConfigurerSPI serviceConfigurer) {
 		super(clusterTasksService, serviceConfigurer);
 
@@ -75,6 +76,10 @@ final class MsSqlDbDataProvider extends ClusterTasksDbDataProvider {
 				String.join(",", getCTSIndexNames().stream().map(in -> "'" + in + "'").collect(Collectors.toSet())) + ")";
 		areSequencesReadySQL = "SELECT COUNT(*) AS cts_sequences_count FROM sys.sequences WHERE name IN(" +
 				String.join(",", getCTSSequenceNames().stream().map(sn -> "'" + sn + "'").collect(Collectors.toSet())) + ")";
+
+		insertSelfLastSeenSQL = "INSERT INTO " + ACTIVE_NODES_TABLE_NAME + " (" + ACTIVE_NODE_ID + ", " + ACTIVE_NODE_SINCE + ", " + ACTIVE_NODE_LAST_SEEN + ") VALUES (?, GETDATE(), GETDATE())";
+		updateSelfLastSeenSQL = "UPDATE " + ACTIVE_NODES_TABLE_NAME + " SET " + ACTIVE_NODE_LAST_SEEN + " = GETDATE() WHERE " + ACTIVE_NODE_ID + " = ?";
+		removeLongTimeNoSeeSQL = "DELETE FROM " + ACTIVE_NODES_TABLE_NAME + " WHERE " + ACTIVE_NODE_LAST_SEEN + " < DATEADD(MILLISECOND, -?, GETDATE())";
 
 		String insertFields = String.join(",", META_ID, TASK_TYPE, PROCESSOR_TYPE, UNIQUENESS_KEY, CONCURRENCY_KEY, DELAY_BY_MILLIS, MAX_TIME_TO_RUN, BODY_PARTITION, ORDERING_FACTOR, CREATED, STATUS);
 		insertTaskWithoutBodySQL = "INSERT INTO " + META_TABLE_NAME + " (" + insertFields + ")" +
@@ -120,15 +125,6 @@ final class MsSqlDbDataProvider extends ClusterTasksDbDataProvider {
 				" WHERE " + TASK_TYPE + " = " + ClusterTaskType.REGULAR.value +
 				"   AND" + RUNTIME_INSTANCE + " IS NOT NULL" +
 				"   AND NOT EXISTS (SELECT 1 FROM " + ACTIVE_NODES_TABLE_NAME + " WHERE " + ACTIVE_NODE_ID + " = " + RUNTIME_INSTANCE + ")";
-
-		upsertSelfLastSeenSQL = "MERGE " + ACTIVE_NODES_TABLE_NAME + " AS target" +
-				" USING (VALUES (?)) AS source (" + ACTIVE_NODE_ID + ")" +
-				"    ON target." + ACTIVE_NODE_ID + " = source." + ACTIVE_NODE_ID +
-				" WHEN MATCHED THEN" +
-				"    UPDATE SET " + ACTIVE_NODE_LAST_SEEN + " = GETDATE()" +
-				" WHEN NOT MATCHED THEN" +
-				"    INSERT (" + ACTIVE_NODE_ID + "," + ACTIVE_NODE_SINCE + "," + ACTIVE_NODE_LAST_SEEN + ") VALUES (source." + ACTIVE_NODE_ID + ", GETDATE(), GETDATE());";
-		removeLongTimeNoSeeSQL = "DELETE FROM " + ACTIVE_NODES_TABLE_NAME + " WHERE " + ACTIVE_NODE_LAST_SEEN + " < DATEADD(MILLISECOND, -?, GETDATE())";
 	}
 
 	@Override
@@ -417,9 +413,15 @@ final class MsSqlDbDataProvider extends ClusterTasksDbDataProvider {
 	@Override
 	public void updateSelfLastSeen(String nodeId) {
 		try {
-			int affected = getJdbcTemplate().update(upsertSelfLastSeenSQL, new Object[]{nodeId}, new int[]{Types.VARCHAR});
-			if (affected != 1) {
-				logger.warn("expected to see exactly 1 record affected while updating last seen of " + nodeId + ", yet actual result is " + affected);
+			int updated = getJdbcTemplate().update(updateSelfLastSeenSQL, new Object[]{nodeId}, new int[]{Types.VARCHAR});
+			if (updated == 0) {
+				logger.info("node " + nodeId + " activity was NOT UPDATED, performing initial registration...");
+				int affected = getJdbcTemplate().update(insertSelfLastSeenSQL, new Object[]{nodeId}, new int[]{Types.VARCHAR});
+				if (affected != 1) {
+					logger.warn("expected to see exactly 1 record affected while registering " + nodeId + ", yet actual result is " + affected);
+				} else {
+					logger.info("registration of active node " + nodeId + " succeed");
+				}
 			}
 		} catch (DataAccessException dae) {
 			throw new CtsGeneralFailure("failed to update last seen of " + nodeId, dae);
