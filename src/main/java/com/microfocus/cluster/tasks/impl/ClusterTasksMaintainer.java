@@ -20,6 +20,8 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.Future;
 
 final class ClusterTasksMaintainer implements Runnable {
 	private final Logger logger = LoggerFactory.getLogger(ClusterTasksServiceImpl.class);
@@ -33,7 +35,9 @@ final class ClusterTasksMaintainer implements Runnable {
 
 	private long lastTasksCountTime = 0;
 	private long lastTimeRemovedNonActiveNodes = 0;
-	private volatile boolean shuttingDown = false;
+
+	private final Object HALT_MONITOR = new Object();
+	private volatile CompletableFuture<Object> haltPromise;
 
 	ClusterTasksMaintainer(ClusterTasksServiceImpl.SystemWorkersConfigurer configurer) {
 		if (configurer == null) {
@@ -60,14 +64,15 @@ final class ClusterTasksMaintainer implements Runnable {
 				.labelNames("partition")
 				.register();
 
-		Runtime.getRuntime().addShutdownHook(new Thread(() -> shuttingDown = true, "CTS Maintainer shutdown listener"));
+		Runtime.getRuntime().addShutdownHook(new Thread(this::halt, "CTS Maintainer shutdown listener"));
 	}
 
 	@Override
 	public void run() {
+		haltPromise = null;
 
 		//  infallible maintenance round
-		while (!shuttingDown) {
+		while (haltPromise == null) {
 			Summary.Timer maintenanceTimer = maintenanceDurationSummary.startTimer();
 			try {
 				if (configurer.isCTSServiceEnabled()) {
@@ -87,6 +92,15 @@ final class ClusterTasksMaintainer implements Runnable {
 				breathe();
 			}
 		}
+
+		haltPromise.complete(null);
+	}
+
+	CompletableFuture<Object> halt() {
+		logger.info("halt requested, initiating sequence...");
+		haltPromise = new CompletableFuture<>();
+		HALT_MONITOR.notify();
+		return haltPromise;
 	}
 
 	void submitTaskToRemove(ClusterTasksDataProvider dataProvider, TaskInternal task) {
@@ -173,7 +187,7 @@ final class ClusterTasksMaintainer implements Runnable {
 	private void breathe() {
 		try {
 			Integer maintenanceInterval = getEffectiveMaintenanceInterval();
-			Thread.sleep(maintenanceInterval);
+			HALT_MONITOR.wait(maintenanceInterval);
 		} catch (InterruptedException ie) {
 			logger.warn("interrupted while breathing between maintenance rounds", ie);
 		}

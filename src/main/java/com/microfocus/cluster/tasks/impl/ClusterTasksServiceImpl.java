@@ -26,6 +26,7 @@ import java.util.*;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
+import java.util.concurrent.Future;
 import java.util.concurrent.ThreadFactory;
 import java.util.stream.Collectors;
 
@@ -151,6 +152,14 @@ public class ClusterTasksServiceImpl implements ClusterTasksService {
 		} else {
 			throw new IllegalArgumentException("unknown data provider of type '" + processorType + "'");
 		}
+	}
+
+	@Override
+	public Future<Boolean> stop() {
+		return CompletableFuture.allOf(
+				dispatcher.halt(),
+				maintainer.halt()
+		).handleAsync((e, r) -> true);
 	}
 
 	@Deprecated

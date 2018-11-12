@@ -198,5 +198,12 @@ public class ClusterTasksHeavyClusterChanneledTasksTest {
 		waitForAllTasksDone.await();
 		long timeToDone = System.currentTimeMillis() - startTime - timeToPush;
 		logger.info(numberOfNodes * numberOfTasks * 5 + " tasks has been processed in " + timeToDone + "ms; average of " + ((double) timeToDone / (numberOfNodes * numberOfTasks * 5)) + "ms for task");
+
+		//  stop all CTS instances
+		contexts.forEach(c ->
+				c
+						.getBean(ClusterTasksService.class)
+						.stop()
+		);
 	}
 }

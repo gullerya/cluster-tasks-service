@@ -14,6 +14,7 @@ import com.microfocus.cluster.tasks.api.dto.ClusterTaskPersistenceResult;
 import com.microfocus.cluster.tasks.api.enums.ClusterTasksDataProviderType;
 
 import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.Future;
 
 /**
  * Created by gullery on 08/05/2016.
@@ -51,6 +52,13 @@ public interface ClusterTasksService {
 	 * @return an array of enqueue results, corresponding to the array of the tasks, having either the task ID in case of success or an exception in case of failure
 	 */
 	ClusterTaskPersistenceResult[] enqueueTasks(ClusterTasksDataProviderType dataProviderType, String processorType, ClusterTask... tasks);
+
+	/**
+	 * stops all internal processes (thread) of the Cluster Tasks Service
+	 *
+	 * @return boolean result of was or was not the operation finished erroneously
+	 */
+	Future<Boolean> stop();
 
 	@Deprecated
 	int countTasks(ClusterTasksDataProviderType dataProviderType, String processorType, ClusterTaskStatus... statuses);

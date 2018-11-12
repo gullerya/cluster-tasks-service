@@ -177,6 +177,11 @@ public class ClusterTasksHeavyClusterSimpleTasksTest {
 		long timeToDone = System.currentTimeMillis() - startTime;
 		logger.info(numberOfNodes * numberOfTasks * 5 + " tasks have been processed in " + timeToDone + "ms; average of " + ((double) timeToDone / (numberOfNodes * numberOfTasks * 5)) + "ms for task");
 
-		ClusterTasksTestsUtils.sleepSafely(20000);
+		//  stop all CTS instances
+		contexts.forEach(c ->
+				c
+						.getBean(ClusterTasksService.class)
+						.stop()
+		);
 	}
 }
