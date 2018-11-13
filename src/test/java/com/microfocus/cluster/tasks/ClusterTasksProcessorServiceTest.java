@@ -12,6 +12,7 @@ import com.microfocus.cluster.tasks.processors.ClusterTasksProcessorE_test_na;
 import com.microfocus.cluster.tasks.processors.ClusterTasksProcessorF_test_cna;
 import com.microfocus.cluster.tasks.processors.ClusterTasksProcessorA_test;
 import org.junit.Assert;
+import org.junit.FixMethodOrder;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.slf4j.Logger;
@@ -40,6 +41,7 @@ import static org.junit.Assert.fail;
 @ContextConfiguration({
 		"/cluster-tasks-service-context-test.xml"
 })
+@FixMethodOrder
 public class ClusterTasksProcessorServiceTest extends CTSTestsBase {
 	private final Logger logger = LoggerFactory.getLogger(ClusterTasksProcessorServiceTest.class);
 
@@ -214,7 +216,7 @@ public class ClusterTasksProcessorServiceTest extends CTSTestsBase {
 		logger.info("delay: " + delay + "; passed: " + passedTime);
 		//  precision of seconds is enough, since we are storing the time data as date and not timestamp
 		//  and it is possible that delay would be fulfilled withing up to 1 second less
-		assertTrue(passedTime >= delay);
+		assertTrue("passed:  " + passedTime + " should be bigger than delay: " + delay, passedTime >= delay);
 		assertEquals("first_to_run", new ArrayList<>(clusterTasksProcessorA_test.tasksProcessed.keySet()).get(0));
 		assertEquals("delayed", new ArrayList<>(clusterTasksProcessorA_test.tasksProcessed.keySet()).get(1));
 		assertTrue(clusterTasksProcessorA_test.tasksProcessed.get("delayed").after(clusterTasksProcessorA_test.tasksProcessed.get("first_to_run")));
