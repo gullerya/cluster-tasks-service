@@ -51,7 +51,8 @@ final class PostgreSqlDbDataProvider extends ClusterTasksDbDataProvider {
 	private final String areTablesReadySQL;
 	private final String areIndicesReadySQL;
 
-	private final String upsertSelfLastSeenSQL;
+	private final String insertSelfLastSeenSQL;
+	private final String updateSelfLastSeenSQL;
 	private final String removeLongTimeNoSeeSQL;
 
 	private final String insertTaskSQL;
@@ -74,15 +75,13 @@ final class PostgreSqlDbDataProvider extends ClusterTasksDbDataProvider {
 		areIndicesReadySQL = "SELECT COUNT(*) AS cts_indices_count FROM pg_indexes WHERE indexname IN(" +
 				String.join(",", getCTSIndexNames().stream().map(in -> "'" + in + "'").collect(Collectors.toSet())) + ")";
 
-		upsertSelfLastSeenSQL = "INSERT INTO " + ACTIVE_NODES_TABLE_NAME +
-				" (" + ACTIVE_NODE_ID + "," + ACTIVE_NODE_SINCE + "," + ACTIVE_NODE_LAST_SEEN + ")" +
-				" VALUES (?, LOCALTIMESTAMP, LOCALTIMESTAMP)" +
-				" ON CONFLICT (" + ACTIVE_NODE_ID + ") DO UPDATE SET " + ACTIVE_NODE_LAST_SEEN + " = LOCALTIMESTAMP";
+		insertSelfLastSeenSQL = "INSERT INTO " + ACTIVE_NODES_TABLE_NAME + " (" + ACTIVE_NODE_ID + "," + ACTIVE_NODE_SINCE + "," + ACTIVE_NODE_LAST_SEEN + ")" + " VALUES (?, LOCALTIMESTAMP, LOCALTIMESTAMP)";
+		updateSelfLastSeenSQL = "UPDATE " + ACTIVE_NODES_TABLE_NAME + " SET " + ACTIVE_NODE_LAST_SEEN + " = LOCALTIMESTAMP WHERE " + ACTIVE_NODE_ID + " = ?";
 		removeLongTimeNoSeeSQL = "DELETE FROM " + ACTIVE_NODES_TABLE_NAME + " WHERE " + ACTIVE_NODE_LAST_SEEN + " < LOCALTIMESTAMP - MAKE_INTERVAL(SECS := ? / 1000)";
 
 		insertTaskSQL = "SELECT insert_task(" + String.join(",", Collections.nCopies(9, "?")) + ")";
 
-		String selectForRunFields = String.join(",", META_ID, TASK_TYPE, PROCESSOR_TYPE, UNIQUENESS_KEY, CONCURRENCY_KEY, ORDERING_FACTOR, DELAY_BY_MILLIS, MAX_TIME_TO_RUN, BODY_PARTITION, STATUS);
+		String selectForRunFields = String.join(",", META_ID, TASK_TYPE, PROCESSOR_TYPE, UNIQUENESS_KEY, CONCURRENCY_KEY, ORDERING_FACTOR, DELAY_BY_MILLIS, BODY_PARTITION, STATUS);
 		for (int maxProcessorTypes : new Integer[]{20, 50, 100, 500}) {
 			String processorTypesInParameter = String.join(",", Collections.nCopies(maxProcessorTypes, "?"));
 			selectForUpdateTasksSQLs.put(maxProcessorTypes, "SELECT " + selectForRunFields +
@@ -111,7 +110,7 @@ final class PostgreSqlDbDataProvider extends ClusterTasksDbDataProvider {
 		countScheduledPendingTasksSQL = "SELECT " + PROCESSOR_TYPE + ",COUNT(*) AS total FROM " + META_TABLE_NAME +
 				" WHERE " + TASK_TYPE + " = " + ClusterTaskType.SCHEDULED.value + " AND " + STATUS + " = " + ClusterTaskStatus.PENDING.value + " GROUP BY " + PROCESSOR_TYPE;
 
-		String selectedForGCFields = String.join(",", META_ID, BODY_PARTITION, TASK_TYPE, PROCESSOR_TYPE, STATUS, MAX_TIME_TO_RUN);
+		String selectedForGCFields = String.join(",", META_ID, BODY_PARTITION, TASK_TYPE, PROCESSOR_TYPE, STATUS);
 		selectStaledTasksSQL = "SELECT " + selectedForGCFields + " FROM " + META_TABLE_NAME +
 				" WHERE " + RUNTIME_INSTANCE + " IS NOT NULL" +
 				"   AND NOT EXISTS (SELECT 1 FROM " + ACTIVE_NODES_TABLE_NAME + " WHERE " + ACTIVE_NODE_ID + " = " + RUNTIME_INSTANCE + ")" +
@@ -170,7 +169,6 @@ final class PostgreSqlDbDataProvider extends ClusterTasksDbDataProvider {
 							task.uniquenessKey,
 							task.concurrencyKey,
 							task.delayByMillis,
-							task.maxTimeToRunMillis,
 							task.partitionIndex,
 							task.orderingFactor,
 							task.body
@@ -181,7 +179,6 @@ final class PostgreSqlDbDataProvider extends ClusterTasksDbDataProvider {
 							Types.VARCHAR,              //  uniqueness key
 							Types.VARCHAR,              //  concurrency key
 							Types.BIGINT,               //  delay by millis
-							Types.BIGINT,               //  max time to run millis
 							Types.INTEGER,              //  partition index
 							Types.BIGINT,               //  ordering factor
 							Types.VARCHAR               //  task body -  will be used only if actually has body
@@ -396,9 +393,15 @@ final class PostgreSqlDbDataProvider extends ClusterTasksDbDataProvider {
 	@Override
 	public void updateSelfLastSeen(String nodeId) {
 		try {
-			int affected = getJdbcTemplate().update(upsertSelfLastSeenSQL, new Object[]{nodeId}, new int[]{Types.VARCHAR});
-			if (affected != 1) {
-				logger.warn("expected to see exactly 1 record affected while updating last seen of " + nodeId + ", yet actual result is " + affected);
+			int updated = getJdbcTemplate().update(updateSelfLastSeenSQL, new Object[]{nodeId}, new int[]{Types.VARCHAR});
+			if (updated == 0) {
+				logger.info("node " + nodeId + " activity was NOT UPDATED, performing initial registration...");
+				int affected = getJdbcTemplate().update(insertSelfLastSeenSQL, new Object[]{nodeId}, new int[]{Types.VARCHAR});
+				if (affected != 1) {
+					logger.warn("expected to see exactly 1 record affected while registering " + nodeId + ", yet actual result is " + affected);
+				} else {
+					logger.info("registration of active node " + nodeId + " succeeded");
+				}
 			}
 		} catch (DataAccessException dae) {
 			throw new CtsGeneralFailure("failed to update last seen of " + nodeId, dae);

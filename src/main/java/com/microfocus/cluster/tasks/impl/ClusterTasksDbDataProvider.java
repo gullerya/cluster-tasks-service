@@ -79,7 +79,6 @@ abstract class ClusterTasksDbDataProvider implements ClusterTasksDataProvider {
 
 	static final String STARTED = META_COLUMNS_PREFIX.concat("STARTED");
 	static final String RUNTIME_INSTANCE = META_COLUMNS_PREFIX.concat("RUNTIME_INSTANCE");
-	static final String MAX_TIME_TO_RUN = META_COLUMNS_PREFIX.concat("MAX_TIME_TO_RUN");
 	static final String BODY_PARTITION = META_COLUMNS_PREFIX.concat("BODY_PARTITION");
 
 	//  Content table
@@ -144,7 +143,7 @@ abstract class ClusterTasksDbDataProvider implements ClusterTasksDataProvider {
 	}
 
 	@Override
-	public boolean removeFinishedTask(Long taskId) {
+	public boolean removeTaskById(Long taskId) {
 		int removed = getJdbcTemplate().update(removeFinishedTaskSQL, new Object[]{taskId}, new int[]{Types.BIGINT});
 		return removed == 1;
 	}
@@ -324,7 +323,6 @@ abstract class ClusterTasksDbDataProvider implements ClusterTasksDataProvider {
 					tmpTask.orderingFactor = tmpLong;
 				}
 				tmpTask.delayByMillis = resultSet.getLong(ClusterTasksDbDataProvider.DELAY_BY_MILLIS);
-				tmpTask.maxTimeToRunMillis = resultSet.getLong(ClusterTasksDbDataProvider.MAX_TIME_TO_RUN);
 				tmpLong = resultSet.getLong(ClusterTasksDbDataProvider.BODY_PARTITION);
 				if (!resultSet.wasNull()) {
 					tmpTask.partitionIndex = tmpLong;
@@ -381,7 +379,6 @@ abstract class ClusterTasksDbDataProvider implements ClusterTasksDataProvider {
 					task.partitionIndex = tmpLong;
 				}
 				task.processorType = resultSet.getString(ClusterTasksDbDataProvider.PROCESSOR_TYPE);
-				task.maxTimeToRunMillis = resultSet.getLong(ClusterTasksDbDataProvider.MAX_TIME_TO_RUN);
 				result.add(task);
 			} catch (SQLException sqle) {
 				logger.error("failed to read cluster task body", sqle);

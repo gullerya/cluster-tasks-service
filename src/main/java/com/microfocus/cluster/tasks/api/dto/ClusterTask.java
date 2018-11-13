@@ -27,7 +27,5 @@ public interface ClusterTask {
 
 	Long getDelayByMillis();
 
-	Long getMaxTimeToRunMillis();
-
 	String getBody();
 }

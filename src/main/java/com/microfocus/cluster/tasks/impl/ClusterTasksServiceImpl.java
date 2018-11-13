@@ -51,8 +51,6 @@ public class ClusterTasksServiceImpl implements ClusterTasksService {
 	private ClusterTasksServiceConfigurerSPI serviceConfigurer;
 	private ClusterTasksServiceSchemaManager schemaManager;
 
-	private static final Long MAX_TIME_TO_RUN_DEFAULT = 1000 * 60L;
-
 	@Autowired
 	private ClusterTasksServiceImpl(ClusterTasksServiceConfigurerSPI serviceConfigurer, ClusterTasksServiceSchemaManager schemaManager) {
 		this.serviceConfigurer = serviceConfigurer;
@@ -235,7 +233,6 @@ public class ClusterTasksServiceImpl implements ClusterTasksService {
 				int maxEnqueueAttempts = 20, enqueueAttemptsCount = 0;
 				ClusterTask clusterTask = TaskBuilders.uniqueTask()
 						.setUniquenessKey(type)
-						.setMaxTimeToRunMillis(((ClusterTasksProcessorScheduled) processor).getMaxTimeToRun())
 						.build();
 				TaskInternal[] scheduledTasks = convertTasks(new ClusterTask[]{clusterTask}, type);
 				scheduledTasks[0].taskType = ClusterTaskType.SCHEDULED;
@@ -285,7 +282,6 @@ public class ClusterTasksServiceImpl implements ClusterTasksService {
 			target.processorType = targetProcessorType;
 			target.orderingFactor = null;
 			target.delayByMillis = source.getDelayByMillis() == null ? (Long) 0L : source.getDelayByMillis();
-			target.maxTimeToRunMillis = source.getMaxTimeToRunMillis() == null || source.getMaxTimeToRunMillis() == 0 ? MAX_TIME_TO_RUN_DEFAULT : source.getMaxTimeToRunMillis();
 			target.body = source.getBody() == null || source.getBody().isEmpty() ? null : source.getBody();
 			target.taskType = ClusterTaskType.REGULAR;
 

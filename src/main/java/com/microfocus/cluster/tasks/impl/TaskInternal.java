@@ -24,7 +24,6 @@ class TaskInternal {
 	String concurrencyKey;
 	Long orderingFactor;
 	Long delayByMillis;
-	Long maxTimeToRunMillis;
 	String body;
 	Long partitionIndex;
 
@@ -38,7 +37,6 @@ class TaskInternal {
 				", concurrencyKey: " + concurrencyKey +
 				", orderingFactor: " + orderingFactor +
 				", delayByMillis: " + delayByMillis +
-				", maxTimeToRunMillis: " + maxTimeToRunMillis +
 				", bodyLength: " + (body != null && !body.isEmpty() ? body.length() : "null") +
 				", partitionIndex: " + partitionIndex + "}";
 	}

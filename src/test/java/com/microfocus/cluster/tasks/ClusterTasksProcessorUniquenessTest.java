@@ -48,7 +48,6 @@ public class ClusterTasksProcessorUniquenessTest extends CTSTestsBase {
 				.setUniquenessKey("task")
 				.setDelayByMillis(500L)
 				.setBody("4000")
-				.setMaxTimeToRunMillis(5000L)
 				.build();
 		results = clusterTasksService.enqueueTasks(ClusterTasksDataProviderType.DB, ClusterTasksProcessorUniqueness_test.class.getSimpleName(), task);
 		assertEquals(1, results.length);
@@ -72,7 +71,6 @@ public class ClusterTasksProcessorUniquenessTest extends CTSTestsBase {
 		task = TaskBuilders.uniqueTask()
 				.setUniquenessKey("task")
 				.setBody("0")
-				.setMaxTimeToRunMillis(3000L)
 				.build();
 		results = clusterTasksService.enqueueTasks(ClusterTasksDataProviderType.DB, ClusterTasksProcessorUniqueness_test.class.getSimpleName(), task);
 		assertEquals(1, results.length);

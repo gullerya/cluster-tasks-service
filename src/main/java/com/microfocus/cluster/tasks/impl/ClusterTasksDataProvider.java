@@ -77,7 +77,7 @@ interface ClusterTasksDataProvider {
 	 * @param taskId task ID to be removed
 	 * @return indication of the removal success
 	 */
-	boolean removeFinishedTask(Long taskId);
+	boolean removeTaskById(Long taskId);
 
 	/**
 	 * Removes task bodies by provided IDs

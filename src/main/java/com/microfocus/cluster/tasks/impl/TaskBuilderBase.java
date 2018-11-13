@@ -16,7 +16,6 @@ abstract public class TaskBuilderBase implements TaskBuilder {
 	protected String uniquenessKey;
 	protected String concurrencyKey;
 	private Long delayByMillis;
-	private Long maxTimeToRunMillis;
 	private String body;
 
 	protected TaskBuilderBase() {
@@ -25,12 +24,6 @@ abstract public class TaskBuilderBase implements TaskBuilder {
 	public TaskBuilder setDelayByMillis(Long delayByMillis) {
 		if (locked) throw new IllegalStateException("task builder MAY BE used only once");
 		this.delayByMillis = delayByMillis;
-		return this;
-	}
-
-	public TaskBuilder setMaxTimeToRunMillis(Long maxTimeToRunMillis) {
-		if (locked) throw new IllegalStateException("task builder MAY BE used only once");
-		this.maxTimeToRunMillis = maxTimeToRunMillis;
 		return this;
 	}
 
@@ -47,7 +40,6 @@ abstract public class TaskBuilderBase implements TaskBuilder {
 		result.uniquenessKey = uniquenessKey;
 		result.concurrencyKey = concurrencyKey;
 		result.delayByMillis = delayByMillis;
-		result.maxTimeToRunMillis = maxTimeToRunMillis;
 		result.body = body;
 		return result;
 	}

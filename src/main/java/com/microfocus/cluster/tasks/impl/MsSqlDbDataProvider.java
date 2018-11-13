@@ -82,11 +82,11 @@ final class MsSqlDbDataProvider extends ClusterTasksDbDataProvider {
 		updateSelfLastSeenSQL = "UPDATE " + ACTIVE_NODES_TABLE_NAME + " SET " + ACTIVE_NODE_LAST_SEEN + " = GETDATE() WHERE " + ACTIVE_NODE_ID + " = ?";
 		removeLongTimeNoSeeSQL = "DELETE FROM " + ACTIVE_NODES_TABLE_NAME + " WHERE " + ACTIVE_NODE_LAST_SEEN + " < DATEADD(MILLISECOND, -?, GETDATE())";
 
-		String insertFields = String.join(",", META_ID, TASK_TYPE, PROCESSOR_TYPE, UNIQUENESS_KEY, CONCURRENCY_KEY, DELAY_BY_MILLIS, MAX_TIME_TO_RUN, BODY_PARTITION, ORDERING_FACTOR, CREATED, STATUS);
+		String insertFields = String.join(",", META_ID, TASK_TYPE, PROCESSOR_TYPE, UNIQUENESS_KEY, CONCURRENCY_KEY, DELAY_BY_MILLIS, BODY_PARTITION, ORDERING_FACTOR, CREATED, STATUS);
 		insertTaskWithoutBodySQL = "INSERT INTO " + META_TABLE_NAME + " (" + insertFields + ")" +
-				" VALUES (NEXT VALUE FOR " + CLUSTER_TASK_ID_SEQUENCE + ", ?, ?, ?, ?, ?, ?, ?, COALESCE(?, CAST(FORMAT(CURRENT_TIMESTAMP,'yyyyMMddHHmmssfff') AS BIGINT) + ?), GETDATE(), " + ClusterTaskStatus.PENDING.value + ")";
+				" VALUES (NEXT VALUE FOR " + CLUSTER_TASK_ID_SEQUENCE + ", ?, ?, ?, ?, ?, ?, COALESCE(?, CAST(FORMAT(CURRENT_TIMESTAMP,'yyyyMMddHHmmssfff') AS BIGINT) + ?), GETDATE(), " + ClusterTaskStatus.PENDING.value + ")";
 
-		String selectFields = String.join(",", META_ID, TASK_TYPE, PROCESSOR_TYPE, UNIQUENESS_KEY, CONCURRENCY_KEY, ORDERING_FACTOR, DELAY_BY_MILLIS, MAX_TIME_TO_RUN, BODY_PARTITION, STATUS);
+		String selectFields = String.join(",", META_ID, TASK_TYPE, PROCESSOR_TYPE, UNIQUENESS_KEY, CONCURRENCY_KEY, ORDERING_FACTOR, DELAY_BY_MILLIS, BODY_PARTITION, STATUS);
 		for (int maxProcessorTypes : new Integer[]{20, 50, 100, 500}) {
 			String processorTypesInParameter = String.join(",", Collections.nCopies(maxProcessorTypes, "?"));
 			selectForUpdateTasksSQLs.put(maxProcessorTypes, "SELECT * FROM" +
@@ -105,7 +105,7 @@ final class MsSqlDbDataProvider extends ClusterTasksDbDataProvider {
 			insertTaskWithBodySQLs.put(partition, "DECLARE @taskId BIGINT = NEXT VALUE FOR " + CLUSTER_TASK_ID_SEQUENCE + ";" +
 					" INSERT INTO " + BODY_TABLE_NAME + partition + " (" + BODY_ID + "," + BODY + ") VALUES (@taskId, ?);" +
 					" INSERT INTO " + META_TABLE_NAME + " (" + insertFields + ")" +
-					" VALUES (@taskId, ?, ?, ?, ?, ?, ?, ?, COALESCE(?, CAST(FORMAT(CURRENT_TIMESTAMP,'yyyyMMddHHmmssfff') AS BIGINT) + ?), GETDATE(), " + ClusterTaskStatus.PENDING.value + ");"
+					" VALUES (@taskId, ?, ?, ?, ?, ?, ?, COALESCE(?, CAST(FORMAT(CURRENT_TIMESTAMP,'yyyyMMddHHmmssfff') AS BIGINT) + ?), GETDATE(), " + ClusterTaskStatus.PENDING.value + ");"
 			);
 		}
 
@@ -117,7 +117,7 @@ final class MsSqlDbDataProvider extends ClusterTasksDbDataProvider {
 		countScheduledPendingTasksSQL = "SELECT " + PROCESSOR_TYPE + ",COUNT(*) AS total FROM " + META_TABLE_NAME +
 				" WHERE " + TASK_TYPE + " = " + ClusterTaskType.SCHEDULED.value + " AND " + STATUS + " = " + ClusterTaskStatus.PENDING.value + " GROUP BY " + PROCESSOR_TYPE;
 
-		String selectedForGCFields = String.join(",", META_ID, BODY_PARTITION, TASK_TYPE, PROCESSOR_TYPE, STATUS, MAX_TIME_TO_RUN, RUNTIME_INSTANCE);
+		String selectedForGCFields = String.join(",", META_ID, BODY_PARTITION, TASK_TYPE, PROCESSOR_TYPE, STATUS, RUNTIME_INSTANCE);
 		selectStaledRerunnableTasksSQL = "SELECT " + selectedForGCFields + " FROM " + META_TABLE_NAME + " WITH (UPDLOCK)" +
 				" WHERE " + TASK_TYPE + " = " + ClusterTaskType.SCHEDULED.value +
 				"   AND " + RUNTIME_INSTANCE + " IS NOT NULL" +
@@ -193,7 +193,6 @@ final class MsSqlDbDataProvider extends ClusterTasksDbDataProvider {
 								task.uniquenessKey,
 								task.concurrencyKey,
 								task.delayByMillis,
-								task.maxTimeToRunMillis,
 								task.partitionIndex,
 								task.orderingFactor,
 								task.delayByMillis
@@ -205,7 +204,6 @@ final class MsSqlDbDataProvider extends ClusterTasksDbDataProvider {
 								Types.VARCHAR,              //  uniqueness key
 								Types.VARCHAR,              //  concurrency key
 								Types.BIGINT,               //  delay by millis
-								Types.BIGINT,               //  max time to run millis
 								Types.BIGINT,               //  partition index
 								Types.BIGINT,               //  ordering factor
 								Types.BIGINT                //  delay by millis (second time for potential ordering calculation based on creation time when ordering is NULL)
@@ -218,7 +216,6 @@ final class MsSqlDbDataProvider extends ClusterTasksDbDataProvider {
 								task.uniquenessKey,
 								task.concurrencyKey,
 								task.delayByMillis,
-								task.maxTimeToRunMillis,
 								task.partitionIndex,
 								task.orderingFactor,
 								task.delayByMillis
@@ -229,7 +226,6 @@ final class MsSqlDbDataProvider extends ClusterTasksDbDataProvider {
 								Types.VARCHAR,              //  uniqueness key
 								Types.VARCHAR,              //  concurrency key
 								Types.BIGINT,               //  delay by millis
-								Types.BIGINT,               //  max time to run millis
 								Types.BIGINT,               //  partition index
 								Types.BIGINT,               //  ordering factor
 								Types.BIGINT                //  delay by millis (second time for potential ordering calculation based on creation time when ordering is NULL)
