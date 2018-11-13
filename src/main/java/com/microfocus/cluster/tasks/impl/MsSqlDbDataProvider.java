@@ -428,11 +428,7 @@ final class MsSqlDbDataProvider extends ClusterTasksDbDataProvider {
 
 	@Override
 	public int removeLongTimeNoSeeNodes(long maxTimeNoSeeMillis) {
-		try {
-			return getJdbcTemplate().update(removeLongTimeNoSeeSQL, new Object[]{maxTimeNoSeeMillis}, new int[]{Types.BIGINT});
-		} catch (DataAccessException dae) {
-			throw new CtsGeneralFailure("failed while looking up and removing non-active nodes", dae);
-		}
+		return getJdbcTemplate().update(removeLongTimeNoSeeSQL, new Object[]{maxTimeNoSeeMillis}, new int[]{Types.BIGINT});
 	}
 
 	private Set<String> getCTSTableNames() {
