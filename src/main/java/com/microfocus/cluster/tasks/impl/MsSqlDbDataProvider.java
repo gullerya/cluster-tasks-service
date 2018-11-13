@@ -80,7 +80,7 @@ final class MsSqlDbDataProvider extends ClusterTasksDbDataProvider {
 
 		insertSelfLastSeenSQL = "INSERT INTO " + ACTIVE_NODES_TABLE_NAME + " (" + ACTIVE_NODE_ID + ", " + ACTIVE_NODE_SINCE + ", " + ACTIVE_NODE_LAST_SEEN + ") VALUES (?, GETDATE(), GETDATE())";
 		updateSelfLastSeenSQL = "UPDATE " + ACTIVE_NODES_TABLE_NAME + " SET " + ACTIVE_NODE_LAST_SEEN + " = GETDATE() WHERE " + ACTIVE_NODE_ID + " = ?";
-		removeLongTimeNoSeeSQL = "DELETE FROM " + ACTIVE_NODES_TABLE_NAME + " WHERE " + ACTIVE_NODE_LAST_SEEN + " < DATEADD(MILLISECOND, ?, GETDATE())";
+		removeLongTimeNoSeeSQL = "DELETE FROM " + ACTIVE_NODES_TABLE_NAME + " WHERE " + ACTIVE_NODE_LAST_SEEN + " < DATEADD(MILLISECOND, -?, GETDATE())";
 
 		String insertFields = String.join(",", META_ID, TASK_TYPE, PROCESSOR_TYPE, UNIQUENESS_KEY, CONCURRENCY_KEY, DELAY_BY_MILLIS, BODY_PARTITION, ORDERING_FACTOR, CREATED, STATUS);
 		insertTaskWithoutBodySQL = "INSERT INTO " + META_TABLE_NAME + " (" + insertFields + ")" +
@@ -414,26 +414,22 @@ final class MsSqlDbDataProvider extends ClusterTasksDbDataProvider {
 
 	@Override
 	public void updateSelfLastSeen(String nodeId) {
-		try {
-			int updated = getJdbcTemplate().update(updateSelfLastSeenSQL, new Object[]{nodeId}, new int[]{Types.VARCHAR});
-			if (updated == 0) {
-				logger.info("node " + nodeId + " activity was NOT UPDATED, performing initial registration...");
-				int affected = getJdbcTemplate().update(insertSelfLastSeenSQL, new Object[]{nodeId}, new int[]{Types.VARCHAR});
-				if (affected != 1) {
-					logger.warn("expected to see exactly 1 record affected while registering " + nodeId + ", yet actual result is " + affected);
-				} else {
-					logger.info("registration of active node " + nodeId + " succeeded");
-				}
+		int updated = getJdbcTemplate().update(updateSelfLastSeenSQL, new Object[]{nodeId}, new int[]{Types.VARCHAR});
+		if (updated == 0) {
+			logger.info("node " + nodeId + " activity was NOT UPDATED, performing initial registration...");
+			int affected = getJdbcTemplate().update(insertSelfLastSeenSQL, new Object[]{nodeId}, new int[]{Types.VARCHAR});
+			if (affected != 1) {
+				logger.warn("expected to see exactly 1 record affected while registering " + nodeId + ", yet actual result is " + affected);
+			} else {
+				logger.info("registration of active node " + nodeId + " succeeded");
 			}
-		} catch (DataAccessException dae) {
-			throw new CtsGeneralFailure("failed to update last seen of " + nodeId, dae);
 		}
 	}
 
 	@Override
 	public int removeLongTimeNoSeeNodes(long maxTimeNoSeeMillis) {
 		try {
-			return getJdbcTemplate().update(removeLongTimeNoSeeSQL, new Object[]{-maxTimeNoSeeMillis}, new int[]{Types.BIGINT});
+			return getJdbcTemplate().update(removeLongTimeNoSeeSQL, new Object[]{maxTimeNoSeeMillis}, new int[]{Types.BIGINT});
 		} catch (DataAccessException dae) {
 			throw new CtsGeneralFailure("failed while looking up and removing non-active nodes", dae);
 		}

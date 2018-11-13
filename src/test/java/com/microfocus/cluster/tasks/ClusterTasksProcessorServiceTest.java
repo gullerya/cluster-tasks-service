@@ -214,7 +214,7 @@ public class ClusterTasksProcessorServiceTest extends CTSTestsBase {
 		logger.info("delay: " + delay + "; passed: " + passedTime);
 		//  precision of seconds is enough, since we are storing the time data as date and not timestamp
 		//  and it is possible that delay would be fulfilled withing up to 1 second less
-		assertTrue(passedTime / 1000 >= delay / 1000 - 1);
+		assertTrue(passedTime >= delay);
 		assertEquals("first_to_run", new ArrayList<>(clusterTasksProcessorA_test.tasksProcessed.keySet()).get(0));
 		assertEquals("delayed", new ArrayList<>(clusterTasksProcessorA_test.tasksProcessed.keySet()).get(1));
 		assertTrue(clusterTasksProcessorA_test.tasksProcessed.get("delayed").after(clusterTasksProcessorA_test.tasksProcessed.get("first_to_run")));
