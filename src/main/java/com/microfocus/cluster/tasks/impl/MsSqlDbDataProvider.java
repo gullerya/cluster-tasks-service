@@ -93,7 +93,7 @@ final class MsSqlDbDataProvider extends ClusterTasksDbDataProvider {
 					"       (SELECT " + selectFields + "," +
 					"               ROW_NUMBER() OVER (PARTITION BY COALESCE(" + CONCURRENCY_KEY + ",CAST(NEWID() AS VARCHAR(36))) ORDER BY " + ORDERING_FACTOR + "," + CREATED + "," + META_ID + " ASC) AS row_index," +
 					"               COUNT(CASE WHEN " + STATUS + " = " + ClusterTaskStatus.RUNNING.value + " THEN 1 ELSE NULL END) OVER (PARTITION BY COALESCE(" + CONCURRENCY_KEY + ",CAST(NEWID() AS VARCHAR(36)))) AS running_count" +
-					"       FROM " + META_TABLE_NAME + " WITH (UPDLOCK)" +
+					"       FROM " + META_TABLE_NAME + " WITH (UPDLOCK,TABLOCK)" +
 					"       WHERE " + PROCESSOR_TYPE + " IN(" + processorTypesInParameter + ")" +
 					"           AND " + STATUS + " < " + ClusterTaskStatus.FINISHED.value +
 					"           AND " + CREATED + " < DATEADD(MILLISECOND, -" + DELAY_BY_MILLIS + ", GETDATE())) meta" +

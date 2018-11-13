@@ -196,7 +196,7 @@ public class ClusterTasksHeavyClusterChanneledTasksTest {
 			waitForAllTasksDone.countDown();
 		});
 		waitForAllTasksDone.await();
-		long timeToDone = System.currentTimeMillis() - startTime - timeToPush;
+		long timeToDone = System.currentTimeMillis() - startTime;
 		logger.info(numberOfNodes * numberOfTasks * 5 + " tasks has been processed in " + timeToDone + "ms; average of " + ((double) timeToDone / (numberOfNodes * numberOfTasks * 5)) + "ms for task");
 
 		//  stop all CTS instances
