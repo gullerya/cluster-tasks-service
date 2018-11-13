@@ -12,7 +12,6 @@ import com.microfocus.cluster.tasks.processors.ClusterTasksProcessorE_test_na;
 import com.microfocus.cluster.tasks.processors.ClusterTasksProcessorF_test_cna;
 import com.microfocus.cluster.tasks.processors.ClusterTasksProcessorA_test;
 import org.junit.Assert;
-import org.junit.FixMethodOrder;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.slf4j.Logger;
@@ -26,8 +25,10 @@ import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
+import java.util.function.Supplier;
 
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
 
@@ -41,7 +42,6 @@ import static org.junit.Assert.fail;
 @ContextConfiguration({
 		"/cluster-tasks-service-context-test.xml"
 })
-@FixMethodOrder
 public class ClusterTasksProcessorServiceTest extends CTSTestsBase {
 	private final Logger logger = LoggerFactory.getLogger(ClusterTasksProcessorServiceTest.class);
 
@@ -212,7 +212,16 @@ public class ClusterTasksProcessorServiceTest extends CTSTestsBase {
 		results = clusterTasksService.enqueueTasks(ClusterTasksDataProviderType.DB, "ClusterTasksProcessorA_test", tmp);
 		Assert.assertEquals(CTPPersistStatus.SUCCESS, results[0].getStatus());
 
-		long passedTime = waitResultsContainerComplete(clusterTasksProcessorA_test.tasksProcessed, 2, 10000);
+		long startWait = System.currentTimeMillis();
+		Long passedTime = waitUntil(10000, () -> {
+			if (clusterTasksProcessorA_test.tasksProcessed.containsKey("first_to_run") && clusterTasksProcessorA_test.tasksProcessed.containsKey("delayed")) {
+				return System.currentTimeMillis() - startWait;
+			} else {
+				return null;
+			}
+		});
+		assertNotNull(passedTime);
+
 		logger.info("delay: " + delay + "; passed: " + passedTime);
 		//  precision of seconds is enough, since we are storing the time data as date and not timestamp
 		//  and it is possible that delay would be fulfilled withing up to 1 second less
@@ -261,5 +270,27 @@ public class ClusterTasksProcessorServiceTest extends CTSTestsBase {
 			fail("expectation " + expectedSize + " was not fulfilled (found " + container.size() + ") in given " + maxTimeToWait + "ms");
 		}
 		return timePassed;
+	}
+
+	private <V> V waitUntil(long maxTimeToWait, Supplier<V> verifier) {
+		long started = System.currentTimeMillis();
+		long pauseInterval = 50;
+		V result;
+		do {
+			result = verifier.get();
+			if (result == null) {
+				ClusterTasksTestsUtils.sleepSafely(pauseInterval);
+			} else {
+				logger.info("expectation fulfilled in " + (System.currentTimeMillis() - started) + "ms");
+				break;
+			}
+		} while (System.currentTimeMillis() - started < maxTimeToWait);
+
+		if (result == null) {
+			fail("failed to fulfill expectation in " + maxTimeToWait + "ms");
+			return null;
+		} else {
+			return result;
+		}
 	}
 }
