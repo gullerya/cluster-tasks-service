@@ -3,7 +3,6 @@ package com.microfocus.cluster.tasks.processors;
 import com.microfocus.cluster.tasks.api.ClusterTasksProcessorSimple;
 import com.microfocus.cluster.tasks.api.dto.ClusterTask;
 import com.microfocus.cluster.tasks.api.enums.ClusterTasksDataProviderType;
-import org.junit.Assert;
 
 import java.util.LinkedHashMap;
 import java.util.Map;
