@@ -109,7 +109,9 @@ final class ClusterTasksMaintainer extends ClusterTasksInternalWorker {
 			logger.error("failed to update this node's (" + configurer.getInstanceID() + ") last seen", e);
 		}
 
-		//  remove inactive nodes (node will be considered inactive if it has not been see for X3 times maintenance interval)
+		//  remove inactive nodes
+		//  - the verification will run once in X3 cycle time
+		//  - the node will be considered inactive if last seen before X4 cycle time
 		try {
 			if (System.currentTimeMillis() - lastTimeRemovedNonActiveNodes > getEffectiveBreathingInterval() * 3) {
 				int affected = dataProvider.removeLongTimeNoSeeNodes(getEffectiveBreathingInterval() * 4);
