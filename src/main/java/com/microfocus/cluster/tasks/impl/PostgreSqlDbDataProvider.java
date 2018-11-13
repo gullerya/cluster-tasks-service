@@ -32,7 +32,6 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
-import java.util.function.Function;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
@@ -64,8 +63,6 @@ final class PostgreSqlDbDataProvider extends ClusterTasksDbDataProvider {
 
 	private final String countScheduledPendingTasksSQL;
 
-	private final String selectStaledTasksSQL;
-
 	PostgreSqlDbDataProvider(ClusterTasksService clusterTasksService, ClusterTasksServiceConfigurerSPI serviceConfigurer) {
 		super(clusterTasksService, serviceConfigurer);
 
@@ -79,7 +76,7 @@ final class PostgreSqlDbDataProvider extends ClusterTasksDbDataProvider {
 		updateSelfLastSeenSQL = "UPDATE " + ACTIVE_NODES_TABLE_NAME + " SET " + ACTIVE_NODE_LAST_SEEN + " = LOCALTIMESTAMP WHERE " + ACTIVE_NODE_ID + " = ?";
 		removeLongTimeNoSeeSQL = "DELETE FROM " + ACTIVE_NODES_TABLE_NAME + " WHERE " + ACTIVE_NODE_LAST_SEEN + " < LOCALTIMESTAMP - MAKE_INTERVAL(SECS := ? / 1000)";
 
-		insertTaskSQL = "SELECT insert_task(" + String.join(",", Collections.nCopies(9, "?")) + ")";
+		insertTaskSQL = "SELECT insert_task(" + String.join(",", Collections.nCopies(8, "?")) + ")";
 
 		String selectForRunFields = String.join(",", META_ID, TASK_TYPE, PROCESSOR_TYPE, UNIQUENESS_KEY, CONCURRENCY_KEY, ORDERING_FACTOR, DELAY_BY_MILLIS, BODY_PARTITION, STATUS);
 		for (int maxProcessorTypes : new Integer[]{20, 50, 100, 500}) {
@@ -109,12 +106,6 @@ final class PostgreSqlDbDataProvider extends ClusterTasksDbDataProvider {
 
 		countScheduledPendingTasksSQL = "SELECT " + PROCESSOR_TYPE + ",COUNT(*) AS total FROM " + META_TABLE_NAME +
 				" WHERE " + TASK_TYPE + " = " + ClusterTaskType.SCHEDULED.value + " AND " + STATUS + " = " + ClusterTaskStatus.PENDING.value + " GROUP BY " + PROCESSOR_TYPE;
-
-		String selectedForGCFields = String.join(",", META_ID, BODY_PARTITION, TASK_TYPE, PROCESSOR_TYPE, STATUS);
-		selectStaledTasksSQL = "SELECT " + selectedForGCFields + " FROM " + META_TABLE_NAME +
-				" WHERE " + RUNTIME_INSTANCE + " IS NOT NULL" +
-				"   AND NOT EXISTS (SELECT 1 FROM " + ACTIVE_NODES_TABLE_NAME + " WHERE " + ACTIVE_NODE_ID + " = " + RUNTIME_INSTANCE + ")" +
-				" FOR UPDATE";
 	}
 
 	@Override
@@ -149,7 +140,6 @@ final class PostgreSqlDbDataProvider extends ClusterTasksDbDataProvider {
 		return isReady;
 	}
 
-	//  TODO: support bulk insert here
 	@Override
 	public ClusterTaskPersistenceResult[] storeTasks(TaskInternal... tasks) {
 		List<ClusterTaskPersistenceResult> result = new ArrayList<>(tasks.length);
@@ -323,53 +313,10 @@ final class PostgreSqlDbDataProvider extends ClusterTasksDbDataProvider {
 
 	@Override
 	public void updateTaskToFinished(Long taskId) {
-		if (taskId == null) {
-			throw new IllegalArgumentException("task ID MUST NOT be null");
-		}
-
 		try {
-			JdbcTemplate jdbcTemplate = getJdbcTemplate();
-			jdbcTemplate.update(
-					updateTaskFinishedSQL,
-					new Object[]{taskId},
-					new int[]{BIGINT});
+			getJdbcTemplate().update(updateTaskFinishedSQL, new Object[]{taskId}, new int[]{BIGINT});
 		} catch (DataAccessException dae) {
 			logger.error(clusterTasksService.getInstanceID() + " failed to update task finished", dae);
-		}
-	}
-
-	@Override
-	public void handleStaledTasks() {
-		List<TaskInternal> dataSetToReschedule = new ArrayList<>();
-		getTransactionTemplate().execute(transactionStatus -> {
-			try {
-				JdbcTemplate jdbcTemplate = getJdbcTemplate();
-				List<TaskInternal> gcCandidates = jdbcTemplate.query(selectStaledTasksSQL, this::gcCandidatesReader);
-
-				//  delete garbage tasks data
-				Map<Long, Long> dataSetToDelete = new HashMap<>();
-				gcCandidates.forEach(candidate -> dataSetToDelete.put(candidate.id, candidate.partitionIndex));
-				if (!dataSetToDelete.isEmpty()) {
-					deleteGarbageTasksData(jdbcTemplate, dataSetToDelete);
-				}
-
-				//  collect tasks for rescheduling
-				dataSetToReschedule.addAll(gcCandidates.stream()
-						.filter(task -> task.taskType == ClusterTaskType.SCHEDULED)
-						.collect(Collectors.toMap(task -> task.processorType, Function.identity(), (t1, t2) -> t2))
-						.values()
-				);
-			} catch (Exception e) {
-				transactionStatus.setRollbackOnly();
-				throw new CtsGeneralFailure("failed to cleanup cluster tasks", e);
-			}
-
-			return null;
-		});
-
-		//  reschedule tasks of SCHEDULED type
-		if (!dataSetToReschedule.isEmpty()) {
-			reinsertScheduledTasks(dataSetToReschedule);
 		}
 	}
 
@@ -392,29 +339,21 @@ final class PostgreSqlDbDataProvider extends ClusterTasksDbDataProvider {
 
 	@Override
 	public void updateSelfLastSeen(String nodeId) {
-		try {
-			int updated = getJdbcTemplate().update(updateSelfLastSeenSQL, new Object[]{nodeId}, new int[]{Types.VARCHAR});
-			if (updated == 0) {
-				logger.info("node " + nodeId + " activity was NOT UPDATED, performing initial registration...");
-				int affected = getJdbcTemplate().update(insertSelfLastSeenSQL, new Object[]{nodeId}, new int[]{Types.VARCHAR});
-				if (affected != 1) {
-					logger.warn("expected to see exactly 1 record affected while registering " + nodeId + ", yet actual result is " + affected);
-				} else {
-					logger.info("registration of active node " + nodeId + " succeeded");
-				}
+		int updated = getJdbcTemplate().update(updateSelfLastSeenSQL, new Object[]{nodeId}, new int[]{Types.VARCHAR});
+		if (updated == 0) {
+			logger.info("node " + nodeId + " activity was NOT UPDATED, performing initial registration...");
+			int affected = getJdbcTemplate().update(insertSelfLastSeenSQL, new Object[]{nodeId}, new int[]{Types.VARCHAR});
+			if (affected != 1) {
+				logger.warn("expected to see exactly 1 record affected while registering " + nodeId + ", yet actual result is " + affected);
+			} else {
+				logger.info("registration of active node " + nodeId + " succeeded");
 			}
-		} catch (DataAccessException dae) {
-			throw new CtsGeneralFailure("failed to update last seen of " + nodeId, dae);
 		}
 	}
 
 	@Override
 	public int removeLongTimeNoSeeNodes(long maxTimeNoSeeMillis) {
-		try {
-			return getJdbcTemplate().update(removeLongTimeNoSeeSQL, new Object[]{maxTimeNoSeeMillis}, new int[]{Types.BIGINT});
-		} catch (DataAccessException dae) {
-			throw new CtsGeneralFailure("failed while looking up and removing non-active nodes", dae);
-		}
+		return getJdbcTemplate().update(removeLongTimeNoSeeSQL, new Object[]{maxTimeNoSeeMillis}, new int[]{Types.BIGINT});
 	}
 
 	private Set<String> getCTSTableNames() {
@@ -422,6 +361,6 @@ final class PostgreSqlDbDataProvider extends ClusterTasksDbDataProvider {
 	}
 
 	private Set<String> getCTSIndexNames() {
-		return Stream.of("ctskm_pk", "ctskb_pk_p0", "ctskb_pk_p1", "ctskb_pk_p2", "ctskb_pk_p3", "ctsan_idx_1").collect(Collectors.toSet());
+		return Stream.of("ctsan_pk", "ctskm_pk", "ctskm_idx_1", "ctskb_pk_p0", "ctskb_pk_p1", "ctskb_pk_p2", "ctskb_pk_p3").collect(Collectors.toSet());
 	}
 }

@@ -32,7 +32,6 @@ import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
-import java.util.function.Function;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
@@ -65,8 +64,6 @@ final class OracleDbDataProvider extends ClusterTasksDbDataProvider {
 	private final String updateTaskFinishedSQL;
 
 	private final String countScheduledPendingTasksSQL;
-	private final String selectGCValidTasksSQL;
-	private final String removeStaledTasksSQL;
 
 	OracleDbDataProvider(ClusterTasksService clusterTasksService, ClusterTasksServiceConfigurerSPI serviceConfigurer) {
 		super(clusterTasksService, serviceConfigurer);
@@ -121,17 +118,6 @@ final class OracleDbDataProvider extends ClusterTasksDbDataProvider {
 
 		countScheduledPendingTasksSQL = "SELECT " + PROCESSOR_TYPE + ",COUNT(*) AS total FROM " + META_TABLE_NAME +
 				" WHERE " + TASK_TYPE + " = " + ClusterTaskType.SCHEDULED.value + " AND " + STATUS + " = " + ClusterTaskStatus.PENDING.value + " GROUP BY " + PROCESSOR_TYPE;
-
-		String selectedForGCFields = String.join(",", META_ID, BODY_PARTITION, TASK_TYPE, PROCESSOR_TYPE, STATUS, RUNTIME_INSTANCE);
-		selectGCValidTasksSQL = "SELECT " + selectedForGCFields + " FROM " + META_TABLE_NAME +
-				" WHERE " + TASK_TYPE + " = " + ClusterTaskType.SCHEDULED.value +
-				"   AND " + RUNTIME_INSTANCE + " IS NOT NULL " +
-				"   AND NOT EXISTS (SELECT 1 FROM " + ACTIVE_NODES_TABLE_NAME + " WHERE " + ACTIVE_NODE_ID + " = " + RUNTIME_INSTANCE + ")" +
-				" FOR UPDATE";
-		removeStaledTasksSQL = "DELETE FROM " + META_TABLE_NAME +
-				" WHERE " + TASK_TYPE + " = " + ClusterTaskType.REGULAR.value +
-				"   AND" + RUNTIME_INSTANCE + " IS NOT NULL" +
-				"   AND NOT EXISTS (SELECT 1 FROM " + ACTIVE_NODES_TABLE_NAME + " WHERE " + ACTIVE_NODE_ID + " = " + RUNTIME_INSTANCE + ")";
 	}
 
 	@Override
@@ -374,41 +360,6 @@ final class OracleDbDataProvider extends ClusterTasksDbDataProvider {
 					new int[]{BIGINT});
 		} catch (DataAccessException dae) {
 			logger.error(clusterTasksService.getInstanceID() + " failed to update task finished", dae);
-		}
-	}
-
-	@Override
-	public void handleStaledTasks() {
-		List<TaskInternal> dataSetToReschedule = new LinkedList<>();
-		getTransactionTemplate().execute(transactionStatus -> {
-			try {
-				JdbcTemplate jdbcTemplate = getJdbcTemplate();
-				List<TaskInternal> gcCandidates = jdbcTemplate.query(selectGCValidTasksSQL, this::gcCandidatesReader);
-
-				//  delete garbage tasks data
-				Map<Long, Long> dataSetToDelete = new LinkedHashMap<>();
-				gcCandidates.forEach(candidate -> dataSetToDelete.put(candidate.id, candidate.partitionIndex));
-				if (!dataSetToDelete.isEmpty()) {
-					deleteGarbageTasksData(jdbcTemplate, dataSetToDelete);
-				}
-
-				//  collect tasks for rescheduling
-				dataSetToReschedule.addAll(gcCandidates.stream()
-						.filter(task -> task.taskType == ClusterTaskType.SCHEDULED)
-						.collect(Collectors.toMap(task -> task.processorType, Function.identity(), (t1, t2) -> t2))
-						.values()
-				);
-			} catch (Exception e) {
-				transactionStatus.setRollbackOnly();
-				throw new CtsGeneralFailure("failed to cleanup cluster tasks", e);
-			}
-
-			return null;
-		});
-
-		//  reschedule tasks of SCHEDULED type
-		if (!dataSetToReschedule.isEmpty()) {
-			reinsertScheduledTasks(dataSetToReschedule);
 		}
 	}
 

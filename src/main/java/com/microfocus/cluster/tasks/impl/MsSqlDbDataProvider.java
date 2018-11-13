@@ -30,7 +30,6 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
-import java.util.function.Function;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
@@ -63,9 +62,6 @@ final class MsSqlDbDataProvider extends ClusterTasksDbDataProvider {
 	private final String updateTaskFinishedSQL;
 
 	private final String countScheduledPendingTasksSQL;
-
-	private final String selectStaledRerunnableTasksSQL;
-	private final String removeStaledTasksSQL;
 
 	MsSqlDbDataProvider(ClusterTasksService clusterTasksService, ClusterTasksServiceConfigurerSPI serviceConfigurer) {
 		super(clusterTasksService, serviceConfigurer);
@@ -116,16 +112,6 @@ final class MsSqlDbDataProvider extends ClusterTasksDbDataProvider {
 
 		countScheduledPendingTasksSQL = "SELECT " + PROCESSOR_TYPE + ",COUNT(*) AS total FROM " + META_TABLE_NAME +
 				" WHERE " + TASK_TYPE + " = " + ClusterTaskType.SCHEDULED.value + " AND " + STATUS + " = " + ClusterTaskStatus.PENDING.value + " GROUP BY " + PROCESSOR_TYPE;
-
-		String selectedForGCFields = String.join(",", META_ID, BODY_PARTITION, TASK_TYPE, PROCESSOR_TYPE, STATUS, RUNTIME_INSTANCE);
-		selectStaledRerunnableTasksSQL = "SELECT " + selectedForGCFields + " FROM " + META_TABLE_NAME + " WITH (UPDLOCK)" +
-				" WHERE " + TASK_TYPE + " = " + ClusterTaskType.SCHEDULED.value +
-				"   AND " + RUNTIME_INSTANCE + " IS NOT NULL" +
-				"   AND NOT EXISTS (SELECT 1 FROM " + ACTIVE_NODES_TABLE_NAME + " WHERE " + ACTIVE_NODE_ID + " = " + RUNTIME_INSTANCE + ")";
-		removeStaledTasksSQL = "DELETE FROM " + META_TABLE_NAME +
-				" WHERE " + TASK_TYPE + " = " + ClusterTaskType.REGULAR.value +
-				"   AND" + RUNTIME_INSTANCE + " IS NOT NULL" +
-				"   AND NOT EXISTS (SELECT 1 FROM " + ACTIVE_NODES_TABLE_NAME + " WHERE " + ACTIVE_NODE_ID + " = " + RUNTIME_INSTANCE + ")";
 	}
 
 	@Override
@@ -362,40 +348,6 @@ final class MsSqlDbDataProvider extends ClusterTasksDbDataProvider {
 	}
 
 	@Override
-	public void handleStaledTasks() {
-		getTransactionTemplate().execute(transactionStatus -> {
-			try {
-				JdbcTemplate jdbcTemplate = getJdbcTemplate();
-				List<TaskInternal> gcCandidates = jdbcTemplate.query(selectStaledRerunnableTasksSQL, this::gcCandidatesReader);
-				if (gcCandidates.size() > 0) {
-					logger.info("found " + gcCandidates.size() + " re-runnable tasks as staled, processing...");
-
-					//  collect tasks valid for re-enqueue
-					Collection<TaskInternal> tasksToReschedule = gcCandidates.stream()
-							.collect(Collectors.toMap(task -> task.processorType, Function.identity(), (t1, t2) -> t2))
-							.values();
-
-					//  reschedule tasks of SCHEDULED type
-					reinsertScheduledTasks(tasksToReschedule);
-
-					//  delete garbage tasks data
-					int removed = jdbcTemplate.update(removeStaledTasksSQL);
-					if (removed > 0) {
-						logger.info("found and removed " + removed + " staled tasks");
-					}
-				}
-			} catch (Exception e) {
-				transactionStatus.setRollbackOnly();
-				throw new CtsGeneralFailure("failed to cleanup cluster tasks", e);
-			}
-
-			return null;
-		});
-
-		checkAndTruncateBodyTables();
-	}
-
-	@Override
 	public void reinsertScheduledTasks(Collection<TaskInternal> candidatesToReschedule) {
 		Map<String, Integer> pendingCount = getJdbcTemplate().query(countScheduledPendingTasksSQL, this::scheduledPendingReader);
 		List<TaskInternal> tasksToReschedule = new ArrayList<>();
@@ -436,7 +388,7 @@ final class MsSqlDbDataProvider extends ClusterTasksDbDataProvider {
 	}
 
 	private Set<String> getCTSIndexNames() {
-		return Stream.of("CTSKM_PK", "CTSKM_IDX_2", "CTSKM_IDX_5", "CTSKM_IDX_6", "CTSKB_PK_P0", "CTSKB_PK_P1", "CTSKB_PK_P2", "CTSKB_PK_P3").collect(Collectors.toSet());
+		return Stream.of("CTSAN_PK", "CTSKM_PK", "CTSKM_IDX_2", "CTSKM_IDX_5", "CTSKM_IDX_6", "CTSKB_PK_P0", "CTSKB_PK_P1", "CTSKB_PK_P2", "CTSKB_PK_P3").collect(Collectors.toSet());
 	}
 
 	private Set<String> getCTSSequenceNames() {

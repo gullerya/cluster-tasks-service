@@ -13,6 +13,7 @@ import com.microfocus.cluster.tasks.api.enums.ClusterTaskType;
 import com.microfocus.cluster.tasks.api.enums.ClusterTasksDataProviderType;
 import com.microfocus.cluster.tasks.api.ClusterTasksService;
 import com.microfocus.cluster.tasks.api.ClusterTasksServiceConfigurerSPI;
+import com.microfocus.cluster.tasks.api.errors.CtsGeneralFailure;
 import com.microfocus.cluster.tasks.api.errors.CtsSqlFailure;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -29,6 +30,7 @@ import java.time.Duration;
 import java.time.ZoneOffset;
 import java.time.ZonedDateTime;
 import java.util.ArrayList;
+import java.util.Collection;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.LinkedHashMap;
@@ -37,6 +39,7 @@ import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.function.Function;
 import java.util.stream.Collectors;
 
 import javax.sql.DataSource;
@@ -95,6 +98,9 @@ abstract class ClusterTasksDbDataProvider implements ClusterTasksDataProvider {
 	private final Map<Long, String> removeDanglingBodiesSQLs = new HashMap<>();
 	private final int removeDanglingBodiesBulkSize = 50;
 
+	private final String selectStaledTasksSQL;
+	private final String removeStaledTasksSQL;
+
 	private final Map<Long, String> lookupOrphansByPartitionSQLs = new LinkedHashMap<>();
 	private final Map<Long, String> deleteTaskBodyByPartitionSQLs = new LinkedHashMap<>();
 	private final Map<Long, String> truncateByPartitionSQLs = new LinkedHashMap<>();
@@ -133,6 +139,16 @@ abstract class ClusterTasksDbDataProvider implements ClusterTasksDataProvider {
 			truncateByPartitionSQLs.put(partition, "TRUNCATE TABLE " + BODY_TABLE_NAME + partition);
 			countTaskBodiesByPartitionSQLs.put(partition, "SELECT COUNT(*) AS counter FROM " + BODY_TABLE_NAME + partition);
 		}
+
+		String selectedForGCFields = String.join(",", META_ID, BODY_PARTITION, TASK_TYPE, PROCESSOR_TYPE, STATUS);
+		selectStaledTasksSQL = "SELECT " + selectedForGCFields + " FROM " + META_TABLE_NAME +
+				" WHERE " + RUNTIME_INSTANCE + " IS NOT NULL" +
+				"   AND NOT EXISTS (SELECT 1 FROM " + ACTIVE_NODES_TABLE_NAME + " WHERE " + ACTIVE_NODE_ID + " = " + RUNTIME_INSTANCE + ")" +
+				" FOR UPDATE";
+		removeStaledTasksSQL = "DELETE FROM " + META_TABLE_NAME +
+				" WHERE " + TASK_TYPE + " = " + ClusterTaskType.REGULAR.value +
+				"   AND" + RUNTIME_INSTANCE + " IS NOT NULL" +
+				"   AND NOT EXISTS (SELECT 1 FROM " + ACTIVE_NODES_TABLE_NAME + " WHERE " + ACTIVE_NODE_ID + " = " + RUNTIME_INSTANCE + ")";
 
 		countTasksByStatusSQL = "SELECT COUNT(*) AS counter," + PROCESSOR_TYPE + " FROM " + META_TABLE_NAME + " WHERE " + STATUS + " = ? GROUP BY " + PROCESSOR_TYPE;
 	}
@@ -209,6 +225,40 @@ abstract class ClusterTasksDbDataProvider implements ClusterTasksDataProvider {
 		} catch (DataAccessException dae) {
 			logger.error("failed during cleaning dangling task bodies", dae);
 		}
+	}
+
+	@Override
+	public void handleStaledTasks() {
+		getTransactionTemplate().execute(transactionStatus -> {
+			try {
+				JdbcTemplate jdbcTemplate = getJdbcTemplate();
+				List<TaskInternal> gcCandidates = jdbcTemplate.query(selectStaledTasksSQL, this::gcCandidatesReader);
+				if (!gcCandidates.isEmpty()) {
+					logger.info("found " + gcCandidates.size() + " re-runnable tasks as staled, processing...");
+
+					//  collect tasks valid for re-enqueue
+					Collection<TaskInternal> tasksToReschedule = gcCandidates.stream()
+							.collect(Collectors.toMap(task -> task.processorType, Function.identity(), (t1, t2) -> t2))
+							.values();
+
+					//  reschedule tasks of SCHEDULED type
+					reinsertScheduledTasks(tasksToReschedule);
+
+					//  delete garbage tasks data
+					int removed = jdbcTemplate.update(removeStaledTasksSQL);
+					if (removed > 0) {
+						logger.info("found and removed " + removed + " staled tasks");
+					}
+				}
+			} catch (Exception e) {
+				transactionStatus.setRollbackOnly();
+				throw new CtsGeneralFailure("failed to cleanup cluster tasks", e);
+			}
+
+			return null;
+		});
+
+		checkAndTruncateBodyTables();
 	}
 
 	@Override
@@ -429,7 +479,7 @@ abstract class ClusterTasksDbDataProvider implements ClusterTasksDataProvider {
 		}
 	}
 
-	void checkAndTruncateBodyTables() {
+	private void checkAndTruncateBodyTables() {
 		ZonedDateTime now = ZonedDateTime.now(ZoneOffset.UTC);
 		int hour = now.getHour();
 		int shiftDuration = 24 / PARTITIONS_NUMBER;
