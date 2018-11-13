@@ -113,7 +113,7 @@ final class ClusterTasksMaintainer extends ClusterTasksInternalWorker {
 		try {
 			long maxTimeNoSee = getEffectiveBreathingInterval() * 3;
 			if (System.currentTimeMillis() - lastTimeRemovedNonActiveNodes > maxTimeNoSee) {
-				int affected = dataProvider.removeLongTimeNoSeeNodes(getEffectiveBreathingInterval() * 3);
+				int affected = dataProvider.removeLongTimeNoSeeNodes(maxTimeNoSee);
 				if (affected > 0) {
 					logger.info("found and removed " + affected + " non-active nodes");
 				}
