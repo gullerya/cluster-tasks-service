@@ -90,10 +90,14 @@ class ClusterTasksProcessorWorker implements Runnable {
 		} finally {
 			taskSelfDurationTimer.observeDuration();                                                                    //  metric
 			try {
+				long taskIdToRemove = task.id;
 				if (task.taskType == ClusterTaskType.SCHEDULED) {
-					dataProvider.reinsertScheduledTasks(Collections.singletonList(task));
+					int reinsertResult = dataProvider.reinsertScheduledTasks(Collections.singletonList(task));
+					if (reinsertResult != 1) {
+						logger.warn("unexpectedly failed to reschedule self (reinsert result is " + reinsertResult + ")");
+					}
 				}
-				removeFinishedTask(task.id);
+				removeFinishedTask(taskIdToRemove);
 			} catch (Throwable t) {
 				logger.error("failed to update finished on " + task, t);
 				ctsOwnErrorsCounter.labels(TASK_FINALIZATION_PHASE, t.getClass().getSimpleName()).inc();                //  metric

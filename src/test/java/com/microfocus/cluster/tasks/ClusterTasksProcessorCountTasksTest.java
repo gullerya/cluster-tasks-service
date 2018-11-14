@@ -3,7 +3,7 @@ package com.microfocus.cluster.tasks;
 import com.microfocus.cluster.tasks.api.builders.TaskBuilders;
 import com.microfocus.cluster.tasks.api.dto.ClusterTask;
 import com.microfocus.cluster.tasks.api.dto.ClusterTaskPersistenceResult;
-import com.microfocus.cluster.tasks.api.enums.CTPPersistStatus;
+import com.microfocus.cluster.tasks.api.enums.ClusterTaskInsertStatus;
 import com.microfocus.cluster.tasks.api.enums.ClusterTasksDataProviderType;
 import com.microfocus.cluster.tasks.processors.ClusterTasksProcessorCount_test;
 import org.junit.Assert;
@@ -69,7 +69,7 @@ public class ClusterTasksProcessorCountTasksTest extends CTSTestsBase {
 
 		ClusterTaskPersistenceResult[] results = clusterTasksService.enqueueTasks(ClusterTasksDataProviderType.DB, "ClusterTasksProcessorCount_test", tasks);
 		Arrays.stream(results).forEach(result ->
-				Assert.assertEquals(CTPPersistStatus.SUCCESS, result.getStatus())
+				Assert.assertEquals(ClusterTaskInsertStatus.SUCCESS, result.getStatus())
 		);
 
 //		assertEquals(6, clusterTasksProcessorCount_test.countTasks());
@@ -103,7 +103,7 @@ public class ClusterTasksProcessorCountTasksTest extends CTSTestsBase {
 
 		ClusterTaskPersistenceResult[] results = clusterTasksService.enqueueTasks(ClusterTasksDataProviderType.DB, "ClusterTasksProcessorCount_test", tasks);
 		Arrays.stream(results).forEach(result ->
-				Assert.assertEquals(CTPPersistStatus.SUCCESS, result.getStatus())
+				Assert.assertEquals(ClusterTaskInsertStatus.SUCCESS, result.getStatus())
 		);
 
 		//  hold tasks and check
@@ -117,7 +117,7 @@ public class ClusterTasksProcessorCountTasksTest extends CTSTestsBase {
 		//  release tasks (1 will be taken because of concurrency key) and check
 		clusterTasksProcessorCount_test.holdTaskForMillis = 5000;
 		clusterTasksProcessorCount_test.readyToTakeTasks = true;
-		ClusterTasksTestsUtils.sleepSafely(2000);
+		ClusterTasksTestsUtils.waitSafely(2000);
 
 //		assertEquals(1, clusterTasksProcessorCount_test.countTasks(ClusterTaskStatus.RUNNING));
 //		assertEquals(2, clusterTasksProcessorCount_test.countTasks(ClusterTaskStatus.PENDING));
@@ -142,7 +142,7 @@ public class ClusterTasksProcessorCountTasksTest extends CTSTestsBase {
 
 		ClusterTaskPersistenceResult[] results = clusterTasksService.enqueueTasks(ClusterTasksDataProviderType.DB, "ClusterTasksProcessorCount_test", tasks);
 		Arrays.stream(results).forEach(result ->
-				Assert.assertEquals(CTPPersistStatus.SUCCESS, result.getStatus())
+				Assert.assertEquals(ClusterTaskInsertStatus.SUCCESS, result.getStatus())
 		);
 
 		//  prevent tasks from running and count
@@ -156,7 +156,7 @@ public class ClusterTasksProcessorCountTasksTest extends CTSTestsBase {
 		//  release tasks (2 will be taken because of 2 workers) and check
 		clusterTasksProcessorCount_test.holdTaskForMillis = 7000;
 		clusterTasksProcessorCount_test.readyToTakeTasks = true;
-		ClusterTasksTestsUtils.sleepSafely(4000);
+		ClusterTasksTestsUtils.waitSafely(4000);
 
 //		assertEquals(2, clusterTasksProcessorCount_test.countTasks(ClusterTaskStatus.RUNNING));
 //		assertEquals(1, clusterTasksProcessorCount_test.countTasks(ClusterTaskStatus.PENDING));
@@ -175,7 +175,7 @@ public class ClusterTasksProcessorCountTasksTest extends CTSTestsBase {
 
 //		while (waitDrainRounds++ < maxRoundsToWaitDrain && clusterTasksProcessorCount_test.countTasks() > 0) {
 //			logger.info("draining out tasks, wait round " + waitDrainRounds);
-//			ClusterTasksITUtils.sleepSafely(1000);
+//			ClusterTasksITUtils.waitSafely(1000);
 //		}
 
 //		assertEquals("test's preliminary condition is 0 tasks in queue", 0, clusterTasksProcessorCount_test.countTasks());

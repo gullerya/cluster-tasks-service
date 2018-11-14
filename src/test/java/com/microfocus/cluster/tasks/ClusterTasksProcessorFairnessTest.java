@@ -3,7 +3,7 @@ package com.microfocus.cluster.tasks;
 import com.microfocus.cluster.tasks.api.builders.TaskBuilders;
 import com.microfocus.cluster.tasks.api.dto.ClusterTask;
 import com.microfocus.cluster.tasks.api.dto.ClusterTaskPersistenceResult;
-import com.microfocus.cluster.tasks.api.enums.CTPPersistStatus;
+import com.microfocus.cluster.tasks.api.enums.ClusterTaskInsertStatus;
 import com.microfocus.cluster.tasks.api.enums.ClusterTasksDataProviderType;
 import com.microfocus.cluster.tasks.processors.ClusterTasksProcessorFairness_test_mt;
 import com.microfocus.cluster.tasks.processors.ClusterTasksProcessorFairness_test_st;
@@ -92,7 +92,7 @@ public class ClusterTasksProcessorFairnessTest extends CTSTestsBase {
 				ClusterTasksProcessorFairness_test_st.class.getSimpleName(),
 				tasks.toArray(new ClusterTask[0]));
 		for (ClusterTaskPersistenceResult result : enqueueResults) {
-			Assert.assertEquals(CTPPersistStatus.SUCCESS, result.getStatus());
+			Assert.assertEquals(ClusterTaskInsertStatus.SUCCESS, result.getStatus());
 		}
 
 		List<String> eventsLog = ClusterTasksProcessorFairness_test_st.keysProcessingEventsLog;
@@ -145,7 +145,7 @@ public class ClusterTasksProcessorFairnessTest extends CTSTestsBase {
 				ClusterTasksProcessorFairness_test_mt.class.getSimpleName(),
 				tasks.toArray(new ClusterTask[0]));
 		for (ClusterTaskPersistenceResult result : enqueueResults) {
-			Assert.assertEquals(CTPPersistStatus.SUCCESS, result.getStatus());
+			Assert.assertEquals(ClusterTaskInsertStatus.SUCCESS, result.getStatus());
 		}
 
 		List<String> eventsLog = ClusterTasksProcessorFairness_test_mt.keysProcessingEventsLog;
@@ -158,7 +158,7 @@ public class ClusterTasksProcessorFairnessTest extends CTSTestsBase {
 		long timePassed = 0;
 		long pauseInterval = 100;
 		while (eventStore.size() < expectedSize && timePassed < maxTimeToWait) {
-			ClusterTasksTestsUtils.sleepSafely(pauseInterval);
+			ClusterTasksTestsUtils.waitSafely(pauseInterval);
 			timePassed += pauseInterval;
 		}
 		if (eventStore.size() == expectedSize) {

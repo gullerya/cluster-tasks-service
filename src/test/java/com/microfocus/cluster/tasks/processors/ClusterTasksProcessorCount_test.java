@@ -24,6 +24,6 @@ public class ClusterTasksProcessorCount_test extends ClusterTasksProcessorSimple
 
 	@Override
 	public void processTask(ClusterTask task) {
-		ClusterTasksTestsUtils.sleepSafely(holdTaskForMillis);
+		ClusterTasksTestsUtils.waitSafely(holdTaskForMillis);
 	}
 }

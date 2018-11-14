@@ -5,7 +5,7 @@ import com.microfocus.cluster.tasks.api.dto.ClusterTask;
 import com.microfocus.cluster.tasks.api.enums.ClusterTaskStatus;
 import com.microfocus.cluster.tasks.api.ClusterTasksService;
 import com.microfocus.cluster.tasks.api.dto.ClusterTaskPersistenceResult;
-import com.microfocus.cluster.tasks.api.enums.CTPPersistStatus;
+import com.microfocus.cluster.tasks.api.enums.ClusterTaskInsertStatus;
 import com.microfocus.cluster.tasks.api.enums.ClusterTasksDataProviderType;
 import com.microfocus.cluster.tasks.processors.ClusterTasksProcessorUniqueness_test;
 import org.junit.Test;
@@ -52,7 +52,7 @@ public class ClusterTasksProcessorUniquenessTest extends CTSTestsBase {
 		results = clusterTasksService.enqueueTasks(ClusterTasksDataProviderType.DB, ClusterTasksProcessorUniqueness_test.class.getSimpleName(), task);
 		assertEquals(1, results.length);
 		assertNotNull(results[0]);
-		assertEquals(CTPPersistStatus.SUCCESS, results[0].getStatus());
+		assertEquals(ClusterTaskInsertStatus.SUCCESS, results[0].getStatus());
 
 		//  attempt to enqueue second task - should fail due to the fact that the first task is still in queue
 		task = TaskBuilders.uniqueTask()
@@ -62,10 +62,10 @@ public class ClusterTasksProcessorUniquenessTest extends CTSTestsBase {
 		results = clusterTasksService.enqueueTasks(ClusterTasksDataProviderType.DB, ClusterTasksProcessorUniqueness_test.class.getSimpleName(), task);
 		assertEquals(1, results.length);
 		assertNotNull(results[0]);
-		assertEquals(CTPPersistStatus.UNIQUE_CONSTRAINT_FAILURE, results[0].getStatus());
+		assertEquals(ClusterTaskInsertStatus.UNIQUE_CONSTRAINT_FAILURE, results[0].getStatus());
 
 		//  wait to ensure first task started to run
-		ClusterTasksTestsUtils.sleepSafely(2500);
+		ClusterTasksTestsUtils.waitSafely(2500);
 
 		//  attempt to enqueue third task - should succeed and due to the first task is already running
 		task = TaskBuilders.uniqueTask()
@@ -75,7 +75,7 @@ public class ClusterTasksProcessorUniquenessTest extends CTSTestsBase {
 		results = clusterTasksService.enqueueTasks(ClusterTasksDataProviderType.DB, ClusterTasksProcessorUniqueness_test.class.getSimpleName(), task);
 		assertEquals(1, results.length);
 		assertNotNull(results[0]);
-		assertEquals(CTPPersistStatus.SUCCESS, results[0].getStatus());
+		assertEquals(ClusterTaskInsertStatus.SUCCESS, results[0].getStatus());
 
 		//  attempt to enqueue forth task - should fail due to the fact that the third task is in queue and pending
 		task = TaskBuilders.uniqueTask()
@@ -85,13 +85,13 @@ public class ClusterTasksProcessorUniquenessTest extends CTSTestsBase {
 		results = clusterTasksService.enqueueTasks(ClusterTasksDataProviderType.DB, ClusterTasksProcessorUniqueness_test.class.getSimpleName(), task);
 		assertEquals(1, results.length);
 		assertNotNull(results[0]);
-		assertEquals(CTPPersistStatus.UNIQUE_CONSTRAINT_FAILURE, results[0].getStatus());
+		assertEquals(ClusterTaskInsertStatus.UNIQUE_CONSTRAINT_FAILURE, results[0].getStatus());
 
 		waitForEndCondition(2, 5000L);
 		assertEquals("4000", ClusterTasksProcessorUniqueness_test.bodies.get(0));
 		assertEquals("0", ClusterTasksProcessorUniqueness_test.bodies.get(1));
 
-		ClusterTasksTestsUtils.sleepSafely(1500);
+		ClusterTasksTestsUtils.waitSafely(1500);
 	}
 
 	private void drainTasks() {
@@ -103,7 +103,7 @@ public class ClusterTasksProcessorUniquenessTest extends CTSTestsBase {
 				ClusterTasksDataProviderType.DB, ClusterTasksProcessorUniqueness_test.class.getSimpleName(),
 				ClusterTaskStatus.PENDING, ClusterTaskStatus.RUNNING)) > 0 &&
 				System.currentTimeMillis() - startTime < maxTimeToWait) {
-			ClusterTasksTestsUtils.sleepSafely(300);
+			ClusterTasksTestsUtils.waitSafely(300);
 		}
 		ClusterTasksProcessorUniqueness_test.bodies.clear();
 		ClusterTasksProcessorUniqueness_test.draining = false;
@@ -115,7 +115,7 @@ public class ClusterTasksProcessorUniquenessTest extends CTSTestsBase {
 		long timePassed = 0;
 		long pauseInterval = 100;
 		while (ClusterTasksProcessorUniqueness_test.bodies.size() != expectedSize && timePassed < maxTimeToWait) {
-			ClusterTasksTestsUtils.sleepSafely(pauseInterval);
+			ClusterTasksTestsUtils.waitSafely(pauseInterval);
 			timePassed += pauseInterval;
 		}
 		if (ClusterTasksProcessorUniqueness_test.bodies.size() == expectedSize) {

@@ -14,7 +14,7 @@ import com.microfocus.cluster.tasks.api.ClusterTasksServiceConfigurerSPI;
 import com.microfocus.cluster.tasks.api.builders.TaskBuilders;
 import com.microfocus.cluster.tasks.api.dto.ClusterTask;
 import com.microfocus.cluster.tasks.api.dto.ClusterTaskPersistenceResult;
-import com.microfocus.cluster.tasks.api.enums.CTPPersistStatus;
+import com.microfocus.cluster.tasks.api.enums.ClusterTaskInsertStatus;
 import com.microfocus.cluster.tasks.api.enums.ClusterTaskStatus;
 import com.microfocus.cluster.tasks.api.enums.ClusterTaskType;
 import com.microfocus.cluster.tasks.api.enums.ClusterTasksDataProviderType;
@@ -239,10 +239,10 @@ public class ClusterTasksServiceImpl implements ClusterTasksService {
 				do {
 					enqueueAttemptsCount++;
 					enqueueResult = dataProvider.storeTasks(scheduledTasks[0])[0];
-					if (enqueueResult.getStatus() == CTPPersistStatus.SUCCESS) {
+					if (enqueueResult.getStatus() == ClusterTaskInsertStatus.SUCCESS) {
 						logger.info("initial task for " + type + " created");
 						break;
-					} else if (enqueueResult.getStatus() == CTPPersistStatus.UNIQUE_CONSTRAINT_FAILURE) {
+					} else if (enqueueResult.getStatus() == ClusterTaskInsertStatus.UNIQUE_CONSTRAINT_FAILURE) {
 						logger.info("failed to create initial scheduled task for " + type + " with unique constraint violation, assuming that task was already created, will not reattempt");
 						break;
 					} else {

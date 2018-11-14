@@ -8,6 +8,8 @@
 
 package com.microfocus.cluster.tasks.impl;
 
+import com.microfocus.cluster.tasks.api.dto.ClusterTaskPersistenceResult;
+import com.microfocus.cluster.tasks.api.enums.ClusterTaskInsertStatus;
 import com.microfocus.cluster.tasks.api.enums.ClusterTaskStatus;
 import com.microfocus.cluster.tasks.api.enums.ClusterTaskType;
 import com.microfocus.cluster.tasks.api.enums.ClusterTasksDataProviderType;
@@ -101,6 +103,8 @@ abstract class ClusterTasksDbDataProvider implements ClusterTasksDataProvider {
 	private final String selectStaledTasksSQL;
 	private final String removeStaledTasksSQL;
 
+	private final String countScheduledPendingTasksSQL;
+
 	private final Map<Long, String> lookupOrphansByPartitionSQLs = new LinkedHashMap<>();
 	private final Map<Long, String> deleteTaskBodyByPartitionSQLs = new LinkedHashMap<>();
 	private final Map<Long, String> truncateByPartitionSQLs = new LinkedHashMap<>();
@@ -146,9 +150,11 @@ abstract class ClusterTasksDbDataProvider implements ClusterTasksDataProvider {
 				"   AND NOT EXISTS (SELECT 1 FROM " + ACTIVE_NODES_TABLE_NAME + " WHERE " + ACTIVE_NODE_ID + " = " + RUNTIME_INSTANCE + ")" +
 				" FOR UPDATE";
 		removeStaledTasksSQL = "DELETE FROM " + META_TABLE_NAME +
-				" WHERE " + TASK_TYPE + " = " + ClusterTaskType.REGULAR.value +
-				"   AND" + RUNTIME_INSTANCE + " IS NOT NULL" +
+				" WHERE " + RUNTIME_INSTANCE + " IS NOT NULL" +
 				"   AND NOT EXISTS (SELECT 1 FROM " + ACTIVE_NODES_TABLE_NAME + " WHERE " + ACTIVE_NODE_ID + " = " + RUNTIME_INSTANCE + ")";
+
+		countScheduledPendingTasksSQL = "SELECT " + PROCESSOR_TYPE + ",COUNT(*) AS total FROM " + META_TABLE_NAME +
+				" WHERE " + TASK_TYPE + " = " + ClusterTaskType.SCHEDULED.value + " AND " + STATUS + " = " + ClusterTaskStatus.PENDING.value + " GROUP BY " + PROCESSOR_TYPE;
 
 		countTasksByStatusSQL = "SELECT COUNT(*) AS counter," + PROCESSOR_TYPE + " FROM " + META_TABLE_NAME + " WHERE " + STATUS + " = ? GROUP BY " + PROCESSOR_TYPE;
 	}
@@ -242,7 +248,8 @@ abstract class ClusterTasksDbDataProvider implements ClusterTasksDataProvider {
 							.values();
 
 					//  reschedule tasks of SCHEDULED type
-					reinsertScheduledTasks(tasksToReschedule);
+					int rescheduleResult = reinsertScheduledTasks(tasksToReschedule);
+					logger.info("from " + tasksToReschedule.size() + " candidates for reschedule, " + rescheduleResult + " were actually rescheduled");
 
 					//  delete garbage tasks data
 					int removed = jdbcTemplate.update(removeStaledTasksSQL);
@@ -259,6 +266,30 @@ abstract class ClusterTasksDbDataProvider implements ClusterTasksDataProvider {
 		});
 
 		checkAndTruncateBodyTables();
+	}
+
+	@Override
+	public int reinsertScheduledTasks(Collection<TaskInternal> candidatesToReschedule) {
+		int result = 0;
+		Map<String, Integer> pendingCount = getJdbcTemplate().query(countScheduledPendingTasksSQL, this::scheduledPendingReader);
+		List<TaskInternal> tasksToReschedule = new ArrayList<>();
+		candidatesToReschedule.forEach(task -> {
+			if (!pendingCount.containsKey(task.processorType) || pendingCount.get(task.processorType) == 0) {
+				task.uniquenessKey = task.processorType;
+				task.concurrencyKey = task.processorType;
+				task.delayByMillis = 0L;
+				tasksToReschedule.add(task);
+			}
+		});
+		if (!tasksToReschedule.isEmpty()) {
+			ClusterTaskPersistenceResult[] results = storeTasks(tasksToReschedule.toArray(new TaskInternal[0]));
+			for (ClusterTaskPersistenceResult r : results) {
+				if (r.getStatus() == ClusterTaskInsertStatus.SUCCESS) {
+					result++;
+				}
+			}
+		}
+		return result;
 	}
 
 	@Override
@@ -404,40 +435,6 @@ abstract class ClusterTasksDbDataProvider implements ClusterTasksDataProvider {
 		return result;
 	}
 
-	Map<String, Integer> scheduledPendingReader(ResultSet resultSet) throws SQLException {
-		Map<String, Integer> result = new LinkedHashMap<>();
-		while (resultSet.next()) {
-			try {
-				result.put(resultSet.getString(ClusterTasksDbDataProvider.PROCESSOR_TYPE), resultSet.getInt("total"));
-			} catch (SQLException sqle) {
-				logger.error("failed to read cluster task body", sqle);
-			}
-		}
-		resultSet.close();
-		return result;
-	}
-
-	List<TaskInternal> gcCandidatesReader(ResultSet resultSet) throws SQLException {
-		List<TaskInternal> result = new LinkedList<>();
-		while (resultSet.next()) {
-			try {
-				TaskInternal task = new TaskInternal();
-				task.id = resultSet.getLong(ClusterTasksDbDataProvider.META_ID);
-				task.taskType = ClusterTaskType.byValue(resultSet.getLong(ClusterTasksDbDataProvider.TASK_TYPE));
-				Long tmpLong = resultSet.getLong(ClusterTasksDbDataProvider.BODY_PARTITION);
-				if (!resultSet.wasNull()) {
-					task.partitionIndex = tmpLong;
-				}
-				task.processorType = resultSet.getString(ClusterTasksDbDataProvider.PROCESSOR_TYPE);
-				result.add(task);
-			} catch (SQLException sqle) {
-				logger.error("failed to read cluster task body", sqle);
-			}
-		}
-		resultSet.close();
-		return result;
-	}
-
 	long resolveBodyTablePartitionIndex() {
 		int hour = ZonedDateTime.now(ZoneOffset.UTC).getHour();
 		return hour / (24 / PARTITIONS_NUMBER);
@@ -477,6 +474,40 @@ abstract class ClusterTasksDbDataProvider implements ClusterTasksDataProvider {
 		} catch (Exception e) {
 			logger.error("failed to delete Garbage tasks data", e);
 		}
+	}
+
+	private Map<String, Integer> scheduledPendingReader(ResultSet resultSet) throws SQLException {
+		Map<String, Integer> result = new LinkedHashMap<>();
+		while (resultSet.next()) {
+			try {
+				result.put(resultSet.getString(ClusterTasksDbDataProvider.PROCESSOR_TYPE), resultSet.getInt("total"));
+			} catch (SQLException sqle) {
+				logger.error("failed to read cluster task body", sqle);
+			}
+		}
+		resultSet.close();
+		return result;
+	}
+
+	private List<TaskInternal> gcCandidatesReader(ResultSet resultSet) throws SQLException {
+		List<TaskInternal> result = new LinkedList<>();
+		while (resultSet.next()) {
+			try {
+				TaskInternal task = new TaskInternal();
+				task.id = resultSet.getLong(ClusterTasksDbDataProvider.META_ID);
+				task.taskType = ClusterTaskType.byValue(resultSet.getLong(ClusterTasksDbDataProvider.TASK_TYPE));
+				Long tmpLong = resultSet.getLong(ClusterTasksDbDataProvider.BODY_PARTITION);
+				if (!resultSet.wasNull()) {
+					task.partitionIndex = tmpLong;
+				}
+				task.processorType = resultSet.getString(ClusterTasksDbDataProvider.PROCESSOR_TYPE);
+				result.add(task);
+			} catch (SQLException sqle) {
+				logger.error("failed to read cluster task body", sqle);
+			}
+		}
+		resultSet.close();
+		return result;
 	}
 
 	private void checkAndTruncateBodyTables() {

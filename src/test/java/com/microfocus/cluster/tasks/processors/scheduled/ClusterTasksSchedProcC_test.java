@@ -14,13 +14,13 @@ public class ClusterTasksSchedProcC_test extends ClusterTasksProcessorScheduled 
 	public static int tasksCounter = 0;
 
 	protected ClusterTasksSchedProcC_test() {
-		super(ClusterTasksDataProviderType.DB, 12000L);
+		super(ClusterTasksDataProviderType.DB);
 	}
 
 	@Override
 	public void processTask(ClusterTask task) {
 		if (!suspended) {
-			ClusterTasksTestsUtils.sleepSafely(3000);
+			ClusterTasksTestsUtils.waitSafely(3000);
 			tasksCounter++;
 		}
 	}

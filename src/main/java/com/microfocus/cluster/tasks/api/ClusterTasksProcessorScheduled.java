@@ -17,18 +17,12 @@ import com.microfocus.cluster.tasks.api.enums.ClusterTasksDataProviderType;
  */
 
 public abstract class ClusterTasksProcessorScheduled extends ClusterTasksProcessorSimple {
-	private final long maxTimeToRun;
 
-	protected ClusterTasksProcessorScheduled(ClusterTasksDataProviderType dataProviderType, Long maxTimeToRun) {
-		this(dataProviderType, 0, maxTimeToRun);
+	protected ClusterTasksProcessorScheduled(ClusterTasksDataProviderType dataProviderType) {
+		this(dataProviderType, 0);
 	}
 
-	protected ClusterTasksProcessorScheduled(ClusterTasksDataProviderType dataProviderType, Integer minimalTasksTakeInterval, Long maxTimeToRun) {
+	protected ClusterTasksProcessorScheduled(ClusterTasksDataProviderType dataProviderType, Integer minimalTasksTakeInterval) {
 		super(dataProviderType, 1, minimalTasksTakeInterval);
-		this.maxTimeToRun = maxTimeToRun;
-	}
-
-	public long getMaxTimeToRun() {
-		return maxTimeToRun;
 	}
 }

@@ -23,7 +23,7 @@ public class ClusterTasksProcessorUniqueness_test extends ClusterTasksProcessorS
 	@Override
 	public void processTask(ClusterTask task) {
 		if (!draining) {
-			ClusterTasksTestsUtils.sleepSafely(Long.parseLong(task.getBody()));
+			ClusterTasksTestsUtils.waitSafely(Long.parseLong(task.getBody()));
 			bodies.add(task.getBody());
 		}
 	}

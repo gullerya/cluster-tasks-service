@@ -11,7 +11,7 @@ package com.microfocus.cluster.tasks.impl;
 import com.microfocus.cluster.tasks.api.ClusterTasksService;
 import com.microfocus.cluster.tasks.api.ClusterTasksServiceConfigurerSPI;
 import com.microfocus.cluster.tasks.api.dto.ClusterTaskPersistenceResult;
-import com.microfocus.cluster.tasks.api.enums.CTPPersistStatus;
+import com.microfocus.cluster.tasks.api.enums.ClusterTaskInsertStatus;
 import com.microfocus.cluster.tasks.api.enums.ClusterTaskStatus;
 import com.microfocus.cluster.tasks.api.enums.ClusterTaskType;
 import com.microfocus.cluster.tasks.api.errors.CtsGeneralFailure;
@@ -182,15 +182,15 @@ final class PostgreSqlDbDataProvider extends ClusterTasksDbDataProvider {
 						}
 					});
 
-					result.add(new ClusterTaskPersistenceResultImpl(CTPPersistStatus.SUCCESS));
+					result.add(new ClusterTaskPersistenceResultImpl(ClusterTaskInsertStatus.SUCCESS));
 					logger.debug("successfully created " + task);
 				} catch (DuplicateKeyException dke) {
 					transactionStatus.setRollbackOnly();
-					result.add(new ClusterTaskPersistenceResultImpl(CTPPersistStatus.UNIQUE_CONSTRAINT_FAILURE));
+					result.add(new ClusterTaskPersistenceResultImpl(ClusterTaskInsertStatus.UNIQUE_CONSTRAINT_FAILURE));
 					logger.info(clusterTasksService.getInstanceID() + " rejected " + task + " due to uniqueness violation; specifically: " + dke.getMostSpecificCause().getMessage());
 				} catch (Exception e) {
 					transactionStatus.setRollbackOnly();
-					result.add(new ClusterTaskPersistenceResultImpl(CTPPersistStatus.UNEXPECTED_FAILURE));
+					result.add(new ClusterTaskPersistenceResultImpl(ClusterTaskInsertStatus.UNEXPECTED_FAILURE));
 					logger.error(clusterTasksService.getInstanceID() + " failed to persist " + task, e);
 				}
 				return null;
@@ -317,23 +317,6 @@ final class PostgreSqlDbDataProvider extends ClusterTasksDbDataProvider {
 			getJdbcTemplate().update(updateTaskFinishedSQL, new Object[]{taskId}, new int[]{BIGINT});
 		} catch (DataAccessException dae) {
 			logger.error(clusterTasksService.getInstanceID() + " failed to update task finished", dae);
-		}
-	}
-
-	@Override
-	public void reinsertScheduledTasks(Collection<TaskInternal> candidatesToReschedule) {
-		Map<String, Integer> pendingCount = getJdbcTemplate().query(countScheduledPendingTasksSQL, this::scheduledPendingReader);
-		List<TaskInternal> tasksToReschedule = new ArrayList<>();
-		candidatesToReschedule.forEach(task -> {
-			if (!pendingCount.containsKey(task.processorType) || pendingCount.get(task.processorType) == 0) {
-				task.uniquenessKey = task.processorType;
-				task.concurrencyKey = task.processorType;
-				task.delayByMillis = 0L;
-				tasksToReschedule.add(task);
-			}
-		});
-		if (!tasksToReschedule.isEmpty()) {
-			storeTasks(tasksToReschedule.toArray(new TaskInternal[0]));
 		}
 	}
 

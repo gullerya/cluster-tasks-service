@@ -110,8 +110,9 @@ interface ClusterTasksDataProvider {
 	 * Implementation MAY verify whether the tasks are already scheduled or not yet in order to prevent attempt to insert duplicate task
 	 *
 	 * @param candidatesToReschedule list of tasks of type SCHEDULE that should be re-run
+	 * @return actual number of rescheduled tasks
 	 */
-	void reinsertScheduledTasks(Collection<TaskInternal> candidatesToReschedule);
+	int reinsertScheduledTasks(Collection<TaskInternal> candidatesToReschedule);
 
 	/**
 	 * Implementation should provide a counter for all tasks in the specified status existing in the storage grouped be PROCESSOR TYPE

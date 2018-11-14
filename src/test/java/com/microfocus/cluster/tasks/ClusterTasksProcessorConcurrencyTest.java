@@ -88,7 +88,7 @@ public class ClusterTasksProcessorConcurrencyTest extends CTSTestsBase {
 		long timePassed = 0;
 		long pauseInterval = 100;
 		while (clusterTasksProcessorConcurrency_test.tasksProcessed != expectedSize && timePassed < maxTimeToWait) {
-			ClusterTasksTestsUtils.sleepSafely(pauseInterval);
+			ClusterTasksTestsUtils.waitSafely(pauseInterval);
 			timePassed += pauseInterval;
 		}
 		if (clusterTasksProcessorConcurrency_test.tasksProcessed == expectedSize) {

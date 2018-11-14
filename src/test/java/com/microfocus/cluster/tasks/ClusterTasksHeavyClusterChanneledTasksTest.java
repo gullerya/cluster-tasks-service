@@ -74,7 +74,7 @@ public class ClusterTasksHeavyClusterChanneledTasksTest {
 
 		//  [YG] TODO: do better drain out
 		//  let's drain out any old tasks if present
-		ClusterTasksTestsUtils.sleepSafely(2000);
+		ClusterTasksTestsUtils.waitSafely(2000);
 
 		assertEquals(0, ClusterTasksHC_A_test.taskIDs.size());
 		assertEquals(0, ClusterTasksHC_B_test.taskIDs.size());
@@ -149,48 +149,48 @@ public class ClusterTasksHeavyClusterChanneledTasksTest {
 			int cnt = 0;
 			while (ClusterTasksHC_A_test.taskIDs.size() != numberOfNodes * numberOfTasks) {
 				cnt++;
-				ClusterTasksTestsUtils.sleepSafely(100);
+				ClusterTasksTestsUtils.waitSafely(100);
 				if (cnt % 1000 == 0) {
 					logger.info(cnt / 10 + " secs passed, processed " + ClusterTasksHC_A_test.taskIDs.size() + " of " + numberOfNodes * numberOfTasks + " per processor");
 				}
 			}
-			ClusterTasksTestsUtils.sleepSafely(1000);   //  verify no more interactions
+			ClusterTasksTestsUtils.waitSafely(1000);   //  verify no more interactions
 			assertEquals(numberOfNodes * numberOfTasks, ClusterTasksHC_A_test.taskIDs.size());
 			logger.info("ClusterTasksHC_A_test DONE with " + numberOfNodes * numberOfTasks + " (for all " + numberOfNodes + " nodes)");
 			waitForAllTasksDone.countDown();
 		});
 		tasksDonePool.execute(() -> {
 			while (ClusterTasksHC_B_test.taskIDs.size() != numberOfNodes * numberOfTasks) {
-				ClusterTasksTestsUtils.sleepSafely(100);
+				ClusterTasksTestsUtils.waitSafely(100);
 			}
-			ClusterTasksTestsUtils.sleepSafely(1000);   //  verify no more interactions
+			ClusterTasksTestsUtils.waitSafely(1000);   //  verify no more interactions
 			assertEquals(numberOfNodes * numberOfTasks, ClusterTasksHC_B_test.taskIDs.size());
 			logger.info("ClusterTasksHC_B_test DONE with " + numberOfNodes * numberOfTasks + " (for all " + numberOfNodes + " nodes)");
 			waitForAllTasksDone.countDown();
 		});
 		tasksDonePool.execute(() -> {
 			while (ClusterTasksHC_C_test.taskIDs.size() != numberOfNodes * numberOfTasks) {
-				ClusterTasksTestsUtils.sleepSafely(100);
+				ClusterTasksTestsUtils.waitSafely(100);
 			}
-			ClusterTasksTestsUtils.sleepSafely(1000);   //  verify no more interactions
+			ClusterTasksTestsUtils.waitSafely(1000);   //  verify no more interactions
 			assertEquals(numberOfNodes * numberOfTasks, ClusterTasksHC_C_test.taskIDs.size());
 			logger.info("ClusterTasksHC_C_test DONE with " + numberOfNodes * numberOfTasks + " (for all " + numberOfNodes + " nodes)");
 			waitForAllTasksDone.countDown();
 		});
 		tasksDonePool.execute(() -> {
 			while (ClusterTasksHC_D_test.taskIDs.size() != numberOfNodes * numberOfTasks) {
-				ClusterTasksTestsUtils.sleepSafely(100);
+				ClusterTasksTestsUtils.waitSafely(100);
 			}
-			ClusterTasksTestsUtils.sleepSafely(1000);   //  verify no more interactions
+			ClusterTasksTestsUtils.waitSafely(1000);   //  verify no more interactions
 			assertEquals(numberOfNodes * numberOfTasks, ClusterTasksHC_D_test.taskIDs.size());
 			logger.info("ClusterTasksHC_D_test DONE with " + numberOfNodes * numberOfTasks + " (for all " + numberOfNodes + " nodes)");
 			waitForAllTasksDone.countDown();
 		});
 		tasksDonePool.execute(() -> {
 			while (ClusterTasksHC_E_test.taskIDs.size() != numberOfNodes * numberOfTasks) {
-				ClusterTasksTestsUtils.sleepSafely(100);
+				ClusterTasksTestsUtils.waitSafely(100);
 			}
-			ClusterTasksTestsUtils.sleepSafely(1000);   //  verify no more interactions
+			ClusterTasksTestsUtils.waitSafely(1000);   //  verify no more interactions
 			assertEquals(numberOfNodes * numberOfTasks, ClusterTasksHC_E_test.taskIDs.size());
 			logger.info("ClusterTasksHC_E_test DONE with " + numberOfNodes * numberOfTasks + " (for all " + numberOfNodes + " nodes)");
 			waitForAllTasksDone.countDown();
