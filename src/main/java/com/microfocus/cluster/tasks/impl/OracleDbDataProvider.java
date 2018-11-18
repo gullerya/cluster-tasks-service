@@ -55,6 +55,7 @@ final class OracleDbDataProvider extends ClusterTasksDbDataProvider {
 
 	private final String insertTaskWithoutBodySQL;
 	private final Map<Long, String> insertTaskWithBodySQL = new LinkedHashMap<>();
+	private final String lockMetadataTable;
 	private final Map<Integer, String> selectForUpdateTasksSQLs = new LinkedHashMap<>();
 	private final Map<Long, String> selectTaskBodyByPartitionSQLs = new LinkedHashMap<>();
 
@@ -80,21 +81,19 @@ final class OracleDbDataProvider extends ClusterTasksDbDataProvider {
 		insertTaskWithoutBodySQL = "INSERT INTO " + META_TABLE_NAME + " (" + insertFields + ")" +
 				" VALUES (" + CLUSTER_TASK_ID_SEQUENCE + ".NEXTVAL, ?, ?, ?, ?, ?, ?, COALESCE(?, TO_NUMBER(TO_CHAR(SYSTIMESTAMP,'yyyymmddhh24missff3')) + ?), SYSDATE, " + ClusterTaskStatus.PENDING.value + ")";
 
+		lockMetadataTable = "LOCK TABLE " + META_TABLE_NAME + " IN EXCLUSIVE MODE";
 		String selectForRunFields = String.join(",", META_ID, TASK_TYPE, PROCESSOR_TYPE, UNIQUENESS_KEY, CONCURRENCY_KEY, ORDERING_FACTOR, DELAY_BY_MILLIS, BODY_PARTITION, STATUS);
 		for (int maxProcessorTypes : new Integer[]{20, 50, 100, 500}) {
 			String processorTypesInParameter = String.join(",", Collections.nCopies(maxProcessorTypes, "?"));
-			selectForUpdateTasksSQLs.put(maxProcessorTypes, "SELECT " + selectForRunFields +
-					" FROM /*+ INDEX(CTSKM_IDX_5) */ " + META_TABLE_NAME + " WHERE ROWID IN " +
-					"   (SELECT row_id FROM" +
-					"       (SELECT ROWID AS row_id," +
-					"               ROW_NUMBER() OVER (PARTITION BY COALESCE(" + CONCURRENCY_KEY + ",RAWTOHEX(SYS_GUID())) ORDER BY " + ORDERING_FACTOR + "," + CREATED + "," + META_ID + " ASC) AS row_index," +
-					"               COUNT(CASE WHEN " + STATUS + " = " + ClusterTaskStatus.RUNNING.value + " THEN 1 ELSE NULL END) OVER (PARTITION BY COALESCE(" + CONCURRENCY_KEY + ",RAWTOHEX(SYS_GUID()))) AS running_count" +
-					"       FROM /*+ INDEX(CTSKM_IDX_5) */ " + META_TABLE_NAME +
-					"       WHERE " + PROCESSOR_TYPE + " IN(" + processorTypesInParameter + ")" +
-					"           AND " + STATUS + " < " + ClusterTaskStatus.FINISHED.value +
-					"           AND " + CREATED + " < SYSDATE - NUMTODSINTERVAL(" + DELAY_BY_MILLIS + " / 1000, 'SECOND')) meta" +
-					"   WHERE meta.row_index <= 1 AND meta.running_count = 0) ORDER BY ROWID" +
-					" FOR UPDATE");
+			selectForUpdateTasksSQLs.put(maxProcessorTypes, "SELECT * FROM" +
+					"   (SELECT " + selectForRunFields + "," +
+					"       ROW_NUMBER() OVER (PARTITION BY COALESCE(" + CONCURRENCY_KEY + ",RAWTOHEX(SYS_GUID())) ORDER BY " + ORDERING_FACTOR + "," + CREATED + "," + META_ID + " ASC) AS row_index," +
+					"       COUNT(CASE WHEN " + STATUS + " = " + ClusterTaskStatus.RUNNING.value + " THEN 1 ELSE NULL END) OVER (PARTITION BY COALESCE(" + CONCURRENCY_KEY + ",RAWTOHEX(SYS_GUID()))) AS running_count" +
+					"   FROM /*+ INDEX(CTSKM_IDX_5) */ " + META_TABLE_NAME +
+					"   WHERE " + PROCESSOR_TYPE + " IN(" + processorTypesInParameter + ")" +
+					"       AND " + STATUS + " < " + ClusterTaskStatus.FINISHED.value +
+					"       AND " + CREATED + " < SYSDATE - NUMTODSINTERVAL(" + DELAY_BY_MILLIS + " / 1000, 'SECOND')) meta" +
+					" WHERE meta.row_index <= 1 AND meta.running_count = 0");
 		}
 		for (long partition = 0; partition < PARTITIONS_NUMBER; partition++) {
 			selectTaskBodyByPartitionSQLs.put(partition, "SELECT " + BODY + " FROM " + BODY_TABLE_NAME + partition +
@@ -274,6 +273,7 @@ final class OracleDbDataProvider extends ClusterTasksDbDataProvider {
 				for (int i = 0; i < paramsTotal; i++) paramTypes[i] = Types.NVARCHAR;
 
 				List<TaskInternal> tasks;
+				jdbcTemplate.execute(lockMetadataTable);
 				tasks = jdbcTemplate.query(sql, params, paramTypes, this::tasksMetadataReader);
 				if (!tasks.isEmpty()) {
 					Map<String, List<TaskInternal>> tasksByProcessor = tasks.stream().collect(Collectors.groupingBy(ti -> ti.processorType));
