@@ -69,12 +69,22 @@ class ClusterTasksProcessorWorker implements Runnable {
 	@Override
 	public void run() {
 		if (task.partitionIndex != null) {
-			try {
-				task.body = dataProvider.retrieveTaskBody(task.id, task.partitionIndex);
-				logger.debug(task + " has body: " + task.body);
-			} catch (Throwable t) {
-				logger.error("failed to retrieve body of the " + task + ", aborting task's execution", t);
-				ctsOwnErrorsCounter.labels(BODY_RETRIEVAL_PHASE, t.getClass().getSimpleName()).inc();                   //  metric
+			boolean done = false;
+			int attempts = 0;
+			int maxAttempts = 3;
+			do {
+				attempts++;
+				try {
+					task.body = dataProvider.retrieveTaskBody(task.id, task.partitionIndex);
+					done = true;
+					logger.debug(task + " has body: " + task.body);
+				} catch (Throwable t) {
+					logger.error("failed to retrieve body of the " + task + ", attempt/s " + attempts + " out of max " + maxAttempts, t);
+					ctsOwnErrorsCounter.labels(BODY_RETRIEVAL_PHASE, t.getClass().getSimpleName()).inc();                   //  metric
+				}
+			} while (!done && attempts < maxAttempts);
+			if (!done) {
+				logger.error("finally failed to retrieve body of the " + task + ", aborting task execution");
 				return;
 			}
 		} else {
