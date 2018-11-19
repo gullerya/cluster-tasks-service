@@ -48,6 +48,8 @@ public class ClusterTasksServiceConfigurerForTestsSPI implements ClusterTasksSer
 
 		dataSource = hikariDataSource;
 		configReadyLatch.complete(true);
+
+		Runtime.getRuntime().addShutdownHook(new Thread(hikariDataSource::close));
 	}
 
 	@Override
