@@ -50,15 +50,6 @@ public class ClusterTasksServiceConfigurerForTestsSPI implements ClusterTasksSer
 		dataSource = hikariDataSource;
 		System.out.println("connections pool is ready");
 		configReadyLatch.complete(true);
-
-		Runtime.getRuntime().addShutdownHook(new Thread(() -> {
-			if (!hikariDataSource.isClosed()) {
-				System.out.println("closing connections pool...");
-				hikariDataSource.close();
-				ClusterTasksTestsUtils.waitSafely(7000);
-				System.out.println("connections pool closed");
-			}
-		}));
 	}
 
 	@Override
