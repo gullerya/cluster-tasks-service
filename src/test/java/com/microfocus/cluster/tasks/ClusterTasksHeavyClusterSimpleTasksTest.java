@@ -45,8 +45,8 @@ public class ClusterTasksHeavyClusterSimpleTasksTest {
 	public void TestA_heavy_cluster() throws InterruptedException {
 		//  load contexts to simulate cluster of a multiple nodes
 		CountDownLatch waitForAllInit = new CountDownLatch(numberOfNodes);
-		List<ApplicationContext> contexts = new LinkedList<>();
-		ApplicationContext context;
+		List<ClassPathXmlApplicationContext> contexts = new LinkedList<>();
+		ClassPathXmlApplicationContext context;
 		for (int i = 0; i < numberOfNodes; i++) {
 			context = new ClassPathXmlApplicationContext(
 					"/cluster-tasks-heavy-cluster-context-test.xml"
@@ -186,10 +186,9 @@ public class ClusterTasksHeavyClusterSimpleTasksTest {
 		logger.info(numberOfNodes * numberOfTasks * 5 + " tasks have been processed in " + timeToDone + "ms; average of " + ((double) timeToDone / (numberOfNodes * numberOfTasks * 5)) + "ms for task");
 
 		//  stop all CTS instances
-		contexts.forEach(c ->
-				c
-						.getBean(ClusterTasksService.class)
-						.stop()
-		);
+		contexts.forEach(c -> {
+			c.getBean(ClusterTasksService.class).stop();
+			c.close();
+		});
 	}
 }

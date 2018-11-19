@@ -2,6 +2,7 @@ package com.microfocus.cluster.tasks;
 
 import com.microfocus.cluster.tasks.api.ClusterTasksServiceConfigurerSPI;
 import com.zaxxer.hikari.HikariDataSource;
+import org.springframework.beans.factory.DisposableBean;
 
 import javax.sql.DataSource;
 import java.io.FileInputStream;
@@ -13,10 +14,10 @@ import static com.microfocus.cluster.tasks.api.ClusterTasksServiceConfigurerSPI.
 import static com.microfocus.cluster.tasks.api.ClusterTasksServiceConfigurerSPI.DBType.ORACLE;
 import static com.microfocus.cluster.tasks.api.ClusterTasksServiceConfigurerSPI.DBType.POSTGRESQL;
 
-public class ClusterTasksServiceConfigurerForTestsSPI implements ClusterTasksServiceConfigurerSPI {
+public class ClusterTasksServiceConfigurerForTestsSPI implements ClusterTasksServiceConfigurerSPI, DisposableBean {
 	private final CompletableFuture<Boolean> configReadyLatch = new CompletableFuture<>();
 	private final DBType dbType;
-	private final DataSource dataSource;
+	private final HikariDataSource dataSource;
 
 	private ClusterTasksServiceConfigurerForTestsSPI() throws IOException {
 		Properties dbConfig = resolveConfigProperties();
@@ -47,13 +48,16 @@ public class ClusterTasksServiceConfigurerForTestsSPI implements ClusterTasksSer
 		hikariDataSource.validate();
 
 		dataSource = hikariDataSource;
+		System.out.println("connections pool is ready");
 		configReadyLatch.complete(true);
 
 		Runtime.getRuntime().addShutdownHook(new Thread(() -> {
-			System.out.println("closing connections pool...");
-			hikariDataSource.close();
-			ClusterTasksTestsUtils.waitSafely(10000);
-			System.out.println("connections pool closed");
+			if (!hikariDataSource.isClosed()) {
+				System.out.println("closing connections pool...");
+				hikariDataSource.close();
+				ClusterTasksTestsUtils.waitSafely(7000);
+				System.out.println("connections pool closed");
+			}
 		}));
 	}
 
@@ -117,5 +121,12 @@ public class ClusterTasksServiceConfigurerForTestsSPI implements ClusterTasksSer
 		}
 
 		return result;
+	}
+
+	@Override
+	public void destroy() {
+		System.out.println("closing connections pool...");
+		dataSource.close();
+		System.out.println("connections pool closed");
 	}
 }
