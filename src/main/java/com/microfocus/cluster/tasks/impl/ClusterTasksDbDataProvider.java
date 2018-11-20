@@ -153,7 +153,7 @@ abstract class ClusterTasksDbDataProvider implements ClusterTasksDataProvider {
 		countTasksByStatusSQL = "SELECT COUNT(*) AS counter," + PROCESSOR_TYPE + " FROM " + META_TABLE_NAME + " WHERE " + STATUS + " = ? GROUP BY " + PROCESSOR_TYPE;
 	}
 
-	abstract String getSelectStaledTasksSQL();
+	abstract String[] getSelectStaledTasksSQL();
 
 	@Override
 	public ClusterTasksDataProviderType getType() {
@@ -234,7 +234,15 @@ abstract class ClusterTasksDbDataProvider implements ClusterTasksDataProvider {
 		getTransactionTemplate().execute(transactionStatus -> {
 			try {
 				JdbcTemplate jdbcTemplate = getJdbcTemplate();
-				List<TaskInternal> gcCandidates = jdbcTemplate.query(getSelectStaledTasksSQL(), this::gcCandidatesReader);
+				String[] sqls = getSelectStaledTasksSQL();
+				String selectStaledSQL;
+				if (sqls.length == 2) {
+					jdbcTemplate.execute(sqls[0]);
+					selectStaledSQL = sqls[1];
+				} else {
+					selectStaledSQL = sqls[0];
+				}
+				List<TaskInternal> gcCandidates = jdbcTemplate.query(selectStaledSQL, this::gcCandidatesReader);
 				if (!gcCandidates.isEmpty()) {
 					logger.info("found " + gcCandidates.size() + " re-runnable tasks as staled, processing...");
 

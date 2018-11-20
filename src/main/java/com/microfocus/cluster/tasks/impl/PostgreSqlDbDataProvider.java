@@ -54,13 +54,14 @@ final class PostgreSqlDbDataProvider extends ClusterTasksDbDataProvider {
 	private final String removeLongTimeNoSeeSQL;
 
 	private final String insertTaskSQL;
-	private final String lockMetadataTable;
+	private final String lockForSelectForRunTasksSQL;
 	private final Map<Integer, String> selectForUpdateTasksSQLs = new HashMap<>();
 	private final Map<Long, String> selectTaskBodyByPartitionSQLs = new HashMap<>();
 
 	private final String updateTasksStartedSQL;
 	private final String updateTaskFinishedSQL;
 
+	private final String lockForSelectForCleanTasksSQL;
 	private final String selectStaledTasksSQL;
 
 	PostgreSqlDbDataProvider(ClusterTasksService clusterTasksService, ClusterTasksServiceConfigurerSPI serviceConfigurer) {
@@ -78,7 +79,7 @@ final class PostgreSqlDbDataProvider extends ClusterTasksDbDataProvider {
 
 		insertTaskSQL = "SELECT insert_task(" + String.join(",", Collections.nCopies(8, "?")) + ")";
 
-		lockMetadataTable = "SELECT pg_advisory_xact_lock(1, 1)";
+		lockForSelectForRunTasksSQL = "SELECT pg_advisory_xact_lock(1, 1)";
 		String selectForRunFields = String.join(",", META_ID, TASK_TYPE, PROCESSOR_TYPE, UNIQUENESS_KEY, CONCURRENCY_KEY, ORDERING_FACTOR, DELAY_BY_MILLIS, BODY_PARTITION, STATUS);
 		for (int maxProcessorTypes : new Integer[]{20, 50, 100, 500}) {
 			String processorTypesInParameter = String.join(",", Collections.nCopies(maxProcessorTypes, "?"));
@@ -103,16 +104,16 @@ final class PostgreSqlDbDataProvider extends ClusterTasksDbDataProvider {
 		updateTaskFinishedSQL = "UPDATE " + META_TABLE_NAME + " SET " + String.join(",", STATUS + " = " + ClusterTaskStatus.FINISHED.value, UNIQUENESS_KEY + " = MD5(RANDOM()::TEXT || CLOCK_TIMESTAMP()::TEXT)") +
 				" WHERE " + META_ID + " = ?";
 
+		lockForSelectForCleanTasksSQL = "SELECT pg_advisory_xact_lock(1, 2)";
 		String selectedForGCFields = String.join(",", META_ID, BODY_PARTITION, TASK_TYPE, PROCESSOR_TYPE, STATUS);
 		selectStaledTasksSQL = "SELECT " + selectedForGCFields + " FROM " + META_TABLE_NAME +
 				" WHERE " + RUNTIME_INSTANCE + " IS NOT NULL" +
-				"   AND NOT EXISTS (SELECT 1 FROM " + ACTIVE_NODES_TABLE_NAME + " WHERE " + ACTIVE_NODE_ID + " = " + RUNTIME_INSTANCE + ")" +
-				" FOR UPDATE";
+				"   AND NOT EXISTS (SELECT 1 FROM " + ACTIVE_NODES_TABLE_NAME + " WHERE " + ACTIVE_NODE_ID + " = " + RUNTIME_INSTANCE + ")";
 	}
 
 	@Override
-	String getSelectStaledTasksSQL() {
-		return selectStaledTasksSQL;
+	String[] getSelectStaledTasksSQL() {
+		return new String[]{lockForSelectForCleanTasksSQL, selectStaledTasksSQL};
 	}
 
 	@Override
@@ -241,7 +242,7 @@ final class PostgreSqlDbDataProvider extends ClusterTasksDbDataProvider {
 				for (int i = 0; i < paramsTotal; i++) paramTypes[i] = Types.VARCHAR;
 
 				List<TaskInternal> tasks;
-				jdbcTemplate.execute(lockMetadataTable);
+				jdbcTemplate.execute(lockForSelectForRunTasksSQL);
 				tasks = jdbcTemplate.query(sql, params, paramTypes, this::tasksMetadataReader);
 				if (!tasks.isEmpty()) {
 					Map<String, List<TaskInternal>> tasksByProcessor = tasks.stream().collect(Collectors.groupingBy(ti -> ti.processorType));

@@ -122,8 +122,8 @@ final class OracleDbDataProvider extends ClusterTasksDbDataProvider {
 	}
 
 	@Override
-	String getSelectStaledTasksSQL() {
-		return selectStaledTasksSQL;
+	String[] getSelectStaledTasksSQL() {
+		return new String[]{selectStaledTasksSQL};
 	}
 
 	@Override
