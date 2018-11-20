@@ -48,7 +48,6 @@ public class ClusterTasksServiceConfigurerForTestsSPI implements ClusterTasksSer
 		hikariDataSource.validate();
 
 		dataSource = hikariDataSource;
-		System.out.println("connections pool is ready");
 		configReadyLatch.complete(true);
 	}
 

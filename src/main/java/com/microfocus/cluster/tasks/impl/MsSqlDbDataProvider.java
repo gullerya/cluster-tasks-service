@@ -60,6 +60,8 @@ final class MsSqlDbDataProvider extends ClusterTasksDbDataProvider {
 	private final String updateTasksStartedSQL;
 	private final String updateTaskFinishedSQL;
 
+	private final String selectStaledTasksSQL;
+
 	MsSqlDbDataProvider(ClusterTasksService clusterTasksService, ClusterTasksServiceConfigurerSPI serviceConfigurer) {
 		super(clusterTasksService, serviceConfigurer);
 
@@ -86,7 +88,7 @@ final class MsSqlDbDataProvider extends ClusterTasksDbDataProvider {
 					"       (SELECT " + selectFields + "," +
 					"               ROW_NUMBER() OVER (PARTITION BY COALESCE(" + CONCURRENCY_KEY + ",CAST(NEWID() AS VARCHAR(36))) ORDER BY " + ORDERING_FACTOR + "," + CREATED + "," + META_ID + " ASC) AS row_index," +
 					"               COUNT(CASE WHEN " + STATUS + " = " + ClusterTaskStatus.RUNNING.value + " THEN 1 ELSE NULL END) OVER (PARTITION BY COALESCE(" + CONCURRENCY_KEY + ",CAST(NEWID() AS VARCHAR(36)))) AS running_count" +
-					"       FROM " + META_TABLE_NAME + " WITH (UPDLOCK,TABLOCK)" +
+					"       FROM " + META_TABLE_NAME + " WITH(UPDLOCK,TABLOCK)" +
 					"       WHERE " + PROCESSOR_TYPE + " IN(" + processorTypesInParameter + ")" +
 					"           AND " + STATUS + " < " + ClusterTaskStatus.FINISHED.value +
 					"           AND " + CREATED + " < DATEADD(MILLISECOND, -" + DELAY_BY_MILLIS + ", GETDATE())) meta" +
@@ -106,6 +108,17 @@ final class MsSqlDbDataProvider extends ClusterTasksDbDataProvider {
 				" WHERE " + META_ID + " = ?";
 		updateTaskFinishedSQL = "UPDATE " + META_TABLE_NAME + " SET " + String.join(",", STATUS + " = " + ClusterTaskStatus.FINISHED.value, UNIQUENESS_KEY + " = CAST(NEWID() AS VARCHAR(36))") +
 				" WHERE " + META_ID + " = ?";
+
+		String selectedForGCFields = String.join(",", META_ID, BODY_PARTITION, TASK_TYPE, PROCESSOR_TYPE, STATUS);
+		selectStaledTasksSQL = "SELECT " + selectedForGCFields + " FROM " + META_TABLE_NAME + " WITH(UPDLOCK)" +
+				" WHERE " + RUNTIME_INSTANCE + " IS NOT NULL" +
+				"   AND NOT EXISTS (SELECT 1 FROM " + ACTIVE_NODES_TABLE_NAME + " WHERE " + ACTIVE_NODE_ID + " = " + RUNTIME_INSTANCE + ")" +
+				" FOR UPDATE";
+	}
+
+	@Override
+	String getSelectStaledTasksSQL() {
+		return selectStaledTasksSQL;
 	}
 
 	@Override

@@ -62,6 +62,8 @@ final class OracleDbDataProvider extends ClusterTasksDbDataProvider {
 	private final String updateTasksStartedSQL;
 	private final String updateTaskFinishedSQL;
 
+	private final String selectStaledTasksSQL;
+
 	OracleDbDataProvider(ClusterTasksService clusterTasksService, ClusterTasksServiceConfigurerSPI serviceConfigurer) {
 		super(clusterTasksService, serviceConfigurer);
 
@@ -110,6 +112,17 @@ final class OracleDbDataProvider extends ClusterTasksDbDataProvider {
 				" WHERE " + META_ID + " = ?";
 		updateTaskFinishedSQL = "UPDATE " + META_TABLE_NAME + " SET " + String.join(",", STATUS + " = " + ClusterTaskStatus.FINISHED.value, UNIQUENESS_KEY + " = RAWTOHEX(SYS_GUID())") +
 				" WHERE " + META_ID + " = ?";
+
+		String selectedForGCFields = String.join(",", META_ID, BODY_PARTITION, TASK_TYPE, PROCESSOR_TYPE, STATUS);
+		selectStaledTasksSQL = "SELECT " + selectedForGCFields + " FROM " + META_TABLE_NAME +
+				" WHERE " + RUNTIME_INSTANCE + " IS NOT NULL" +
+				"   AND NOT EXISTS (SELECT 1 FROM " + ACTIVE_NODES_TABLE_NAME + " WHERE " + ACTIVE_NODE_ID + " = " + RUNTIME_INSTANCE + ")" +
+				" FOR UPDATE";
+	}
+
+	@Override
+	String getSelectStaledTasksSQL() {
+		return selectStaledTasksSQL;
 	}
 
 	@Override
@@ -182,9 +195,9 @@ final class OracleDbDataProvider extends ClusterTasksDbDataProvider {
 						paramTypes = new int[]{
 								Types.CLOB,                 //  task body -  will be used only if actually has body
 								Types.BIGINT,               //  task type
-								Types.VARCHAR,              //  processor type
-								Types.VARCHAR,              //  uniqueness key
-								Types.VARCHAR,              //  concurrency key
+								VARCHAR,              //  processor type
+								VARCHAR,              //  uniqueness key
+								VARCHAR,              //  concurrency key
 								Types.BIGINT,               //  delay by millis
 								Types.BIGINT,               //  partition index
 								Types.BIGINT,               //  ordering factor
@@ -204,9 +217,9 @@ final class OracleDbDataProvider extends ClusterTasksDbDataProvider {
 						};
 						paramTypes = new int[]{
 								Types.BIGINT,               //  task type
-								Types.VARCHAR,              //  processor type
-								Types.VARCHAR,              //  uniqueness key
-								Types.VARCHAR,              //  concurrency key
+								VARCHAR,              //  processor type
+								VARCHAR,              //  uniqueness key
+								VARCHAR,              //  concurrency key
 								Types.BIGINT,               //  delay by millis
 								Types.BIGINT,               //  partition index
 								Types.BIGINT,               //  ordering factor
@@ -358,10 +371,10 @@ final class OracleDbDataProvider extends ClusterTasksDbDataProvider {
 	@Override
 	public void updateSelfLastSeen(String nodeId) {
 		try {
-			int updated = getJdbcTemplate().update(updateSelfLastSeenSQL, new Object[]{nodeId}, new int[]{Types.VARCHAR});
+			int updated = getJdbcTemplate().update(updateSelfLastSeenSQL, new Object[]{nodeId}, new int[]{VARCHAR});
 			if (updated == 0) {
 				logger.info("node " + nodeId + " activity was NOT UPDATED, performing initial registration...");
-				int affected = getJdbcTemplate().update(insertSelfLastSeenSQL, new Object[]{nodeId}, new int[]{Types.VARCHAR});
+				int affected = getJdbcTemplate().update(insertSelfLastSeenSQL, new Object[]{nodeId}, new int[]{VARCHAR});
 				if (affected != 1) {
 					logger.warn("expected to see exactly 1 record affected while registering " + nodeId + ", yet actual result is " + affected);
 				} else {

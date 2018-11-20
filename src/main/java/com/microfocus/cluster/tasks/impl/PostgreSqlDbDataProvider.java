@@ -13,7 +13,6 @@ import com.microfocus.cluster.tasks.api.ClusterTasksServiceConfigurerSPI;
 import com.microfocus.cluster.tasks.api.dto.ClusterTaskPersistenceResult;
 import com.microfocus.cluster.tasks.api.enums.ClusterTaskInsertStatus;
 import com.microfocus.cluster.tasks.api.enums.ClusterTaskStatus;
-import com.microfocus.cluster.tasks.api.enums.ClusterTaskType;
 import com.microfocus.cluster.tasks.api.errors.CtsGeneralFailure;
 import com.microfocus.cluster.tasks.api.errors.CtsSqlFailure;
 import org.slf4j.Logger;
@@ -61,7 +60,7 @@ final class PostgreSqlDbDataProvider extends ClusterTasksDbDataProvider {
 	private final String updateTasksStartedSQL;
 	private final String updateTaskFinishedSQL;
 
-	private final String countScheduledPendingTasksSQL;
+	private final String selectStaledTasksSQL;
 
 	PostgreSqlDbDataProvider(ClusterTasksService clusterTasksService, ClusterTasksServiceConfigurerSPI serviceConfigurer) {
 		super(clusterTasksService, serviceConfigurer);
@@ -104,8 +103,16 @@ final class PostgreSqlDbDataProvider extends ClusterTasksDbDataProvider {
 		updateTaskFinishedSQL = "UPDATE " + META_TABLE_NAME + " SET " + String.join(",", STATUS + " = " + ClusterTaskStatus.FINISHED.value, UNIQUENESS_KEY + " = MD5(RANDOM()::TEXT || CLOCK_TIMESTAMP()::TEXT)") +
 				" WHERE " + META_ID + " = ?";
 
-		countScheduledPendingTasksSQL = "SELECT " + PROCESSOR_TYPE + ",COUNT(*) AS total FROM " + META_TABLE_NAME +
-				" WHERE " + TASK_TYPE + " = " + ClusterTaskType.SCHEDULED.value + " AND " + STATUS + " = " + ClusterTaskStatus.PENDING.value + " GROUP BY " + PROCESSOR_TYPE;
+		String selectedForGCFields = String.join(",", META_ID, BODY_PARTITION, TASK_TYPE, PROCESSOR_TYPE, STATUS);
+		selectStaledTasksSQL = "SELECT " + selectedForGCFields + " FROM " + META_TABLE_NAME +
+				" WHERE " + RUNTIME_INSTANCE + " IS NOT NULL" +
+				"   AND NOT EXISTS (SELECT 1 FROM " + ACTIVE_NODES_TABLE_NAME + " WHERE " + ACTIVE_NODE_ID + " = " + RUNTIME_INSTANCE + ")" +
+				" FOR UPDATE";
+	}
+
+	@Override
+	String getSelectStaledTasksSQL() {
+		return selectStaledTasksSQL;
 	}
 
 	@Override

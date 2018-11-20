@@ -100,7 +100,6 @@ abstract class ClusterTasksDbDataProvider implements ClusterTasksDataProvider {
 	private final Map<Long, String> removeDanglingBodiesSQLs = new HashMap<>();
 	private final int removeDanglingBodiesBulkSize = 50;
 
-	private final String selectStaledTasksSQL;
 	private final String removeStaledTasksSQL;
 
 	private final String countScheduledPendingTasksSQL;
@@ -144,11 +143,6 @@ abstract class ClusterTasksDbDataProvider implements ClusterTasksDataProvider {
 			countTaskBodiesByPartitionSQLs.put(partition, "SELECT COUNT(*) AS counter FROM " + BODY_TABLE_NAME + partition);
 		}
 
-		String selectedForGCFields = String.join(",", META_ID, BODY_PARTITION, TASK_TYPE, PROCESSOR_TYPE, STATUS);
-		selectStaledTasksSQL = "SELECT " + selectedForGCFields + " FROM " + META_TABLE_NAME +
-				" WHERE " + RUNTIME_INSTANCE + " IS NOT NULL" +
-				"   AND NOT EXISTS (SELECT 1 FROM " + ACTIVE_NODES_TABLE_NAME + " WHERE " + ACTIVE_NODE_ID + " = " + RUNTIME_INSTANCE + ")" +
-				" FOR UPDATE";
 		removeStaledTasksSQL = "DELETE FROM " + META_TABLE_NAME +
 				" WHERE " + RUNTIME_INSTANCE + " IS NOT NULL" +
 				"   AND NOT EXISTS (SELECT 1 FROM " + ACTIVE_NODES_TABLE_NAME + " WHERE " + ACTIVE_NODE_ID + " = " + RUNTIME_INSTANCE + ")";
@@ -158,6 +152,8 @@ abstract class ClusterTasksDbDataProvider implements ClusterTasksDataProvider {
 
 		countTasksByStatusSQL = "SELECT COUNT(*) AS counter," + PROCESSOR_TYPE + " FROM " + META_TABLE_NAME + " WHERE " + STATUS + " = ? GROUP BY " + PROCESSOR_TYPE;
 	}
+
+	abstract String getSelectStaledTasksSQL();
 
 	@Override
 	public ClusterTasksDataProviderType getType() {
@@ -238,7 +234,7 @@ abstract class ClusterTasksDbDataProvider implements ClusterTasksDataProvider {
 		getTransactionTemplate().execute(transactionStatus -> {
 			try {
 				JdbcTemplate jdbcTemplate = getJdbcTemplate();
-				List<TaskInternal> gcCandidates = jdbcTemplate.query(selectStaledTasksSQL, this::gcCandidatesReader);
+				List<TaskInternal> gcCandidates = jdbcTemplate.query(getSelectStaledTasksSQL(), this::gcCandidatesReader);
 				if (!gcCandidates.isEmpty()) {
 					logger.info("found " + gcCandidates.size() + " re-runnable tasks as staled, processing...");
 
@@ -391,20 +387,20 @@ abstract class ClusterTasksDbDataProvider implements ClusterTasksDataProvider {
 		while (resultSet.next()) {
 			try {
 				tmpTask = new TaskInternal();
-				tmpTask.id = resultSet.getLong(ClusterTasksDbDataProvider.META_ID);
-				tmpTask.taskType = ClusterTaskType.byValue(resultSet.getLong(ClusterTasksDbDataProvider.TASK_TYPE));
-				tmpTask.processorType = resultSet.getString(ClusterTasksDbDataProvider.PROCESSOR_TYPE);
-				tmpTask.uniquenessKey = resultSet.getString(ClusterTasksDbDataProvider.UNIQUENESS_KEY);
-				tmpString = resultSet.getString(ClusterTasksDbDataProvider.CONCURRENCY_KEY);
+				tmpTask.id = resultSet.getLong(META_ID);
+				tmpTask.taskType = ClusterTaskType.byValue(resultSet.getLong(TASK_TYPE));
+				tmpTask.processorType = resultSet.getString(PROCESSOR_TYPE);
+				tmpTask.uniquenessKey = resultSet.getString(UNIQUENESS_KEY);
+				tmpString = resultSet.getString(CONCURRENCY_KEY);
 				if (!resultSet.wasNull()) {
 					tmpTask.concurrencyKey = tmpString;
 				}
-				tmpLong = resultSet.getLong(ClusterTasksDbDataProvider.ORDERING_FACTOR);
+				tmpLong = resultSet.getLong(ORDERING_FACTOR);
 				if (!resultSet.wasNull()) {
 					tmpTask.orderingFactor = tmpLong;
 				}
-				tmpTask.delayByMillis = resultSet.getLong(ClusterTasksDbDataProvider.DELAY_BY_MILLIS);
-				tmpLong = resultSet.getLong(ClusterTasksDbDataProvider.BODY_PARTITION);
+				tmpTask.delayByMillis = resultSet.getLong(DELAY_BY_MILLIS);
+				tmpLong = resultSet.getLong(BODY_PARTITION);
 				if (!resultSet.wasNull()) {
 					tmpTask.partitionIndex = tmpLong;
 				}
@@ -422,7 +418,7 @@ abstract class ClusterTasksDbDataProvider implements ClusterTasksDataProvider {
 		String result = null;
 		if (resultSet.next()) {
 			try {
-				Clob clobBody = resultSet.getClob(ClusterTasksDbDataProvider.BODY);
+				Clob clobBody = resultSet.getClob(BODY);
 				if (clobBody != null) {
 					result = clobBody.getSubString(1, (int) clobBody.length());
 				}
@@ -480,7 +476,7 @@ abstract class ClusterTasksDbDataProvider implements ClusterTasksDataProvider {
 		Map<String, Integer> result = new LinkedHashMap<>();
 		while (resultSet.next()) {
 			try {
-				result.put(resultSet.getString(ClusterTasksDbDataProvider.PROCESSOR_TYPE), resultSet.getInt("total"));
+				result.put(resultSet.getString(PROCESSOR_TYPE), resultSet.getInt("total"));
 			} catch (SQLException sqle) {
 				logger.error("failed to read cluster task body", sqle);
 			}
@@ -494,13 +490,13 @@ abstract class ClusterTasksDbDataProvider implements ClusterTasksDataProvider {
 		while (resultSet.next()) {
 			try {
 				TaskInternal task = new TaskInternal();
-				task.id = resultSet.getLong(ClusterTasksDbDataProvider.META_ID);
-				task.taskType = ClusterTaskType.byValue(resultSet.getLong(ClusterTasksDbDataProvider.TASK_TYPE));
-				Long tmpLong = resultSet.getLong(ClusterTasksDbDataProvider.BODY_PARTITION);
+				task.id = resultSet.getLong(META_ID);
+				task.taskType = ClusterTaskType.byValue(resultSet.getLong(TASK_TYPE));
+				Long tmpLong = resultSet.getLong(BODY_PARTITION);
 				if (!resultSet.wasNull()) {
 					task.partitionIndex = tmpLong;
 				}
-				task.processorType = resultSet.getString(ClusterTasksDbDataProvider.PROCESSOR_TYPE);
+				task.processorType = resultSet.getString(PROCESSOR_TYPE);
 				result.add(task);
 			} catch (SQLException sqle) {
 				logger.error("failed to read cluster task body", sqle);
