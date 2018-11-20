@@ -86,7 +86,7 @@ final class ClusterTasksMaintainer extends ClusterTasksInternalWorker {
 		result = result == null
 				? ClusterTasksServiceConfigurerSPI.DEFAULT_MAINTENANCE_INTERVAL
 				: Math.max(result, ClusterTasksServiceConfigurerSPI.MINIMAL_MAINTENANCE_INTERVAL);
-		return result;
+		return ClusterTasksServiceConfigurerSPI.DEFAULT_MAINTENANCE_INTERVAL;
 	}
 
 	void submitTaskToRemove(ClusterTasksDataProvider dataProvider, TaskInternal task) {

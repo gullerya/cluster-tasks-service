@@ -15,6 +15,7 @@ import com.microfocus.cluster.tasks.api.enums.ClusterTasksDataProviderType;
  * Created by gullery on 08/05/2016.
  * <p>
  * API definition and base implementation of SIMPLE Cluster Tasks Processor
+ * - this is the default base class for any simple tasks processors
  */
 
 public abstract class ClusterTasksProcessorSimple extends ClusterTasksProcessorBase {

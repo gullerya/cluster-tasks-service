@@ -11,6 +11,12 @@ package com.microfocus.cluster.tasks.api;
 import javax.sql.DataSource;
 import java.util.concurrent.CompletableFuture;
 
+/**
+ * Cluster Tasks Service configurer SPI definition
+ * - hosting application MUST have one and only one Spring bean implementing this SPI per Spring context, that is using CTS
+ * - this class is the only configuration provider for CTS
+ */
+
 public interface ClusterTasksServiceConfigurerSPI {
 	Integer MINIMAL_POLL_INTERVAL = 703;
 	Integer DEFAULT_POLL_INTERVAL = 1023;

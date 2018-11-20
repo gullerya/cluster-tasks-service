@@ -20,6 +20,8 @@ import java.util.concurrent.Future;
  * Created by gullery on 08/05/2016.
  * <p>
  * API definition of the service managing Cluster Tasks Dispatchers and cross-functional services (initialization, garbage collector etc)
+ * - this service should be consumed as Spring bean
+ * - this service is the main interactive entry point between the application and the CTS, mostly for the part of the flow where tasks are enqueued
  */
 
 public interface ClusterTasksService {
