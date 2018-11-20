@@ -87,15 +87,16 @@ final class OracleDbDataProvider extends ClusterTasksDbDataProvider {
 		String selectForRunFields = String.join(",", META_ID, TASK_TYPE, PROCESSOR_TYPE, UNIQUENESS_KEY, CONCURRENCY_KEY, ORDERING_FACTOR, DELAY_BY_MILLIS, BODY_PARTITION, STATUS);
 		for (int maxProcessorTypes : new Integer[]{20, 50, 100, 500}) {
 			String processorTypesInParameter = String.join(",", Collections.nCopies(maxProcessorTypes, "?"));
-			selectForUpdateTasksSQLs.put(maxProcessorTypes, "SELECT * FROM" +
-					"   (SELECT " + selectForRunFields + "," +
-					"       ROW_NUMBER() OVER (PARTITION BY COALESCE(" + CONCURRENCY_KEY + ",RAWTOHEX(SYS_GUID())) ORDER BY " + ORDERING_FACTOR + "," + CREATED + "," + META_ID + " ASC) AS row_index," +
-					"       COUNT(CASE WHEN " + STATUS + " = " + ClusterTaskStatus.RUNNING.value + " THEN 1 ELSE NULL END) OVER (PARTITION BY COALESCE(" + CONCURRENCY_KEY + ",RAWTOHEX(SYS_GUID()))) AS running_count" +
-					"   FROM /*+ INDEX(CTSKM_IDX_5) */ " + META_TABLE_NAME +
-					"   WHERE " + PROCESSOR_TYPE + " IN(" + processorTypesInParameter + ")" +
-					"       AND " + STATUS + " < " + ClusterTaskStatus.FINISHED.value +
-					"       AND " + CREATED + " < SYSDATE - NUMTODSINTERVAL(" + DELAY_BY_MILLIS + " / 1000, 'SECOND')) meta" +
-					" WHERE meta.row_index <= 1 AND meta.running_count = 0");
+			selectForUpdateTasksSQLs.put(maxProcessorTypes,
+					"SELECT * FROM" +
+							"   (SELECT " + selectForRunFields + "," +
+							"       ROW_NUMBER() OVER (PARTITION BY COALESCE(" + CONCURRENCY_KEY + ",RAWTOHEX(SYS_GUID())) ORDER BY " + ORDERING_FACTOR + "," + CREATED + "," + META_ID + " ASC) AS row_index," +
+							"       COUNT(CASE WHEN " + STATUS + " = " + ClusterTaskStatus.RUNNING.value + " THEN 1 ELSE NULL END) OVER (PARTITION BY COALESCE(" + CONCURRENCY_KEY + ",RAWTOHEX(SYS_GUID()))) AS running_count" +
+							"   FROM /*+ INDEX(CTSKM_IDX_5) */ " + META_TABLE_NAME +
+							"   WHERE " + PROCESSOR_TYPE + " IN(" + processorTypesInParameter + ")" +
+							"       AND " + STATUS + " < " + ClusterTaskStatus.FINISHED.value +
+							"       AND " + CREATED + " < SYSDATE - NUMTODSINTERVAL(" + DELAY_BY_MILLIS + " / 1000, 'SECOND')) meta" +
+							" WHERE meta.row_index <= 1 AND meta.running_count = 0");
 		}
 		for (long partition = 0; partition < PARTITIONS_NUMBER; partition++) {
 			selectTaskBodyByPartitionSQLs.put(partition, "SELECT " + BODY + " FROM " + BODY_TABLE_NAME + partition +

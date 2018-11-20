@@ -54,6 +54,7 @@ final class PostgreSqlDbDataProvider extends ClusterTasksDbDataProvider {
 	private final String removeLongTimeNoSeeSQL;
 
 	private final String insertTaskSQL;
+	private final String lockMetadataTable;
 	private final Map<Integer, String> selectForUpdateTasksSQLs = new HashMap<>();
 	private final Map<Long, String> selectTaskBodyByPartitionSQLs = new HashMap<>();
 
@@ -77,21 +78,20 @@ final class PostgreSqlDbDataProvider extends ClusterTasksDbDataProvider {
 
 		insertTaskSQL = "SELECT insert_task(" + String.join(",", Collections.nCopies(8, "?")) + ")";
 
+		lockMetadataTable = "SELECT pg_advisory_xact_lock(1, 1)";
 		String selectForRunFields = String.join(",", META_ID, TASK_TYPE, PROCESSOR_TYPE, UNIQUENESS_KEY, CONCURRENCY_KEY, ORDERING_FACTOR, DELAY_BY_MILLIS, BODY_PARTITION, STATUS);
 		for (int maxProcessorTypes : new Integer[]{20, 50, 100, 500}) {
 			String processorTypesInParameter = String.join(",", Collections.nCopies(maxProcessorTypes, "?"));
-			selectForUpdateTasksSQLs.put(maxProcessorTypes, "SELECT " + selectForRunFields +
-					" FROM " + META_TABLE_NAME + " WHERE ctid IN " +
-					"   (SELECT row_id FROM" +
-					"       (SELECT ctid AS row_id," +
-					"               ROW_NUMBER() OVER (PARTITION BY COALESCE(" + CONCURRENCY_KEY + ",MD5(RANDOM()::TEXT || CLOCK_TIMESTAMP()::TEXT)) ORDER BY " + ORDERING_FACTOR + "," + CREATED + "," + META_ID + " ASC) AS row_index," +
-					"               COUNT(CASE WHEN " + STATUS + " = " + ClusterTaskStatus.RUNNING.value + " THEN 1 ELSE NULL END) OVER (PARTITION BY COALESCE(" + CONCURRENCY_KEY + ",MD5(RANDOM()::TEXT || CLOCK_TIMESTAMP()::TEXT))) AS running_count" +
-					"       FROM " + META_TABLE_NAME +
-					"       WHERE " + PROCESSOR_TYPE + " IN(" + processorTypesInParameter + ")" +
-					"           AND " + STATUS + " < " + ClusterTaskStatus.FINISHED.value +
-					"           AND " + CREATED + " < LOCALTIMESTAMP - MAKE_INTERVAL(SECS := " + DELAY_BY_MILLIS + " / 1000)) meta" +
-					"   WHERE meta.row_index <= 1 AND meta.running_count = 0)" +
-					" FOR UPDATE");
+			selectForUpdateTasksSQLs.put(maxProcessorTypes,
+					"SELECT * FROM" +
+							"   (SELECT " + selectForRunFields + "," +
+							"       ROW_NUMBER() OVER (PARTITION BY COALESCE(" + CONCURRENCY_KEY + ",MD5(RANDOM()::TEXT || CLOCK_TIMESTAMP()::TEXT)) ORDER BY " + ORDERING_FACTOR + "," + CREATED + "," + META_ID + " ASC) AS row_index," +
+							"       COUNT(CASE WHEN " + STATUS + " = " + ClusterTaskStatus.RUNNING.value + " THEN 1 ELSE NULL END) OVER (PARTITION BY COALESCE(" + CONCURRENCY_KEY + ",MD5(RANDOM()::TEXT || CLOCK_TIMESTAMP()::TEXT))) AS running_count" +
+							"   FROM " + META_TABLE_NAME +
+							"   WHERE " + PROCESSOR_TYPE + " IN(" + processorTypesInParameter + ")" +
+							"       AND " + STATUS + " < " + ClusterTaskStatus.FINISHED.value +
+							"       AND " + CREATED + " < LOCALTIMESTAMP - MAKE_INTERVAL(SECS := " + DELAY_BY_MILLIS + " / 1000)) meta" +
+							" WHERE meta.row_index <= 1 AND meta.running_count = 0");
 		}
 		for (long partition = 0; partition < PARTITIONS_NUMBER; partition++) {
 			selectTaskBodyByPartitionSQLs.put(partition, "SELECT " + BODY + " FROM " + BODY_TABLE_NAME + partition +
@@ -241,6 +241,7 @@ final class PostgreSqlDbDataProvider extends ClusterTasksDbDataProvider {
 				for (int i = 0; i < paramsTotal; i++) paramTypes[i] = Types.VARCHAR;
 
 				List<TaskInternal> tasks;
+				jdbcTemplate.execute(lockMetadataTable);
 				tasks = jdbcTemplate.query(sql, params, paramTypes, this::tasksMetadataReader);
 				if (!tasks.isEmpty()) {
 					Map<String, List<TaskInternal>> tasksByProcessor = tasks.stream().collect(Collectors.groupingBy(ti -> ti.processorType));
