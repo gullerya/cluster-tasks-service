@@ -8,7 +8,6 @@
 
 package com.microfocus.cluster.tasks.impl;
 
-import com.microfocus.cluster.tasks.api.ClusterTasksServiceConfigurerSPI;
 import io.prometheus.client.Counter;
 import io.prometheus.client.Summary;
 import org.slf4j.Logger;
@@ -19,6 +18,8 @@ import java.util.Map;
 
 final class ClusterTasksDispatcher extends ClusterTasksInternalWorker {
 	private final Logger logger = LoggerFactory.getLogger(ClusterTasksDispatcher.class);
+	private final static Integer DEFAULT_DISPATCH_INTERVAL = 1023;
+
 	private final Counter dispatchErrors;
 	private final Summary dispatchDurationSummary;
 
@@ -68,15 +69,6 @@ final class ClusterTasksDispatcher extends ClusterTasksInternalWorker {
 	}
 
 	Integer getEffectiveBreathingInterval() {
-		Integer result = null;
-		try {
-			result = configurer.getCTSServiceConfigurer().getTasksPollIntervalMillis();
-		} catch (Throwable t) {
-			logger.warn("failed to obtain breathing interval from service configurer, falling back to DEFAULT (" + ClusterTasksServiceConfigurerSPI.DEFAULT_POLL_INTERVAL + ")", t);
-		}
-		result = result == null
-				? ClusterTasksServiceConfigurerSPI.DEFAULT_POLL_INTERVAL
-				: Math.max(result, ClusterTasksServiceConfigurerSPI.MINIMAL_POLL_INTERVAL);
-		return result;
+		return DEFAULT_DISPATCH_INTERVAL;
 	}
 }

@@ -8,7 +8,6 @@
 
 package com.microfocus.cluster.tasks.impl;
 
-import com.microfocus.cluster.tasks.api.ClusterTasksServiceConfigurerSPI;
 import com.microfocus.cluster.tasks.api.dto.ClusterTask;
 import com.microfocus.cluster.tasks.api.enums.ClusterTasksDataProviderType;
 import io.prometheus.client.Gauge;
@@ -104,7 +103,7 @@ public abstract class ClusterTasksProcessorBase {
 	 * @param minimalTasksTakeInterval interval of the processor's readiness to take tasks, in milliseconds
 	 */
 	protected void setMinimalTasksTakeInterval(int minimalTasksTakeInterval) {
-		this.minimalTasksTakeInterval = Math.max(minimalTasksTakeInterval, ClusterTasksServiceConfigurerSPI.MINIMAL_POLL_INTERVAL);
+		this.minimalTasksTakeInterval = Math.max(minimalTasksTakeInterval, 0);
 	}
 
 	/**

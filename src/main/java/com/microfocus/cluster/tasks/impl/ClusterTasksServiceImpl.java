@@ -18,6 +18,7 @@ import com.microfocus.cluster.tasks.api.enums.ClusterTaskInsertStatus;
 import com.microfocus.cluster.tasks.api.enums.ClusterTaskStatus;
 import com.microfocus.cluster.tasks.api.enums.ClusterTaskType;
 import com.microfocus.cluster.tasks.api.enums.ClusterTasksDataProviderType;
+import io.prometheus.client.Gauge;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -48,6 +49,8 @@ public class ClusterTasksServiceImpl implements ClusterTasksService {
 	private final SystemWorkersConfigurer workersConfigurer = new SystemWorkersConfigurer();
 	private final ClusterTasksDispatcher dispatcher = new ClusterTasksDispatcher(workersConfigurer);
 	private final ClusterTasksMaintainer maintainer = new ClusterTasksMaintainer(workersConfigurer);
+	private final Gauge tasksInsertionAverageDuration;
+
 	private ClusterTasksServiceConfigurerSPI serviceConfigurer;
 	private ClusterTasksServiceSchemaManager schemaManager;
 
@@ -57,6 +60,11 @@ public class ClusterTasksServiceImpl implements ClusterTasksService {
 		this.schemaManager = schemaManager;
 		logger.info("------------------------------------------------");
 		logger.info("------------- Cluster Tasks Service ------------");
+
+		tasksInsertionAverageDuration = Gauge.build()
+				.name("cts_task_insert_average_time_" + RUNTIME_INSTANCE_ID.replaceAll("-", "_"))
+				.help("CTS task insert average time (in millis)")
+				.register();
 
 		if (serviceConfigurer.getConfigReadyLatch() == null) {
 			initService();
@@ -145,8 +153,12 @@ public class ClusterTasksServiceImpl implements ClusterTasksService {
 
 		ClusterTasksDataProvider dataProvider = dataProvidersMap.get(dataProviderType);
 		if (dataProvider != null) {
+			long startStore = System.currentTimeMillis();
 			TaskInternal[] taskInternals = convertTasks(tasks, processorType);
-			return dataProvidersMap.get(dataProviderType).storeTasks(taskInternals);
+			ClusterTaskPersistenceResult[] result = dataProvidersMap.get(dataProviderType).storeTasks(taskInternals);
+			long timeForAll = System.currentTimeMillis() - startStore;
+			tasksInsertionAverageDuration.set((double) timeForAll / tasks.length);
+			return result;
 		} else {
 			throw new IllegalArgumentException("unknown data provider of type '" + processorType + "'");
 		}

@@ -18,11 +18,6 @@ import java.util.concurrent.CompletableFuture;
  */
 
 public interface ClusterTasksServiceConfigurerSPI {
-	Integer MINIMAL_POLL_INTERVAL = 703;
-	Integer DEFAULT_POLL_INTERVAL = 1023;
-	Integer MINIMAL_MAINTENANCE_INTERVAL = 7131;
-	Integer DEFAULT_MAINTENANCE_INTERVAL = 17039;
-	Integer DEFAULT_TASKS_COUNT_INTERVAL = 32204;
 
 	enum DBType {MSSQL, ORACLE, POSTGRESQL}
 
@@ -57,22 +52,6 @@ public interface ClusterTasksServiceConfigurerSPI {
 	 * @return db type; MUST NOT be NULL
 	 */
 	DBType getDbType();
-
-	/**
-	 * MAY provide interval (in millis) of breathing between the tasks polls
-	 * if value is lower than minimum figure - the MINIMAL_POLL_INTERVAL will be used
-	 *
-	 * @return number of millis between tasks polls; if NULL is returned - DEFAULT_POLL_INTERVAL will be taken
-	 */
-	Integer getTasksPollIntervalMillis();
-
-	/**
-	 * MAY provide interval (in millis) of breathing between the maintenance cycles
-	 * if value is lower than minimum figure - the MINIMAL_MAINTENANCE_INTERVAL will be used
-	 *
-	 * @return number of millis between maintenance cycles; if NULL is returned - DEFAULT_MAINTENANCE_INTERVAL will be taken
-	 */
-	Integer getMaintenanceIntervalMillis();
 
 	/**
 	 * Allows hosting application to suspend/resume cluster-tasks-service work (tasking and maintenance) as a reaction on runtime conditions

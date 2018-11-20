@@ -8,7 +8,6 @@
 
 package com.microfocus.cluster.tasks.impl;
 
-import com.microfocus.cluster.tasks.api.ClusterTasksServiceConfigurerSPI;
 import com.microfocus.cluster.tasks.api.enums.ClusterTaskStatus;
 import io.prometheus.client.Counter;
 import io.prometheus.client.Gauge;
@@ -23,6 +22,9 @@ import java.util.Map;
 
 final class ClusterTasksMaintainer extends ClusterTasksInternalWorker {
 	private final Logger logger = LoggerFactory.getLogger(ClusterTasksMaintainer.class);
+	private final static Integer DEFAULT_MAINTENANCE_INTERVAL = 17039;
+	private final static Integer DEFAULT_TASKS_COUNT_INTERVAL = 32204;
+
 	private final Counter maintenanceErrors;
 	private final Summary maintenanceDurationSummary;
 	private final Gauge pendingTasksCounter;
@@ -77,16 +79,7 @@ final class ClusterTasksMaintainer extends ClusterTasksInternalWorker {
 
 	@Override
 	Integer getEffectiveBreathingInterval() {
-		Integer result = null;
-		try {
-			result = configurer.getCTSServiceConfigurer().getMaintenanceIntervalMillis();
-		} catch (Throwable t) {
-			logger.error("failed to obtain maintenance interval from hosting application, falling back to default (" + ClusterTasksServiceConfigurerSPI.DEFAULT_MAINTENANCE_INTERVAL + ")", t);
-		}
-		result = result == null
-				? ClusterTasksServiceConfigurerSPI.DEFAULT_MAINTENANCE_INTERVAL
-				: Math.max(result, ClusterTasksServiceConfigurerSPI.MINIMAL_MAINTENANCE_INTERVAL);
-		return ClusterTasksServiceConfigurerSPI.DEFAULT_MAINTENANCE_INTERVAL;
+		return DEFAULT_MAINTENANCE_INTERVAL;
 	}
 
 	void submitTaskToRemove(ClusterTasksDataProvider dataProvider, TaskInternal task) {
@@ -145,7 +138,7 @@ final class ClusterTasksMaintainer extends ClusterTasksInternalWorker {
 	}
 
 	private void maintainTasksCounters(ClusterTasksDataProvider dataProvider) {
-		if (System.currentTimeMillis() - lastTasksCountTime > ClusterTasksServiceConfigurerSPI.DEFAULT_TASKS_COUNT_INTERVAL) {
+		if (System.currentTimeMillis() - lastTasksCountTime > DEFAULT_TASKS_COUNT_INTERVAL) {
 
 			//  count pending tasks
 			try {

@@ -72,16 +72,6 @@ public class ClusterTasksServiceConfigurerForTestsSPI implements ClusterTasksSer
 	}
 
 	@Override
-	public Integer getTasksPollIntervalMillis() {
-		return null;
-	}
-
-	@Override
-	public Integer getMaintenanceIntervalMillis() {
-		return null;
-	}
-
-	@Override
 	public boolean isEnabled() {
 		return true;
 	}
