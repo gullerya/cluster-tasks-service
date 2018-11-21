@@ -60,7 +60,6 @@ final class OracleDbDataProvider extends ClusterTasksDbDataProvider {
 	private final Map<Long, String> selectTaskBodyByPartitionSQLs = new LinkedHashMap<>();
 
 	private final String updateTasksStartedSQL;
-	private final String updateTaskFinishedSQL;
 
 	private final String selectStaledTasksSQL;
 
@@ -110,8 +109,6 @@ final class OracleDbDataProvider extends ClusterTasksDbDataProvider {
 		}
 
 		updateTasksStartedSQL = "UPDATE " + META_TABLE_NAME + " SET " + STATUS + " = " + ClusterTaskStatus.RUNNING.value + ", " + STARTED + " = SYSDATE, " + RUNTIME_INSTANCE + " = ?" +
-				" WHERE " + META_ID + " = ?";
-		updateTaskFinishedSQL = "UPDATE " + META_TABLE_NAME + " SET " + String.join(",", STATUS + " = " + ClusterTaskStatus.FINISHED.value, UNIQUENESS_KEY + " = RAWTOHEX(SYS_GUID())") +
 				" WHERE " + META_ID + " = ?";
 
 		String selectedForGCFields = String.join(",", META_ID, BODY_PARTITION, TASK_TYPE, PROCESSOR_TYPE, STATUS);
@@ -349,23 +346,6 @@ final class OracleDbDataProvider extends ClusterTasksDbDataProvider {
 					this::rowToTaskBodyReader);
 		} catch (Exception e) {
 			throw new CtsGeneralFailure(clusterTasksService.getInstanceID() + " failed to retrieve task's body", e);
-		}
-	}
-
-	@Override
-	public void updateTaskToFinished(Long taskId) {
-		if (taskId == null) {
-			throw new IllegalArgumentException("task ID MUST NOT be null");
-		}
-
-		try {
-			JdbcTemplate jdbcTemplate = getJdbcTemplate();
-			jdbcTemplate.update(
-					updateTaskFinishedSQL,
-					new Object[]{taskId},
-					new int[]{BIGINT});
-		} catch (DataAccessException dae) {
-			logger.error(clusterTasksService.getInstanceID() + " failed to update task finished", dae);
 		}
 	}
 

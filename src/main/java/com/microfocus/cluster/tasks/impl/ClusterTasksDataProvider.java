@@ -64,13 +64,6 @@ interface ClusterTasksDataProvider {
 	String retrieveTaskBody(Long taskId, Long partitionIndex);
 
 	/**
-	 * Updates task as FINISHED, thus releasing the processor to take next task and make this task valid for GC
-	 *
-	 * @param taskId the value that was assigned to a task in process of creation
-	 */
-	void updateTaskToFinished(Long taskId);
-
-	/**
 	 * Removes FINISHED task from the tasks metadata table (task bodies are removed in a separate flow)
 	 * - this API is invoked via the flow when finished task IDs are known (kept in memory)
 	 *

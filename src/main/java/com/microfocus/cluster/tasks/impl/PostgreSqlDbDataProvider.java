@@ -59,7 +59,6 @@ final class PostgreSqlDbDataProvider extends ClusterTasksDbDataProvider {
 	private final Map<Long, String> selectTaskBodyByPartitionSQLs = new HashMap<>();
 
 	private final String updateTasksStartedSQL;
-	private final String updateTaskFinishedSQL;
 
 	private final String lockForSelectForCleanTasksSQL;
 	private final String selectStaledTasksSQL;
@@ -100,8 +99,6 @@ final class PostgreSqlDbDataProvider extends ClusterTasksDbDataProvider {
 		}
 
 		updateTasksStartedSQL = "UPDATE " + META_TABLE_NAME + " SET " + STATUS + " = " + ClusterTaskStatus.RUNNING.value + ", " + STARTED + " = LOCALTIMESTAMP, " + RUNTIME_INSTANCE + " = ?" +
-				" WHERE " + META_ID + " = ?";
-		updateTaskFinishedSQL = "UPDATE " + META_TABLE_NAME + " SET " + String.join(",", STATUS + " = " + ClusterTaskStatus.FINISHED.value, UNIQUENESS_KEY + " = MD5(RANDOM()::TEXT || CLOCK_TIMESTAMP()::TEXT)") +
 				" WHERE " + META_ID + " = ?";
 
 		lockForSelectForCleanTasksSQL = "SELECT pg_advisory_xact_lock(1, 2)";
@@ -317,15 +314,6 @@ final class PostgreSqlDbDataProvider extends ClusterTasksDbDataProvider {
 		} catch (DataAccessException dae) {
 			logger.error(clusterTasksService.getInstanceID() + " failed to retrieve task's body", dae);
 			throw new CtsGeneralFailure("failed to retrieve task's body", dae);
-		}
-	}
-
-	@Override
-	public void updateTaskToFinished(Long taskId) {
-		try {
-			getJdbcTemplate().update(updateTaskFinishedSQL, new Object[]{taskId}, new int[]{BIGINT});
-		} catch (DataAccessException dae) {
-			logger.error(clusterTasksService.getInstanceID() + " failed to update task finished", dae);
 		}
 	}
 
