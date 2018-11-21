@@ -16,7 +16,6 @@ import com.microfocus.cluster.tasks.api.enums.ClusterTaskStatus;
 import com.microfocus.cluster.tasks.api.errors.CtsGeneralFailure;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.springframework.dao.DataAccessException;
 import org.springframework.dao.DuplicateKeyException;
 import org.springframework.jdbc.core.JdbcTemplate;
 
@@ -54,11 +53,13 @@ final class MsSqlDbDataProvider extends ClusterTasksDbDataProvider {
 
 	private final String insertTaskWithoutBodySQL;
 	private final Map<Long, String> insertTaskWithBodySQLs = new HashMap<>();
+	private final String lockForSelectForRunTasksSQL;
 	private final Map<Integer, String> selectForUpdateTasksSQLs = new HashMap<>();
 	private final Map<Long, String> selectTaskBodyByPartitionSQLs = new HashMap<>();
 
 	private final String updateTasksStartedSQL;
 
+	private final String lockForSelectForCleanTasksSQL;
 	private final String selectStaledTasksSQL;
 
 	MsSqlDbDataProvider(ClusterTasksService clusterTasksService, ClusterTasksServiceConfigurerSPI serviceConfigurer) {
@@ -80,6 +81,7 @@ final class MsSqlDbDataProvider extends ClusterTasksDbDataProvider {
 		insertTaskWithoutBodySQL = "INSERT INTO " + META_TABLE_NAME + " (" + insertFields + ")" +
 				" VALUES (NEXT VALUE FOR " + CLUSTER_TASK_ID_SEQUENCE + ", ?, ?, ?, ?, ?, ?, COALESCE(?, CAST(FORMAT(CURRENT_TIMESTAMP,'yyyyMMddHHmmssfff') AS BIGINT) + ?), GETDATE(), " + ClusterTaskStatus.PENDING.value + ")";
 
+		lockForSelectForRunTasksSQL = "SELECT 1 FROM " + ACTIVE_NODES_TABLE_NAME + "; EXEC sp_getapplock 'LockForTasksDispatch', 'Exclusive';";
 		String selectFields = String.join(",", META_ID, TASK_TYPE, PROCESSOR_TYPE, UNIQUENESS_KEY, CONCURRENCY_KEY, ORDERING_FACTOR, DELAY_BY_MILLIS, BODY_PARTITION, STATUS);
 		for (int maxProcessorTypes : new Integer[]{20, 50, 100, 500}) {
 			String processorTypesInParameter = String.join(",", Collections.nCopies(maxProcessorTypes, "?"));
@@ -88,7 +90,7 @@ final class MsSqlDbDataProvider extends ClusterTasksDbDataProvider {
 							"   (SELECT " + selectFields + "," +
 							"       ROW_NUMBER() OVER (PARTITION BY COALESCE(" + CONCURRENCY_KEY + ",CAST(NEWID() AS VARCHAR(36))) ORDER BY " + ORDERING_FACTOR + "," + CREATED + "," + META_ID + " ASC) AS row_index," +
 							"       COUNT(CASE WHEN " + STATUS + " = " + ClusterTaskStatus.RUNNING.value + " THEN 1 ELSE NULL END) OVER (PARTITION BY COALESCE(" + CONCURRENCY_KEY + ",CAST(NEWID() AS VARCHAR(36)))) AS running_count" +
-							"   FROM " + META_TABLE_NAME + " WITH(UPDLOCK,TABLOCK)" +
+							"   FROM " + META_TABLE_NAME +
 							"   WHERE " + PROCESSOR_TYPE + " IN(" + processorTypesInParameter + ")" +
 							"       AND " + STATUS + " < " + ClusterTaskStatus.FINISHED.value +
 							"       AND " + CREATED + " < DATEADD(MILLISECOND, -" + DELAY_BY_MILLIS + ", GETDATE())) meta" +
@@ -107,6 +109,7 @@ final class MsSqlDbDataProvider extends ClusterTasksDbDataProvider {
 		updateTasksStartedSQL = "UPDATE " + META_TABLE_NAME + " SET " + STATUS + " = " + ClusterTaskStatus.RUNNING.value + ", " + STARTED + " = GETDATE(), " + RUNTIME_INSTANCE + " = ?" +
 				" WHERE " + META_ID + " = ?";
 
+		lockForSelectForCleanTasksSQL = "SELECT 1 FROM " + ACTIVE_NODES_TABLE_NAME + "; EXEC sp_getapplock 'LOCK_FOR_TASKS_GC', 'Exclusive'";
 		String selectedForGCFields = String.join(",", META_ID, BODY_PARTITION, TASK_TYPE, PROCESSOR_TYPE, STATUS);
 		selectStaledTasksSQL = "SELECT " + selectedForGCFields + " FROM " + META_TABLE_NAME + " WITH(UPDLOCK,TABLOCK)" +
 				" WHERE " + RUNTIME_INSTANCE + " IS NOT NULL" +
@@ -115,7 +118,7 @@ final class MsSqlDbDataProvider extends ClusterTasksDbDataProvider {
 
 	@Override
 	String[] getSelectStaledTasksSQL() {
-		return new String[]{selectStaledTasksSQL};
+		return new String[]{lockForSelectForCleanTasksSQL, selectStaledTasksSQL};
 	}
 
 	@Override
@@ -278,6 +281,7 @@ final class MsSqlDbDataProvider extends ClusterTasksDbDataProvider {
 				for (int i = 0; i < paramsTotal; i++) paramTypes[i] = Types.NVARCHAR;
 
 				List<TaskInternal> tasks;
+				jdbcTemplate.execute(lockForSelectForRunTasksSQL);
 				tasks = jdbcTemplate.query(sql, params, paramTypes, this::tasksMetadataReader);
 				if (!tasks.isEmpty()) {
 					Map<String, List<TaskInternal>> tasksByProcessor = tasks.stream().collect(Collectors.groupingBy(ti -> ti.processorType));
