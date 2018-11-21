@@ -81,7 +81,7 @@ final class MsSqlDbDataProvider extends ClusterTasksDbDataProvider {
 		insertTaskWithoutBodySQL = "INSERT INTO " + META_TABLE_NAME + " (" + insertFields + ")" +
 				" VALUES (NEXT VALUE FOR " + CLUSTER_TASK_ID_SEQUENCE + ", ?, ?, ?, ?, ?, ?, COALESCE(?, CAST(FORMAT(CURRENT_TIMESTAMP,'yyyyMMddHHmmssfff') AS BIGINT) + ?), GETDATE(), " + ClusterTaskStatus.PENDING.value + ")";
 
-		lockForSelectForRunTasksSQL = "SELECT 1 FROM " + ACTIVE_NODES_TABLE_NAME + "; EXEC sp_getapplock 'LOCK_FOR_TASKS_DISPATCH', 'Exclusive';";
+		lockForSelectForRunTasksSQL = "BEGIN TRAN; EXEC sp_getapplock 'LOCK_FOR_TASKS_DISPATCH', 'Exclusive';";
 		String selectFields = String.join(",", META_ID, TASK_TYPE, PROCESSOR_TYPE, UNIQUENESS_KEY, CONCURRENCY_KEY, ORDERING_FACTOR, DELAY_BY_MILLIS, BODY_PARTITION, STATUS);
 		for (int maxProcessorTypes : new Integer[]{20, 50, 100, 500}) {
 			String processorTypesInParameter = String.join(",", Collections.nCopies(maxProcessorTypes, "?"));
@@ -109,7 +109,7 @@ final class MsSqlDbDataProvider extends ClusterTasksDbDataProvider {
 		updateTasksStartedSQL = "UPDATE " + META_TABLE_NAME + " SET " + STATUS + " = " + ClusterTaskStatus.RUNNING.value + ", " + STARTED + " = GETDATE(), " + RUNTIME_INSTANCE + " = ?" +
 				" WHERE " + META_ID + " = ?";
 
-		lockForSelectForCleanTasksSQL = "SELECT 1 FROM " + ACTIVE_NODES_TABLE_NAME + "; EXEC sp_getapplock 'LOCK_FOR_TASKS_GC', 'Exclusive'";
+		lockForSelectForCleanTasksSQL = "BEGIN TRAN; EXEC sp_getapplock 'LOCK_FOR_TASKS_GC', 'Exclusive'";
 		String selectedForGCFields = String.join(",", META_ID, BODY_PARTITION, TASK_TYPE, PROCESSOR_TYPE, STATUS);
 		selectStaledTasksSQL = "SELECT " + selectedForGCFields + " FROM " + META_TABLE_NAME +
 				" WHERE " + RUNTIME_INSTANCE + " IS NOT NULL" +
