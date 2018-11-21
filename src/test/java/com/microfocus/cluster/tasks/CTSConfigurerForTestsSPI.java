@@ -14,12 +14,12 @@ import static com.microfocus.cluster.tasks.api.ClusterTasksServiceConfigurerSPI.
 import static com.microfocus.cluster.tasks.api.ClusterTasksServiceConfigurerSPI.DBType.ORACLE;
 import static com.microfocus.cluster.tasks.api.ClusterTasksServiceConfigurerSPI.DBType.POSTGRESQL;
 
-public class ClusterTasksServiceConfigurerForTestsSPI implements ClusterTasksServiceConfigurerSPI, DisposableBean {
+public class CTSConfigurerForTestsSPI implements ClusterTasksServiceConfigurerSPI, DisposableBean {
 	private final CompletableFuture<Boolean> configReadyLatch = new CompletableFuture<>();
 	private final DBType dbType;
 	private final HikariDataSource dataSource;
 
-	private ClusterTasksServiceConfigurerForTestsSPI() throws IOException {
+	private CTSConfigurerForTestsSPI() throws IOException {
 		Properties dbConfig = resolveConfigProperties();
 
 		String jdbcDriverClass;

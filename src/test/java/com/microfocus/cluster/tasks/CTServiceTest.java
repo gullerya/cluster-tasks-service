@@ -41,8 +41,8 @@ import static org.junit.Assert.fail;
 @ContextConfiguration({
 		"/cluster-tasks-service-context-test.xml"
 })
-public class ClusterTasksProcessorServiceTest extends CTSTestsBase {
-	private final Logger logger = LoggerFactory.getLogger(ClusterTasksProcessorServiceTest.class);
+public class CTServiceTest extends CTSTestsBase {
+	private final Logger logger = LoggerFactory.getLogger(CTServiceTest.class);
 
 	@Autowired
 	private ClusterTasksProcessorA_test clusterTasksProcessorA_test;
@@ -212,7 +212,7 @@ public class ClusterTasksProcessorServiceTest extends CTSTestsBase {
 		Assert.assertEquals(ClusterTaskInsertStatus.SUCCESS, results[0].getStatus());
 
 		long startWait = System.currentTimeMillis();
-		Long passedTime = ClusterTasksTestsUtils.waitUntil(10000, () -> {
+		Long passedTime = CTSTestsUtils.waitUntil(10000, () -> {
 			if (clusterTasksProcessorA_test.tasksProcessed.containsKey("first_to_run") && clusterTasksProcessorA_test.tasksProcessed.containsKey("delayed")) {
 				return System.currentTimeMillis() - startWait;
 			} else {
@@ -259,7 +259,7 @@ public class ClusterTasksProcessorServiceTest extends CTSTestsBase {
 		long timePassed = 0;
 		long pauseInterval = 50;
 		while (container.size() != expectedSize && timePassed < maxTimeToWait) {
-			ClusterTasksTestsUtils.waitSafely(pauseInterval);
+			CTSTestsUtils.waitSafely(pauseInterval);
 			timePassed += pauseInterval;
 		}
 		if (container.size() == expectedSize) {

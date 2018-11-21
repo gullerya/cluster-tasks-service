@@ -33,8 +33,8 @@ import static org.junit.Assert.assertTrue;
 @ContextConfiguration({
 		"/cluster-tasks-service-context-test.xml"
 })
-public class ClusterTasksProcessorFairnessTest extends CTSTestsBase {
-	private static final Logger logger = LoggerFactory.getLogger(ClusterTasksProcessorFairnessTest.class);
+public class FairnessTest extends CTSTestsBase {
+	private static final Logger logger = LoggerFactory.getLogger(FairnessTest.class);
 
 	@Test
 	public void TestA_fairness_limited_resource() {
@@ -158,7 +158,7 @@ public class ClusterTasksProcessorFairnessTest extends CTSTestsBase {
 		long timePassed = 0;
 		long pauseInterval = 100;
 		while (eventStore.size() < expectedSize && timePassed < maxTimeToWait) {
-			ClusterTasksTestsUtils.waitSafely(pauseInterval);
+			CTSTestsUtils.waitSafely(pauseInterval);
 			timePassed += pauseInterval;
 		}
 		if (eventStore.size() == expectedSize) {

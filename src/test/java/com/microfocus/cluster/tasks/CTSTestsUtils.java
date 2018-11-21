@@ -11,10 +11,10 @@ import static org.junit.Assert.fail;
  * Created by gullery on 08/06/2017
  */
 
-public class ClusterTasksTestsUtils {
-	private static final Logger logger = LoggerFactory.getLogger(ClusterTasksTestsUtils.class);
+public class CTSTestsUtils {
+	private static final Logger logger = LoggerFactory.getLogger(CTSTestsUtils.class);
 
-	private ClusterTasksTestsUtils() {
+	private CTSTestsUtils() {
 	}
 
 	public static void waitSafely(long millisToSleep) {

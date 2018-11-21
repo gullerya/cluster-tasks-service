@@ -13,6 +13,7 @@ import com.microfocus.cluster.tasks.api.ClusterTasksServiceConfigurerSPI;
 import com.microfocus.cluster.tasks.api.dto.ClusterTaskPersistenceResult;
 import com.microfocus.cluster.tasks.api.enums.ClusterTaskInsertStatus;
 import com.microfocus.cluster.tasks.api.enums.ClusterTaskStatus;
+import com.microfocus.cluster.tasks.api.enums.ClusterTaskType;
 import com.microfocus.cluster.tasks.api.errors.CtsGeneralFailure;
 import com.microfocus.cluster.tasks.api.errors.CtsSqlFailure;
 import org.slf4j.Logger;
@@ -61,7 +62,7 @@ final class PostgreSqlDbDataProvider extends ClusterTasksDbDataProvider {
 	private final String updateTasksStartedSQL;
 
 	private final String lockForSelectForCleanTasksSQL;
-	private final String selectStaledTasksSQL;
+	private final String selectReRunnableStaledTasksSQL;
 
 	PostgreSqlDbDataProvider(ClusterTasksService clusterTasksService, ClusterTasksServiceConfigurerSPI serviceConfigurer) {
 		super(clusterTasksService, serviceConfigurer);
@@ -103,14 +104,15 @@ final class PostgreSqlDbDataProvider extends ClusterTasksDbDataProvider {
 
 		lockForSelectForCleanTasksSQL = "SELECT pg_advisory_xact_lock(1, 2)";
 		String selectedForGCFields = String.join(",", META_ID, BODY_PARTITION, TASK_TYPE, PROCESSOR_TYPE, STATUS);
-		selectStaledTasksSQL = "SELECT " + selectedForGCFields + " FROM " + META_TABLE_NAME +
-				" WHERE " + RUNTIME_INSTANCE + " IS NOT NULL" +
+		selectReRunnableStaledTasksSQL = "SELECT " + selectedForGCFields + " FROM " + META_TABLE_NAME +
+				" WHERE " + TASK_TYPE + " = " + ClusterTaskType.SCHEDULED.value +
+				"   AND " + RUNTIME_INSTANCE + " IS NOT NULL" +
 				"   AND NOT EXISTS (SELECT 1 FROM " + ACTIVE_NODES_TABLE_NAME + " WHERE " + ACTIVE_NODE_ID + " = " + RUNTIME_INSTANCE + ")";
 	}
 
 	@Override
-	String[] getSelectStaledTasksSQL() {
-		return new String[]{lockForSelectForCleanTasksSQL, selectStaledTasksSQL};
+	String[] getSelectReRunnableStaledTasksSQL() {
+		return new String[]{lockForSelectForCleanTasksSQL, selectReRunnableStaledTasksSQL};
 	}
 
 	@Override

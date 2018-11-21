@@ -13,6 +13,7 @@ import com.microfocus.cluster.tasks.api.ClusterTasksServiceConfigurerSPI;
 import com.microfocus.cluster.tasks.api.dto.ClusterTaskPersistenceResult;
 import com.microfocus.cluster.tasks.api.enums.ClusterTaskInsertStatus;
 import com.microfocus.cluster.tasks.api.enums.ClusterTaskStatus;
+import com.microfocus.cluster.tasks.api.enums.ClusterTaskType;
 import com.microfocus.cluster.tasks.api.errors.CtsGeneralFailure;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -60,7 +61,7 @@ final class MsSqlDbDataProvider extends ClusterTasksDbDataProvider {
 	private final String updateTasksStartedSQL;
 
 	private final String lockForSelectForCleanTasksSQL;
-	private final String selectStaledTasksSQL;
+	private final String selectReRunnableStaledTasksSQL;
 
 	MsSqlDbDataProvider(ClusterTasksService clusterTasksService, ClusterTasksServiceConfigurerSPI serviceConfigurer) {
 		super(clusterTasksService, serviceConfigurer);
@@ -111,14 +112,15 @@ final class MsSqlDbDataProvider extends ClusterTasksDbDataProvider {
 
 		lockForSelectForCleanTasksSQL = "BEGIN TRAN; EXEC sp_getapplock 'LOCK_FOR_TASKS_GC', 'Exclusive'";
 		String selectedForGCFields = String.join(",", META_ID, BODY_PARTITION, TASK_TYPE, PROCESSOR_TYPE, STATUS);
-		selectStaledTasksSQL = "SELECT " + selectedForGCFields + " FROM " + META_TABLE_NAME +
-				" WHERE " + RUNTIME_INSTANCE + " IS NOT NULL" +
+		selectReRunnableStaledTasksSQL = "SELECT " + selectedForGCFields + " FROM " + META_TABLE_NAME +
+				" WHERE " + TASK_TYPE + " = " + ClusterTaskType.SCHEDULED.value +
+				"   AND " + RUNTIME_INSTANCE + " IS NOT NULL" +
 				"   AND NOT EXISTS (SELECT 1 FROM " + ACTIVE_NODES_TABLE_NAME + " WHERE " + ACTIVE_NODE_ID + " = " + RUNTIME_INSTANCE + ")";
 	}
 
 	@Override
-	String[] getSelectStaledTasksSQL() {
-		return new String[]{lockForSelectForCleanTasksSQL, selectStaledTasksSQL};
+	String[] getSelectReRunnableStaledTasksSQL() {
+		return new String[]{lockForSelectForCleanTasksSQL, selectReRunnableStaledTasksSQL};
 	}
 
 	@Override

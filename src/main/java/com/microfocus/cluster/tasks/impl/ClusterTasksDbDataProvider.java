@@ -153,7 +153,7 @@ abstract class ClusterTasksDbDataProvider implements ClusterTasksDataProvider {
 		countTasksByStatusSQL = "SELECT COUNT(*) AS counter," + PROCESSOR_TYPE + " FROM " + META_TABLE_NAME + " WHERE " + STATUS + " = ? GROUP BY " + PROCESSOR_TYPE;
 	}
 
-	abstract String[] getSelectStaledTasksSQL();
+	abstract String[] getSelectReRunnableStaledTasksSQL();
 
 	@Override
 	public ClusterTasksDataProviderType getType() {
@@ -234,7 +234,7 @@ abstract class ClusterTasksDbDataProvider implements ClusterTasksDataProvider {
 		getTransactionTemplate().execute(transactionStatus -> {
 			try {
 				JdbcTemplate jdbcTemplate = getJdbcTemplate();
-				String[] sqls = getSelectStaledTasksSQL();
+				String[] sqls = getSelectReRunnableStaledTasksSQL();
 				String selectStaledSQL;
 				if (sqls.length == 2) {
 					jdbcTemplate.execute(sqls[0]);
@@ -254,12 +254,12 @@ abstract class ClusterTasksDbDataProvider implements ClusterTasksDataProvider {
 					//  reschedule tasks of SCHEDULED type
 					int rescheduleResult = reinsertScheduledTasks(tasksToReschedule);
 					logger.info("from " + tasksToReschedule.size() + " candidates for reschedule, " + rescheduleResult + " were actually rescheduled");
+				}
 
-					//  delete garbage tasks data
-					int removed = jdbcTemplate.update(removeStaledTasksSQL);
-					if (removed > 0) {
-						logger.info("found and removed " + removed + " staled tasks");
-					}
+				//  delete garbage tasks data
+				int removed = jdbcTemplate.update(removeStaledTasksSQL);
+				if (removed > 0) {
+					logger.info("found and removed " + removed + " staled task/s");
 				}
 			} catch (Exception e) {
 				transactionStatus.setRollbackOnly();

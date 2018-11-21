@@ -26,8 +26,8 @@ import static org.junit.Assert.assertEquals;
 @ContextConfiguration({
 		"/cluster-tasks-service-context-test.xml"
 })
-public class ClusterTasksProcessorConcurrencyTest extends CTSTestsBase {
-	private static final Logger logger = LoggerFactory.getLogger(ClusterTasksProcessorConcurrencyTest.class);
+public class ConcurrencyTest extends CTSTestsBase {
+	private static final Logger logger = LoggerFactory.getLogger(ConcurrencyTest.class);
 
 	@Autowired
 	private ClusterTasksProcessorConcurrency_test clusterTasksProcessorConcurrency_test;
@@ -88,7 +88,7 @@ public class ClusterTasksProcessorConcurrencyTest extends CTSTestsBase {
 		long timePassed = 0;
 		long pauseInterval = 100;
 		while (clusterTasksProcessorConcurrency_test.tasksProcessed != expectedSize && timePassed < maxTimeToWait) {
-			ClusterTasksTestsUtils.waitSafely(pauseInterval);
+			CTSTestsUtils.waitSafely(pauseInterval);
 			timePassed += pauseInterval;
 		}
 		if (clusterTasksProcessorConcurrency_test.tasksProcessed == expectedSize) {
