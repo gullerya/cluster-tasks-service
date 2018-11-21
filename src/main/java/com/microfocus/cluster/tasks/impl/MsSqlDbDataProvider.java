@@ -110,8 +110,7 @@ final class MsSqlDbDataProvider extends ClusterTasksDbDataProvider {
 		String selectedForGCFields = String.join(",", META_ID, BODY_PARTITION, TASK_TYPE, PROCESSOR_TYPE, STATUS);
 		selectStaledTasksSQL = "SELECT " + selectedForGCFields + " FROM " + META_TABLE_NAME + " WITH(UPDLOCK)" +
 				" WHERE " + RUNTIME_INSTANCE + " IS NOT NULL" +
-				"   AND NOT EXISTS (SELECT 1 FROM " + ACTIVE_NODES_TABLE_NAME + " WHERE " + ACTIVE_NODE_ID + " = " + RUNTIME_INSTANCE + ")" +
-				" FOR UPDATE";
+				"   AND NOT EXISTS (SELECT 1 FROM " + ACTIVE_NODES_TABLE_NAME + " WHERE " + ACTIVE_NODE_ID + " = " + RUNTIME_INSTANCE + ")";
 	}
 
 	@Override
