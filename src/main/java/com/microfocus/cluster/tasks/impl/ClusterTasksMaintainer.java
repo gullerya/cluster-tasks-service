@@ -34,6 +34,7 @@ final class ClusterTasksMaintainer extends ClusterTasksInternalWorker {
 
 	private long lastTasksCountTime = 0;
 	private long lastTimeRemovedNonActiveNodes = 0;
+	private int customMaintenanceInterval = 0;
 
 	ClusterTasksMaintainer(ClusterTasksServiceImpl.SystemWorkersConfigurer configurer) {
 		super(configurer);
@@ -79,7 +80,11 @@ final class ClusterTasksMaintainer extends ClusterTasksInternalWorker {
 
 	@Override
 	Integer getEffectiveBreathingInterval() {
-		return DEFAULT_MAINTENANCE_INTERVAL;
+		return customMaintenanceInterval == 0 ? DEFAULT_MAINTENANCE_INTERVAL : customMaintenanceInterval;
+	}
+
+	void setMaintenanceInterval(int maintenanceInterval) {
+		customMaintenanceInterval = maintenanceInterval;
 	}
 
 	void submitTaskToRemove(ClusterTasksDataProvider dataProvider, TaskInternal task) {

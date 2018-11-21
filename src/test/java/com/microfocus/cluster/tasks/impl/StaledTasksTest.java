@@ -1,5 +1,6 @@
-package com.microfocus.cluster.tasks;
+package com.microfocus.cluster.tasks.impl;
 
+import com.microfocus.cluster.tasks.CTSTestsUtils;
 import com.microfocus.cluster.tasks.api.ClusterTasksService;
 import com.microfocus.cluster.tasks.api.builders.TaskBuilders;
 import com.microfocus.cluster.tasks.api.dto.ClusterTask;
@@ -86,8 +87,9 @@ public class StaledTasksTest {
 		staleContext.close();
 
 		//  wait until the pickup node will remove
+		pickupContext.getBean(ClusterTasksServiceImpl.class).getMaintainer().setMaintenanceInterval(2000);
 		pickupContext.getBean(ClusterTasksStaledTest_A.class).suspended = false;
-		CTSTestsUtils.waitUntil(140000, () -> {
+		CTSTestsUtils.waitUntil(20000, () -> {
 			if (pickupContext.getBean(ClusterTasksStaledTest_A.class).takenTasksCounter < 2) {
 				return null;
 			} else {
