@@ -1,6 +1,6 @@
 package com.microfocus.cluster.tasks.processors;
 
-import com.microfocus.cluster.tasks.ClusterTasksITUtils;
+import com.microfocus.cluster.tasks.CTSTestsUtils;
 import com.microfocus.cluster.tasks.api.dto.ClusterTask;
 import com.microfocus.cluster.tasks.api.enums.ClusterTasksDataProviderType;
 import com.microfocus.cluster.tasks.api.ClusterTasksProcessorSimple;
@@ -24,6 +24,6 @@ public class ClusterTasksProcessorCount_test extends ClusterTasksProcessorSimple
 
 	@Override
 	public void processTask(ClusterTask task) {
-		ClusterTasksITUtils.sleepSafely(holdTaskForMillis);
+		CTSTestsUtils.waitSafely(holdTaskForMillis);
 	}
 }

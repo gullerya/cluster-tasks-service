@@ -24,7 +24,6 @@ class ClusterTaskImpl implements ClusterTask {
 	String concurrencyKey;
 	Long orderingFactor;
 	Long delayByMillis;
-	Long maxTimeToRunMillis;
 	String body;
 
 	ClusterTaskImpl() {
@@ -56,11 +55,6 @@ class ClusterTaskImpl implements ClusterTask {
 	}
 
 	@Override
-	public Long getMaxTimeToRunMillis() {
-		return maxTimeToRunMillis;
-	}
-
-	@Override
 	public String getBody() {
 		return body;
 	}
@@ -72,7 +66,6 @@ class ClusterTaskImpl implements ClusterTask {
 		result.concurrencyKey = origin.concurrencyKey;
 		result.orderingFactor = origin.orderingFactor;
 		result.delayByMillis = origin.delayByMillis;
-		result.maxTimeToRunMillis = origin.maxTimeToRunMillis;
 		result.body = origin.body;
 		return result;
 	}
@@ -85,7 +78,6 @@ class ClusterTaskImpl implements ClusterTask {
 				", concurrencyKey: " + concurrencyKey +
 				", orderingFactor: " + orderingFactor +
 				", delayByMillis: " + delayByMillis +
-				", maxTimeToRunMillis: " + maxTimeToRunMillis +
 				", bodyLength: " + (body != null && !body.isEmpty() ? body.length() : "null") +
 				"}";
 	}

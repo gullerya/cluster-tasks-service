@@ -24,10 +24,9 @@ import java.util.Collections;
  * Prometheus counters are static as they are once and for all
  */
 
-class ClusterTasksWorker implements Runnable {
-	private static final Logger logger = LoggerFactory.getLogger(ClusterTasksWorker.class);
+class ClusterTasksProcessorWorker implements Runnable {
+	private static final Logger logger = LoggerFactory.getLogger(ClusterTasksProcessorWorker.class);
 	private static final Counter ctsOwnErrorsCounter;
-	private static final Counter tasksPerProcessorCounter;
 	private static final Summary tasksPerProcessorDuration;
 	private static final Counter errorsPerProcessorCounter;
 	private static final String BODY_RETRIEVAL_PHASE = "body_retrieve";
@@ -43,11 +42,6 @@ class ClusterTasksWorker implements Runnable {
 				.help("CTS own errors counter")
 				.labelNames("phase", "error_type")
 				.register();
-		tasksPerProcessorCounter = Counter.build()
-				.name("cts_per_processor_tasks_total")
-				.help("CTS task counter (per processor type)")
-				.labelNames("processor_type")
-				.register();
 		tasksPerProcessorDuration = Summary.build()
 				.name("cts_per_processor_task_duration_seconds")
 				.help("CTS task duration summary (per processor type)")
@@ -60,7 +54,7 @@ class ClusterTasksWorker implements Runnable {
 				.register();
 	}
 
-	ClusterTasksWorker(ClusterTasksDataProvider dataProvider, ClusterTasksProcessorBase processor, TaskInternal task) {
+	ClusterTasksProcessorWorker(ClusterTasksDataProvider dataProvider, ClusterTasksProcessorBase processor, TaskInternal task) {
 		if (processor == null) {
 			throw new IllegalArgumentException("processor MUST NOT be null");
 		}
@@ -74,39 +68,70 @@ class ClusterTasksWorker implements Runnable {
 
 	@Override
 	public void run() {
-		tasksPerProcessorCounter.labels(processor.getType()).inc();                                         //  metric
 		if (task.partitionIndex != null) {
-			try {
-				task.body = dataProvider.retrieveTaskBody(task.id, task.partitionIndex);
-				logger.debug(task + " has body: " + task.body);
-			} catch (Exception e) {
-				logger.error("failed to retrieve body of the " + task + ", aborting task's execution");
-				ctsOwnErrorsCounter.labels(BODY_RETRIEVAL_PHASE, e.getClass().getSimpleName()).inc();      //  metric
+			boolean done = false;
+			int attempts = 0;
+			int maxAttempts = 3;
+			do {
+				attempts++;
+				try {
+					task.body = dataProvider.retrieveTaskBody(task.id, task.partitionIndex);
+					done = true;
+					logger.debug(task + " has body: " + task.body);
+				} catch (Throwable t) {
+					logger.error("failed to retrieve body of the " + task + ", attempt/s " + attempts + " out of max " + maxAttempts, t);
+					ctsOwnErrorsCounter.labels(BODY_RETRIEVAL_PHASE, t.getClass().getSimpleName()).inc();                   //  metric
+				}
+			} while (!done && attempts < maxAttempts);
+			if (!done) {
+				logger.error("finally failed to retrieve body of the " + task + ", aborting task execution");
 				return;
 			}
 		} else {
 			logger.debug(task + " is bodiless");
 		}
 
-		Summary.Timer timer = tasksPerProcessorDuration.labels(processor.getType()).startTimer();           //  metric
+		Summary.Timer taskSelfDurationTimer = tasksPerProcessorDuration.labels(processor.getType()).startTimer();       //  metric
 		try {
 			processor.processTask(ClusterTaskImpl.from(task));
-		} catch (Throwable e) {
-			logger.error("failed processing " + task + ", body: " + task.body, e);
-			errorsPerProcessorCounter.labels(processor.getType(), e.getClass().getSimpleName()).inc();      //  metric
+		} catch (Throwable t) {
+			logger.error("failed processing " + task + ", body: " + task.body, t);
+			errorsPerProcessorCounter.labels(processor.getType(), t.getClass().getSimpleName()).inc();                  //  metric
 		} finally {
-			timer.observeDuration();                                                                        //  metric
+			taskSelfDurationTimer.observeDuration();                                                                    //  metric
 			try {
+				long taskIdToRemove = task.id;
 				if (task.taskType == ClusterTaskType.SCHEDULED) {
-					dataProvider.reinsertScheduledTasks(Collections.singletonList(task));
+					int reinsertResult = dataProvider.reinsertScheduledTasks(Collections.singletonList(task));
+					if (reinsertResult != 1) {
+						logger.warn("unexpectedly failed to reschedule self (reinsert result is " + reinsertResult + ")");
+					}
 				}
-				dataProvider.updateTaskToFinished(task.id);
-			} catch (Exception e) {
-				logger.error("failed to update finished on " + task, e);
-				ctsOwnErrorsCounter.labels(TASK_FINALIZATION_PHASE, e.getClass().getSimpleName()).inc();   //  metric
+				removeFinishedTask(taskIdToRemove);
+			} catch (Throwable t) {
+				logger.error("failed to update finished on " + task, t);
+				ctsOwnErrorsCounter.labels(TASK_FINALIZATION_PHASE, t.getClass().getSimpleName()).inc();                //  metric
 			} finally {
-				processor.notifyTaskWorkerFinished();
+				processor.notifyTaskWorkerFinished(dataProvider, task);
 			}
+		}
+	}
+
+	//  task removal is mission critical part of functionality - MUST be handled and validated
+	private void removeFinishedTask(Long taskId) {
+		boolean done = false;
+		int attempts = 0;
+		int maxAttempts = 12;
+		do {
+			attempts++;
+			try {
+				done = dataProvider.removeTaskById(taskId);
+			} catch (Exception e) {
+				logger.error("failed to remove task " + taskId + ", attempt/s " + attempts + " out of max " + maxAttempts, e);
+			}
+		} while (!done && attempts < maxAttempts);
+		if (!done) {
+			logger.error("possibly CRITICAL error, failed to remove task " + taskId + ", check its uniqueness/concurrency settings and remove manually if needed");
 		}
 	}
 }

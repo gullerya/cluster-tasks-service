@@ -12,7 +12,7 @@ import com.microfocus.cluster.tasks.api.dto.ClusterTaskPersistenceResult;
 import com.microfocus.cluster.tasks.api.enums.ClusterTaskStatus;
 import com.microfocus.cluster.tasks.api.enums.ClusterTasksDataProviderType;
 
-import java.util.List;
+import java.util.Collection;
 import java.util.Map;
 import java.util.Set;
 
@@ -64,25 +64,48 @@ interface ClusterTasksDataProvider {
 	String retrieveTaskBody(Long taskId, Long partitionIndex);
 
 	/**
-	 * Updates task as FINISHED, thus releasing the processor to take next task and make this task valid for GC
+	 * Removes FINISHED task from the tasks metadata table (task bodies are removed in a separate flow)
+	 * - this API is invoked via the flow when finished task IDs are known (kept in memory)
 	 *
-	 * @param taskId the value that was assigned to a task in process of creation
+	 * @param taskId task ID to be removed
+	 * @return indication of the removal success
 	 */
-	void updateTaskToFinished(Long taskId);
+	boolean removeTaskById(Long taskId);
 
 	/**
-	 * Implementation should perform a clean up of an items in storage that may be considered as 'garbage'
-	 * Items that found to be 'staled' but are not considered to be 'garbage' should be handled accordingly to each own specific logic
+	 * Removes task bodies by provided IDs
+	 * - this API is invoked via the flow when finished task bodies IDs are known (kept in memory)
+	 *
+	 * @param partitionIndex partition index that the bodies are found in
+	 * @param taskBodies     task body IDs to be removed
 	 */
-	void handleGarbageAndStaled();
+	void cleanFinishedTaskBodiesByIDs(long partitionIndex, Long[] taskBodies);
+
+	/**
+	 * Removes all tasks that are finished but were not cleaned for some reason
+	 */
+	void removeFinishedTasksByQuery();
+
+	/**
+	 * Removes all bodies from the CURRENT PARTITION (part of the cleanup of finished tasks)
+	 */
+	void removeFinishedTaskBodiesByQuery();
+
+	/**
+	 * Manages 'stale' tasks:
+	 * - re-runnable tasks (scheduled) should be re-enqueued
+	 * - rest of the tasks should be removed (considered to be zombies)
+	 */
+	void handleStaledTasks();
 
 	/**
 	 * Implementation should perform a re-scheduling of a SCHEDULED tasks ONLY
 	 * Implementation MAY verify whether the tasks are already scheduled or not yet in order to prevent attempt to insert duplicate task
 	 *
 	 * @param candidatesToReschedule list of tasks of type SCHEDULE that should be re-run
+	 * @return actual number of rescheduled tasks
 	 */
-	void reinsertScheduledTasks(List<TaskInternal> candidatesToReschedule);
+	int reinsertScheduledTasks(Collection<TaskInternal> candidatesToReschedule);
 
 	/**
 	 * Implementation should provide a counter for all tasks in the specified status existing in the storage grouped be PROCESSOR TYPE
@@ -91,6 +114,31 @@ interface ClusterTasksDataProvider {
 	 * @return count result mapped be PROCESSOR TYPE
 	 */
 	Map<String, Integer> countTasks(ClusterTaskStatus status);
+
+	/**
+	 * Implementation should provide a counter of all the bodies in all partitions mapped by partition name
+	 *
+	 * @return map of number of bodies per partition
+	 */
+	Map<String, Integer> countBodies();
+
+	/**
+	 * CTS should maintain in each data provider the list of currently active nodes for the following use-cases:
+	 * - based on the node activity (last seen) it and its tasks will be verified for being staled (deprecating MAX TIME TO RUN)
+	 * - monitoring of the system scale
+	 * - possible in future smarter dispatch/maintenance logic across the cluster
+	 *
+	 * @param nodeId self ID
+	 */
+	void updateSelfLastSeen(String nodeId);
+
+	/**
+	 * Nodes, which last seen time is older than specified, should be removed from the registry of ACTIVE NODES
+	 *
+	 * @param maxTimeNoSeeMillis amount of millis to pass since last seen to consider node as inactive
+	 * @return number of inactive nodes, that were found and removed
+	 */
+	int removeLongTimeNoSeeNodes(long maxTimeNoSeeMillis);
 
 	/**
 	 * Implementation should provide a counter of all tasks existing in the Storage right to the moment of query

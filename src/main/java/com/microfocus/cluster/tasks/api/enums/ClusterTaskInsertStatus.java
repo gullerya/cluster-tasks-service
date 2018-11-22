@@ -8,7 +8,7 @@
 
 package com.microfocus.cluster.tasks.api.enums;
 
-public enum CTPPersistStatus {
+public enum ClusterTaskInsertStatus {
 	SUCCESS,
 	NULL_TASK_FAILURE,
 	UNIQUENESS_KEY_TOO_LONG_FAILURE,

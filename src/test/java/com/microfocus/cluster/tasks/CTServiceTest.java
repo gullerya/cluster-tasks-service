@@ -3,7 +3,7 @@ package com.microfocus.cluster.tasks;
 import com.microfocus.cluster.tasks.api.builders.TaskBuilders;
 import com.microfocus.cluster.tasks.api.dto.ClusterTask;
 import com.microfocus.cluster.tasks.api.dto.ClusterTaskPersistenceResult;
-import com.microfocus.cluster.tasks.api.enums.CTPPersistStatus;
+import com.microfocus.cluster.tasks.api.enums.ClusterTaskInsertStatus;
 import com.microfocus.cluster.tasks.api.enums.ClusterTasksDataProviderType;
 import com.microfocus.cluster.tasks.processors.ClusterTasksProcessorB_test;
 import com.microfocus.cluster.tasks.processors.ClusterTasksProcessorC_test;
@@ -27,6 +27,7 @@ import java.util.Map;
 import java.util.UUID;
 
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
 
@@ -40,8 +41,8 @@ import static org.junit.Assert.fail;
 @ContextConfiguration({
 		"/cluster-tasks-service-context-test.xml"
 })
-public class ClusterTasksProcessorServiceTest extends CTSTestsBase {
-	private final Logger logger = LoggerFactory.getLogger(ClusterTasksProcessorServiceTest.class);
+public class CTServiceTest extends CTSTestsBase {
+	private final Logger logger = LoggerFactory.getLogger(CTServiceTest.class);
 
 	@Autowired
 	private ClusterTasksProcessorA_test clusterTasksProcessorA_test;
@@ -75,7 +76,7 @@ public class ClusterTasksProcessorServiceTest extends CTSTestsBase {
 
 		ClusterTaskPersistenceResult[] result = clusterTasksService.enqueueTasks(ClusterTasksDataProviderType.DB, "ClusterTasksProcessorA_test", tasks.toArray(new ClusterTask[0]));
 		for (ClusterTaskPersistenceResult r : result) {
-			Assert.assertEquals(CTPPersistStatus.SUCCESS, r.getStatus());
+			Assert.assertEquals(ClusterTaskInsertStatus.SUCCESS, r.getStatus());
 		}
 
 		waitResultsContainerComplete(clusterTasksProcessorA_test.tasksProcessed, tasksNumber, 1000 * 4 * tasksNumber);
@@ -114,7 +115,7 @@ public class ClusterTasksProcessorServiceTest extends CTSTestsBase {
 		results.add(clusterTasksService.enqueueTasks(ClusterTasksDataProviderType.DB, "ClusterTasksProcessorC_test", tasks.get(3))[0]);
 		results.add(clusterTasksService.enqueueTasks(ClusterTasksDataProviderType.DB, "ClusterTasksProcessorB_test", tasks.get(4))[0]);
 		for (ClusterTaskPersistenceResult r : results) {
-			Assert.assertEquals(CTPPersistStatus.SUCCESS, r.getStatus());
+			Assert.assertEquals(ClusterTaskInsertStatus.SUCCESS, r.getStatus());
 		}
 
 		waitResultsContainerComplete(clusterTasksProcessorB_test.tasksProcessed, 3, 1000 * 20);
@@ -156,7 +157,7 @@ public class ClusterTasksProcessorServiceTest extends CTSTestsBase {
 		tasks.add(tmp);
 		results = clusterTasksService.enqueueTasks(ClusterTasksDataProviderType.DB, "ClusterTasksProcessorD_test", tasks.toArray(new ClusterTask[0]));
 		for (ClusterTaskPersistenceResult r : results) {
-			Assert.assertEquals(CTPPersistStatus.SUCCESS, r.getStatus());
+			Assert.assertEquals(ClusterTaskInsertStatus.SUCCESS, r.getStatus());
 		}
 		waitResultsContainerComplete(clusterTasksProcessorD_test.tasksProcessed, 2, 10000);
 		assertEquals(2, clusterTasksProcessorD_test.tasksProcessed.size());
@@ -180,8 +181,8 @@ public class ClusterTasksProcessorServiceTest extends CTSTestsBase {
 		tasks.add(tmp);
 
 		results = clusterTasksService.enqueueTasks(ClusterTasksDataProviderType.DB, "ClusterTasksProcessorA_test", tasks.toArray(new ClusterTask[0]));
-		Assert.assertEquals(CTPPersistStatus.SUCCESS, results[0].getStatus());
-		Assert.assertEquals(CTPPersistStatus.UNIQUE_CONSTRAINT_FAILURE, results[1].getStatus());
+		Assert.assertEquals(ClusterTaskInsertStatus.SUCCESS, results[0].getStatus());
+		Assert.assertEquals(ClusterTaskInsertStatus.UNIQUE_CONSTRAINT_FAILURE, results[1].getStatus());
 		waitResultsContainerComplete(clusterTasksProcessorA_test.tasksProcessed, 1, 3000);
 	}
 
@@ -200,7 +201,7 @@ public class ClusterTasksProcessorServiceTest extends CTSTestsBase {
 				.setBody("delayed")
 				.build();
 		results = clusterTasksService.enqueueTasks(ClusterTasksDataProviderType.DB, "ClusterTasksProcessorA_test", tmp);
-		Assert.assertEquals(CTPPersistStatus.SUCCESS, results[0].getStatus());
+		Assert.assertEquals(ClusterTaskInsertStatus.SUCCESS, results[0].getStatus());
 
 		//  task 2 with the same concurrency key
 		tmp = TaskBuilders.channeledTask()
@@ -208,13 +209,22 @@ public class ClusterTasksProcessorServiceTest extends CTSTestsBase {
 				.setBody("first_to_run")
 				.build();
 		results = clusterTasksService.enqueueTasks(ClusterTasksDataProviderType.DB, "ClusterTasksProcessorA_test", tmp);
-		Assert.assertEquals(CTPPersistStatus.SUCCESS, results[0].getStatus());
+		Assert.assertEquals(ClusterTaskInsertStatus.SUCCESS, results[0].getStatus());
 
-		long passedTime = waitResultsContainerComplete(clusterTasksProcessorA_test.tasksProcessed, 2, 10000);
+		long startWait = System.currentTimeMillis();
+		Long passedTime = CTSTestsUtils.waitUntil(10000, () -> {
+			if (clusterTasksProcessorA_test.tasksProcessed.containsKey("first_to_run") && clusterTasksProcessorA_test.tasksProcessed.containsKey("delayed")) {
+				return System.currentTimeMillis() - startWait;
+			} else {
+				return null;
+			}
+		});
+		assertNotNull(passedTime);
+
 		logger.info("delay: " + delay + "; passed: " + passedTime);
 		//  precision of seconds is enough, since we are storing the time data as date and not timestamp
 		//  and it is possible that delay would be fulfilled withing up to 1 second less
-		assertTrue(passedTime / 1000 >= delay / 1000 - 1);
+		assertTrue("passed:  " + passedTime + " should be bigger than delay: " + delay, passedTime >= delay);
 		assertEquals("first_to_run", new ArrayList<>(clusterTasksProcessorA_test.tasksProcessed.keySet()).get(0));
 		assertEquals("delayed", new ArrayList<>(clusterTasksProcessorA_test.tasksProcessed.keySet()).get(1));
 		assertTrue(clusterTasksProcessorA_test.tasksProcessed.get("delayed").after(clusterTasksProcessorA_test.tasksProcessed.get("first_to_run")));
@@ -230,7 +240,7 @@ public class ClusterTasksProcessorServiceTest extends CTSTestsBase {
 		//  enqueue first task to an ever-non-available processor
 		tmp = TaskBuilders.channeledTask().setConcurrencyKey(concurrencyKey).build();
 		results = clusterTasksService.enqueueTasks(ClusterTasksDataProviderType.DB, "ClusterTasksProcessorE_test_na", tmp);
-		Assert.assertEquals(CTPPersistStatus.SUCCESS, results[0].getStatus());
+		Assert.assertEquals(ClusterTaskInsertStatus.SUCCESS, results[0].getStatus());
 
 		//  enqueue second task to an available processor with the same concurrency key
 		tmp = TaskBuilders.channeledTask()
@@ -238,7 +248,7 @@ public class ClusterTasksProcessorServiceTest extends CTSTestsBase {
 				.setBody(taskBodyToCheck)
 				.build();
 		results = clusterTasksService.enqueueTasks(ClusterTasksDataProviderType.DB, "ClusterTasksProcessorF_test_cna", tmp);
-		Assert.assertEquals(CTPPersistStatus.SUCCESS, results[0].getStatus());
+		Assert.assertEquals(ClusterTaskInsertStatus.SUCCESS, results[0].getStatus());
 
 		//  ensure that the 'staled' non-available processor's task in NOT holding the whole concurrent queue
 		waitResultsContainerComplete(clusterTasksProcessorF_test_cna.tasksProcessed, 1, 3000);
@@ -249,7 +259,7 @@ public class ClusterTasksProcessorServiceTest extends CTSTestsBase {
 		long timePassed = 0;
 		long pauseInterval = 50;
 		while (container.size() != expectedSize && timePassed < maxTimeToWait) {
-			ClusterTasksITUtils.sleepSafely(pauseInterval);
+			CTSTestsUtils.waitSafely(pauseInterval);
 			timePassed += pauseInterval;
 		}
 		if (container.size() == expectedSize) {

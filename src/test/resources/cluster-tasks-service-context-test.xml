@@ -6,7 +6,7 @@
 
 	<import resource="cluster-tasks-service-context.xml"/>
 
-	<bean class="com.microfocus.cluster.tasks.ClusterTasksServiceConfigurerForTestsSPI"/>
+	<bean class="com.microfocus.cluster.tasks.CTSConfigurerForTestsSPI"/>
 
 	<bean class="com.microfocus.cluster.tasks.processors.ClusterTasksProcessorA_test"/>
 

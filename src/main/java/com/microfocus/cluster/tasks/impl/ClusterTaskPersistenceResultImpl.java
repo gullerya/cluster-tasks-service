@@ -9,21 +9,21 @@
 package com.microfocus.cluster.tasks.impl;
 
 import com.microfocus.cluster.tasks.api.dto.ClusterTaskPersistenceResult;
-import com.microfocus.cluster.tasks.api.enums.CTPPersistStatus;
+import com.microfocus.cluster.tasks.api.enums.ClusterTaskInsertStatus;
 
 /**
  * Created by gullery on 16/12/2016.
  */
 
 class ClusterTaskPersistenceResultImpl implements ClusterTaskPersistenceResult {
-	private final CTPPersistStatus status;
+	private final ClusterTaskInsertStatus status;
 
-	ClusterTaskPersistenceResultImpl(CTPPersistStatus status) {
+	ClusterTaskPersistenceResultImpl(ClusterTaskInsertStatus status) {
 		this.status = status;
 	}
 
 	@Override
-	public CTPPersistStatus getStatus() {
+	public ClusterTaskInsertStatus getStatus() {
 		return status;
 	}
 }

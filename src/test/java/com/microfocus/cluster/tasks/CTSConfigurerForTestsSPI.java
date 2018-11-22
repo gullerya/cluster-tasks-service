@@ -2,6 +2,7 @@ package com.microfocus.cluster.tasks;
 
 import com.microfocus.cluster.tasks.api.ClusterTasksServiceConfigurerSPI;
 import com.zaxxer.hikari.HikariDataSource;
+import org.springframework.beans.factory.DisposableBean;
 
 import javax.sql.DataSource;
 import java.io.FileInputStream;
@@ -13,12 +14,12 @@ import static com.microfocus.cluster.tasks.api.ClusterTasksServiceConfigurerSPI.
 import static com.microfocus.cluster.tasks.api.ClusterTasksServiceConfigurerSPI.DBType.ORACLE;
 import static com.microfocus.cluster.tasks.api.ClusterTasksServiceConfigurerSPI.DBType.POSTGRESQL;
 
-public class ClusterTasksServiceConfigurerForTestsSPI implements ClusterTasksServiceConfigurerSPI {
+public class CTSConfigurerForTestsSPI implements ClusterTasksServiceConfigurerSPI, DisposableBean {
 	private final CompletableFuture<Boolean> configReadyLatch = new CompletableFuture<>();
 	private final DBType dbType;
-	private final DataSource dataSource;
+	private final HikariDataSource dataSource;
 
-	private ClusterTasksServiceConfigurerForTestsSPI() throws IOException {
+	private CTSConfigurerForTestsSPI() throws IOException {
 		Properties dbConfig = resolveConfigProperties();
 
 		String jdbcDriverClass;
@@ -71,16 +72,6 @@ public class ClusterTasksServiceConfigurerForTestsSPI implements ClusterTasksSer
 	}
 
 	@Override
-	public Integer getTasksPollIntervalMillis() {
-		return null;
-	}
-
-	@Override
-	public Integer getMaintenanceIntervalMillis() {
-		return null;
-	}
-
-	@Override
 	public boolean isEnabled() {
 		return true;
 	}
@@ -110,5 +101,12 @@ public class ClusterTasksServiceConfigurerForTestsSPI implements ClusterTasksSer
 		}
 
 		return result;
+	}
+
+	@Override
+	public void destroy() {
+		System.out.println("closing connections pool...");
+		dataSource.close();
+		System.out.println("connections pool closed");
 	}
 }

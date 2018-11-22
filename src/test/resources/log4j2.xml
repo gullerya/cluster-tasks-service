@@ -31,13 +31,14 @@
 		</Logger>
 
 		<!-- CTP -->
-		<Logger name="com.microfocus.octane.cluster.tasks" level="debug" additivity="false">
+		<Logger name="com.microfocus.octane.cluster.tasks" level="info" additivity="false">
 			<AppenderRef ref="ctsAsyncAppender"/>
 			<AppenderRef ref="console"/>
 		</Logger>
 
-		<Root level="debug">
+		<Root level="info">
 			<AppenderRef ref="console"/>
+			<AppenderRef ref="ctsAsyncAppender"/>
 		</Root>
 	</Loggers>
 </Configuration>

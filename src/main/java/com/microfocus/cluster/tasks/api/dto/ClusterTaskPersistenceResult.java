@@ -8,7 +8,7 @@
 
 package com.microfocus.cluster.tasks.api.dto;
 
-import com.microfocus.cluster.tasks.api.enums.CTPPersistStatus;
+import com.microfocus.cluster.tasks.api.enums.ClusterTaskInsertStatus;
 
 /**
  * Created by gullery on 16/12/2016.
@@ -17,5 +17,5 @@ import com.microfocus.cluster.tasks.api.enums.CTPPersistStatus;
  */
 
 public interface ClusterTaskPersistenceResult {
-	CTPPersistStatus getStatus();
+	ClusterTaskInsertStatus getStatus();
 }

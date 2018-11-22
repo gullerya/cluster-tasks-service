@@ -22,8 +22,8 @@ import static org.junit.Assert.assertTrue;
 @ContextConfiguration({
 		"/cluster-tasks-scheduled-processor-context-test.xml"
 })
-public class ClusterTasksScheduledProcessorTest extends CTSTestsBase {
-	private static final Logger logger = LoggerFactory.getLogger(ClusterTasksScheduledProcessorTest.class);
+public class ScheduledProcessorTest extends CTSTestsBase {
+	private static final Logger logger = LoggerFactory.getLogger(ScheduledProcessorTest.class);
 
 	@Test
 	public void TestA_scheduled_tasks() {
@@ -32,7 +32,7 @@ public class ClusterTasksScheduledProcessorTest extends CTSTestsBase {
 		ClusterTasksSchedProcB_test.suspended = false;      // this CTP's self duration is ~2000 ms
 		ClusterTasksSchedProcC_test.suspended = false;      // this CTP's self duration is ~3000 ms
 
-		ClusterTasksITUtils.sleepSafely(7000);
+		CTSTestsUtils.waitSafely(7000);
 
 		//  suspend processors
 		ClusterTasksSchedProcA_test.suspended = true;
