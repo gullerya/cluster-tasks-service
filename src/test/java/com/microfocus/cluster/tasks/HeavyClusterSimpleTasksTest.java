@@ -187,7 +187,12 @@ public class HeavyClusterSimpleTasksTest {
 
 		//  stop all CTS instances
 		contexts.forEach(c -> {
-			c.getBean(ClusterTasksService.class).stop();
+			try {
+				c.getBean(ClusterTasksService.class).stop()
+						.get();
+			} catch (Exception e) {
+				logger.warn("interrupted while stopping CTS");
+			}
 			c.close();
 		});
 	}

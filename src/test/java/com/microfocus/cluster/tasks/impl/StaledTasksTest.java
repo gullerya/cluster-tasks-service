@@ -83,7 +83,12 @@ public class StaledTasksTest {
 		});
 
 		//  destroy stale node, so that it won't update its activity anymore (actually becoming stale)
-		staleContext.getBean(ClusterTasksService.class).stop();
+		try {
+			staleContext.getBean(ClusterTasksService.class).stop()
+					.get();
+		} catch (Exception e) {
+			logger.warn("interrupted while stopping CTS");
+		}
 		staleContext.close();
 
 		//  wait until the pickup node will remove
@@ -98,7 +103,12 @@ public class StaledTasksTest {
 		});
 
 		//  clean up the pick up context
-		pickupContext.getBean(ClusterTasksService.class).stop();
+		try {
+			pickupContext.getBean(ClusterTasksService.class).stop()
+					.get();
+		} catch (Exception e) {
+			logger.warn("interrupted while stopping CTS");
+		}
 		pickupContext.close();
 	}
 }
