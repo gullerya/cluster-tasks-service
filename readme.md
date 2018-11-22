@@ -1,7 +1,7 @@
 [![License](https://img.shields.io/badge/License-Apache%202.0-blue.svg)](https://opensource.org/licenses/Apache-2.0)
 [![Maven Central](https://img.shields.io/maven-central/v/com.microfocus/cluster-tasks-service.svg?label=Maven%20Central)](https://search.maven.org/search?q=g:%22com.microfocus%22%20AND%20a:%22cluster-tasks-service%22)
-[![Build Status](https://travis-ci.org/MicroFocus/cluster-tasks-service.svg?branch=master)](https://travis-ci.org/MicroFocus/cluster-tasks-service)
-[![AppVeyor](https://img.shields.io/appveyor/ci/gullerya/cluster-tasks-service.svg)](https://ci.appveyor.com/project/gullerya/cluster-tasks-service)
+[![Build Status](https://img.shields.io/travis/MicroFocus/cluster-tasks-service/master.svg?logo=travis)](https://travis-ci.org/MicroFocus/cluster-tasks-service/branches)
+[![AppVeyor](https://img.shields.io/appveyor/ci/gullerya/cluster-tasks-service/master.svg?logo=appveyor)](https://ci.appveyor.com/project/gullerya/cluster-tasks-service/branch/master)
 [![codecov](https://codecov.io/gh/MicroFocus/cluster-tasks-service/branch/master/graph/badge.svg)](https://codecov.io/gh/MicroFocus/cluster-tasks-service)
 
 ### Summary
