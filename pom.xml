@@ -384,9 +384,9 @@
 			<id>oracle</id>
 			<properties>
 				<tests.db.driver>oracle.jdbc.OracleDriver</tests.db.driver>
-				<tests.db.url>jdbc:oracle:thin:@mydtbld0134.hpeswlab.net:1544/octutf12201.hpeswlab.net</tests.db.url>
+				<tests.db.url>jdbc:oracle:thin:@GULLERY3:1521/xe</tests.db.url>
 				<tests.db.username>system</tests.db.username>
-				<tests.db.password>Manager12</tests.db.password>
+				<tests.db.password>system_password</tests.db.password>
 				<tests.db.drop.script>
 					DROP USER ${tests.db.schema} CASCADE;
 					DROP TABLESPACE ${tests.db.schema} INCLUDING CONTENTS AND DATAFILES;
