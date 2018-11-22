@@ -126,7 +126,7 @@ class ClusterTasksProcessorWorker implements Runnable {
 			attempts++;
 			try {
 				done = dataProvider.removeTaskById(taskId);
-				if (attempts > 1) {
+				if (done && attempts > 1) {
 					logger.info("finally succeeded to remove task " + taskId + " (took " + attempts + " attempts)");
 				}
 			} catch (Exception e) {
