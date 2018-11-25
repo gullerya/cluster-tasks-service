@@ -1,6 +1,9 @@
 ### Changelog
 
-##### 1.4.1 (current snapshot)
+##### 1.5
+- improved detection and removal of staled tasks
+- added tracking of active nodes
+- improved overall DB related performance (pessimistic locking, but custom locks in SQL Server and PostgreSQL)
 
 ##### 1.4.0
 - changed to public open-source repo
