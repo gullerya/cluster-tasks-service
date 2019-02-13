@@ -17,8 +17,10 @@ import org.slf4j.LoggerFactory;
 
 import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 
 final class ClusterTasksMaintainer extends ClusterTasksInternalWorker {
 	private final Logger logger = LoggerFactory.getLogger(ClusterTasksMaintainer.class);
@@ -30,6 +32,7 @@ final class ClusterTasksMaintainer extends ClusterTasksInternalWorker {
 	private final Gauge pendingTasksCounter;
 	private final Gauge taskBodiesCounter;
 
+	private final Set<String> everKnownTaskProcessors = new HashSet<>();
 	private final Map<ClusterTasksDataProvider, Map<Long, List<Long>>> taskBodiesToRemove = new HashMap<>();
 
 	private long lastTasksCountTime = 0;
@@ -150,6 +153,12 @@ final class ClusterTasksMaintainer extends ClusterTasksInternalWorker {
 				Map<String, Integer> pendingTasksCounters = dataProvider.countTasks(ClusterTaskStatus.PENDING);
 				for (Map.Entry<String, Integer> counter : pendingTasksCounters.entrySet()) {
 					pendingTasksCounter.labels(counter.getKey()).set(counter.getValue());
+				}
+				everKnownTaskProcessors.addAll(pendingTasksCounters.keySet());          //  adding all task processors to the cached set
+				for (String knownTaskProcessor : everKnownTaskProcessors) {
+					if (!pendingTasksCounters.containsKey(knownTaskProcessor)) {
+						pendingTasksCounter.labels(knownTaskProcessor).set(0);          //  zeroing value for known task processor that got no data this round
+					}
 				}
 			} catch (Exception e) {
 				logger.error("failed to count tasks", e);
