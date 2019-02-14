@@ -232,13 +232,17 @@ abstract class ClusterTasksDbDataProvider implements ClusterTasksDataProvider {
 	@Override
 	public void handleStaledTasks() {
 		getTransactionTemplate().execute(transactionStatus -> {
+			String releaseLock = null;
+			JdbcTemplate jdbcTemplate = getJdbcTemplate();
 			try {
-				JdbcTemplate jdbcTemplate = getJdbcTemplate();
 				String[] sqls = getSelectReRunnableStaledTasksSQL();
 				String selectStaledSQL;
-				if (sqls.length == 2) {
+				if (sqls.length > 1) {
 					jdbcTemplate.execute(sqls[0]);
 					selectStaledSQL = sqls[1];
+					if (sqls.length > 2) {
+						releaseLock = sqls[2];
+					}
 				} else {
 					selectStaledSQL = sqls[0];
 				}
@@ -264,6 +268,10 @@ abstract class ClusterTasksDbDataProvider implements ClusterTasksDataProvider {
 			} catch (Exception e) {
 				transactionStatus.setRollbackOnly();
 				throw new CtsGeneralFailure("failed to cleanup cluster tasks", e);
+			} finally {
+				if (releaseLock != null) {
+					jdbcTemplate.execute(releaseLock);
+				}
 			}
 
 			return null;

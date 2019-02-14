@@ -54,14 +54,15 @@ final class MsSqlDbDataProvider extends ClusterTasksDbDataProvider {
 
 	private final String insertTaskWithoutBodySQL;
 	private final Map<Long, String> insertTaskWithBodySQLs = new HashMap<>();
-	private final String lockForSelectForRunTasksSQL;
+	private final String takeLockForSelectForRunTasksSQL;
 	private final Map<Integer, String> selectForUpdateTasksSQLs = new HashMap<>();
 	private final Map<Long, String> selectTaskBodyByPartitionSQLs = new HashMap<>();
-
 	private final String updateTasksStartedSQL;
+	private final String releaseLockForSelectForRunTasksSQL;
 
-	private final String lockForSelectForCleanTasksSQL;
+	private final String takeLockForSelectForCleanTasksSQL;
 	private final String selectReRunnableStaledTasksSQL;
+	private final String releaseLockForSelectForCleanTasksSQL;
 
 	MsSqlDbDataProvider(ClusterTasksService clusterTasksService, ClusterTasksServiceConfigurerSPI serviceConfigurer) {
 		super(clusterTasksService, serviceConfigurer);
@@ -82,7 +83,8 @@ final class MsSqlDbDataProvider extends ClusterTasksDbDataProvider {
 		insertTaskWithoutBodySQL = "INSERT INTO " + META_TABLE_NAME + " (" + insertFields + ")" +
 				" VALUES (NEXT VALUE FOR " + CLUSTER_TASK_ID_SEQUENCE + ", ?, ?, ?, ?, ?, ?, COALESCE(?, CAST(FORMAT(CURRENT_TIMESTAMP,'yyyyMMddHHmmssfff') AS BIGINT) + ?), GETDATE(), " + ClusterTaskStatus.PENDING.value + ")";
 
-		lockForSelectForRunTasksSQL = "BEGIN TRAN; EXEC sp_getapplock @Resource = 'LOCK_FOR_TASKS_DISPATCH', @LockMode = 'Exclusive', @LockOwner = 'Transaction'";
+		//  select and run tasks flow
+		takeLockForSelectForRunTasksSQL = "BEGIN TRAN; EXEC sp_getapplock @Resource = 'LOCK_FOR_TASKS_DISPATCH', @LockMode = 'Exclusive', @LockOwner = 'Transaction'";
 		String selectFields = String.join(",", META_ID, TASK_TYPE, PROCESSOR_TYPE, UNIQUENESS_KEY, CONCURRENCY_KEY, ORDERING_FACTOR, DELAY_BY_MILLIS, BODY_PARTITION, STATUS);
 		for (int maxProcessorTypes : new Integer[]{20, 50, 100, 500}) {
 			String processorTypesInParameter = String.join(",", Collections.nCopies(maxProcessorTypes, "?"));
@@ -106,21 +108,23 @@ final class MsSqlDbDataProvider extends ClusterTasksDbDataProvider {
 					" VALUES (@taskId, ?, ?, ?, ?, ?, ?, COALESCE(?, CAST(FORMAT(CURRENT_TIMESTAMP,'yyyyMMddHHmmssfff') AS BIGINT) + ?), GETDATE(), " + ClusterTaskStatus.PENDING.value + ");"
 			);
 		}
-
 		updateTasksStartedSQL = "UPDATE " + META_TABLE_NAME + " SET " + STATUS + " = " + ClusterTaskStatus.RUNNING.value + ", " + STARTED + " = GETDATE(), " + RUNTIME_INSTANCE + " = ?" +
 				" WHERE " + META_ID + " = ?";
+		releaseLockForSelectForRunTasksSQL = "EXEC sp_releaseapplock @Resource = 'LOCK_FOR_TASKS_DISPATCH'; COMMIT TRAN";
 
-		lockForSelectForCleanTasksSQL = "BEGIN TRAN; EXEC sp_getapplock @Resource = 'LOCK_FOR_TASKS_GC', @LockMode = 'Exclusive', @LockOwner = 'Transaction'";
+		//  clean up tasks flow
+		takeLockForSelectForCleanTasksSQL = "BEGIN TRAN; EXEC sp_getapplock @Resource = 'LOCK_FOR_TASKS_GC', @LockMode = 'Exclusive', @LockOwner = 'Transaction'";
 		String selectedForGCFields = String.join(",", META_ID, BODY_PARTITION, TASK_TYPE, PROCESSOR_TYPE, STATUS);
 		selectReRunnableStaledTasksSQL = "SELECT " + selectedForGCFields + " FROM " + META_TABLE_NAME +
 				" WHERE " + TASK_TYPE + " = " + ClusterTaskType.SCHEDULED.value +
 				"   AND " + RUNTIME_INSTANCE + " IS NOT NULL" +
 				"   AND NOT EXISTS (SELECT 1 FROM " + ACTIVE_NODES_TABLE_NAME + " WHERE " + ACTIVE_NODE_ID + " = " + RUNTIME_INSTANCE + ")";
+		releaseLockForSelectForCleanTasksSQL = "EXEC sp_releaseapplock @Resource = 'LOCK_FOR_TASKS_GC'; COMMIT TRAN";
 	}
 
 	@Override
 	String[] getSelectReRunnableStaledTasksSQL() {
-		return new String[]{lockForSelectForCleanTasksSQL, selectReRunnableStaledTasksSQL};
+		return new String[]{takeLockForSelectForCleanTasksSQL, selectReRunnableStaledTasksSQL, releaseLockForSelectForCleanTasksSQL};
 	}
 
 	@Override
@@ -252,6 +256,7 @@ final class MsSqlDbDataProvider extends ClusterTasksDbDataProvider {
 	@Override
 	public void retrieveAndDispatchTasks(Map<String, ClusterTasksProcessorBase> availableProcessors) {
 		Map<ClusterTasksProcessorBase, Collection<TaskInternal>> tasksToRun = new HashMap<>();
+		JdbcTemplate jdbcTemplate = getJdbcTemplate();
 
 		//  within the same transaction do:
 		//  - SELECT candidate tasks to be run
@@ -259,7 +264,6 @@ final class MsSqlDbDataProvider extends ClusterTasksDbDataProvider {
 		//  - UPDATE those tasks as RUNNING
 		getTransactionTemplate().execute(transactionStatus -> {
 			try {
-				JdbcTemplate jdbcTemplate = getJdbcTemplate();
 				String[] availableProcessorTypes = availableProcessors.keySet().toArray(new String[0]);
 				Integer paramsTotal = null;
 				String sql = null;
@@ -283,7 +287,7 @@ final class MsSqlDbDataProvider extends ClusterTasksDbDataProvider {
 				for (int i = 0; i < paramsTotal; i++) paramTypes[i] = Types.NVARCHAR;
 
 				List<TaskInternal> tasks;
-				jdbcTemplate.execute(lockForSelectForRunTasksSQL);
+				jdbcTemplate.execute(takeLockForSelectForRunTasksSQL);
 				tasks = jdbcTemplate.query(sql, params, paramTypes, this::tasksMetadataReader);
 				if (!tasks.isEmpty()) {
 					Map<String, List<TaskInternal>> tasksByProcessor = tasks.stream().collect(Collectors.groupingBy(ti -> ti.processorType));
@@ -317,6 +321,8 @@ final class MsSqlDbDataProvider extends ClusterTasksDbDataProvider {
 				transactionStatus.setRollbackOnly();
 				tasksToRun.clear();
 				throw new CtsGeneralFailure("failed to retrieve and execute tasks", t);
+			} finally {
+				jdbcTemplate.execute(releaseLockForSelectForRunTasksSQL);
 			}
 
 			return null;
