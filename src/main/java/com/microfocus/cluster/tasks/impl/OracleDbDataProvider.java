@@ -23,7 +23,6 @@ import org.springframework.jdbc.core.JdbcTemplate;
 
 import java.sql.Types;
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.LinkedHashMap;
@@ -39,7 +38,7 @@ import static java.sql.Types.VARCHAR;
 
 /**
  * Created by gullery on 12/04/2018.
- *
+ * <p>
  * Oracle oriented data provider
  */
 
@@ -309,7 +308,7 @@ final class OracleDbDataProvider extends ClusterTasksDbDataProvider {
 								.collect(Collectors.toList());
 						int[] updateResults = jdbcTemplate.batchUpdate(updateTasksStartedSQL, updateParams, new int[]{VARCHAR, BIGINT});
 						if (logger.isDebugEnabled()) {
-							logger.debug("update tasks to RUNNING result: " + Arrays.toString(updateResults));
+							logger.debug("update tasks to RUNNING result: " + Stream.of(updateResults).map(String::valueOf).collect(Collectors.joining(", ")));
 							logger.debug("from a total of " + tasks.size() + " available tasks " + tasksToRunIDs.size() + " has been started");
 						}
 					} else {

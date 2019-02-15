@@ -26,11 +26,12 @@ final class ClusterTasksMaintainer extends ClusterTasksInternalWorker {
 	private final Logger logger = LoggerFactory.getLogger(ClusterTasksMaintainer.class);
 	private final static Integer DEFAULT_MAINTENANCE_INTERVAL = 17039;
 	private final static Integer DEFAULT_TASKS_COUNT_INTERVAL = 32204;
+	private final static Counter maintenanceErrors;
+	private final static Summary maintenanceDurationSummary;
+	private final static Gauge pendingTasksCounter;
+	private final static Gauge taskBodiesCounter;
 
-	private final Counter maintenanceErrors;
-	private final Summary maintenanceDurationSummary;
-	private final Gauge pendingTasksCounter;
-	private final Gauge taskBodiesCounter;
+	private final String RUNTIME_INSTANCE_ID;
 
 	private final Set<String> everKnownTaskProcessors = new HashSet<>();
 	private final Map<ClusterTasksDataProvider, Map<Long, List<Long>>> taskBodiesToRemove = new HashMap<>();
@@ -39,32 +40,37 @@ final class ClusterTasksMaintainer extends ClusterTasksInternalWorker {
 	private long lastTimeRemovedNonActiveNodes = 0;
 	private int customMaintenanceInterval = 0;
 
-	ClusterTasksMaintainer(ClusterTasksServiceImpl.SystemWorkersConfigurer configurer) {
-		super(configurer);
-
+	static {
 		maintenanceErrors = Counter.build()
-				.name("cts_maintenance_errors_total_" + configurer.getInstanceID().replaceAll("-", "_"))
+				.name("cts_maintenance_errors_total")
 				.help("CTS maintenance errors counter")
+				.labelNames("runtime_instance_id")
 				.register();
 		maintenanceDurationSummary = Summary.build()
-				.name("cts_maintenance_duration_seconds_" + configurer.getInstanceID().replaceAll("-", "_"))
+				.name("cts_maintenance_duration_seconds")
 				.help("CTS maintenance duration summary")
+				.labelNames("runtime_instance_id")
 				.register();
 		pendingTasksCounter = Gauge.build()
-				.name("cts_pending_tasks_counter_" + configurer.getInstanceID().replaceAll("-", "_"))
+				.name("cts_pending_tasks_counter")
 				.help("CTS pending tasks counter (by CTP type)")
-				.labelNames("processor_type")
+				.labelNames("runtime_instance_id", "processor_type")
 				.register();
 		taskBodiesCounter = Gauge.build()
-				.name("cts_task_bodies_counter_" + configurer.getInstanceID().replaceAll("-", "_"))
+				.name("cts_task_bodies_counter")
 				.help("CTS task bodies counter (per partition)")
-				.labelNames("partition")
+				.labelNames("runtime_instance_id", "partition")
 				.register();
+	}
+
+	ClusterTasksMaintainer(ClusterTasksServiceImpl.SystemWorkersConfigurer configurer) {
+		super(configurer);
+		RUNTIME_INSTANCE_ID = configurer.getInstanceID();
 	}
 
 	@Override
 	void performWorkCycle() {
-		Summary.Timer maintenanceTimer = maintenanceDurationSummary.startTimer();
+		Summary.Timer maintenanceTimer = maintenanceDurationSummary.labels(RUNTIME_INSTANCE_ID).startTimer();
 		try {
 			for (ClusterTasksDataProvider provider : configurer.getDataProvidersMap().values()) {
 				if (provider.isReady()) {
@@ -74,8 +80,8 @@ final class ClusterTasksMaintainer extends ClusterTasksInternalWorker {
 				}
 			}
 		} catch (Throwable t) {
-			maintenanceErrors.inc();
-			logger.error("failed to perform maintenance round; total failures: " + maintenanceErrors.get(), t);
+			maintenanceErrors.labels(RUNTIME_INSTANCE_ID).inc();
+			logger.error("failed to perform maintenance round; total failures: " + maintenanceErrors.labels(RUNTIME_INSTANCE_ID).get(), t);
 		} finally {
 			maintenanceTimer.observeDuration();
 		}
@@ -152,12 +158,12 @@ final class ClusterTasksMaintainer extends ClusterTasksInternalWorker {
 			try {
 				Map<String, Integer> pendingTasksCounters = dataProvider.countTasks(ClusterTaskStatus.PENDING);
 				for (Map.Entry<String, Integer> counter : pendingTasksCounters.entrySet()) {
-					pendingTasksCounter.labels(counter.getKey()).set(counter.getValue());
+					pendingTasksCounter.labels(RUNTIME_INSTANCE_ID, counter.getKey()).set(counter.getValue());
 				}
 				everKnownTaskProcessors.addAll(pendingTasksCounters.keySet());          //  adding all task processors to the cached set
 				for (String knownTaskProcessor : everKnownTaskProcessors) {
 					if (!pendingTasksCounters.containsKey(knownTaskProcessor)) {
-						pendingTasksCounter.labels(knownTaskProcessor).set(0);          //  zeroing value for known task processor that got no data this round
+						pendingTasksCounter.labels(RUNTIME_INSTANCE_ID, knownTaskProcessor).set(0);          //  zeroing value for known task processor that got no data this round
 					}
 				}
 			} catch (Exception e) {
@@ -168,7 +174,7 @@ final class ClusterTasksMaintainer extends ClusterTasksInternalWorker {
 			try {
 				Map<String, Integer> taskBodiesCounters = dataProvider.countBodies();
 				for (Map.Entry<String, Integer> counter : taskBodiesCounters.entrySet()) {
-					taskBodiesCounter.labels(counter.getKey()).set(counter.getValue());
+					taskBodiesCounter.labels(RUNTIME_INSTANCE_ID, counter.getKey()).set(counter.getValue());
 				}
 			} catch (Exception e) {
 				logger.error("failed to count task bodies", e);

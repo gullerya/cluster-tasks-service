@@ -37,7 +37,7 @@ import static java.sql.Types.VARCHAR;
 
 /**
  * Created by gullery on 12/04/2018.
- *
+ * <p>
  * MsSql Server oriented data provider
  */
 
@@ -310,7 +310,7 @@ final class MsSqlDbDataProvider extends ClusterTasksDbDataProvider {
 								.collect(Collectors.toList());
 						int[] updateResults = jdbcTemplate.batchUpdate(updateTasksStartedSQL, updateParams, new int[]{VARCHAR, BIGINT});
 						if (logger.isDebugEnabled()) {
-							logger.debug("update tasks to RUNNING results: " + String.join(", ", Stream.of(updateResults).map(String::valueOf).collect(Collectors.toList())));
+							logger.debug("update tasks to RUNNING results: " + Stream.of(updateResults).map(String::valueOf).collect(Collectors.joining(", ")));
 							logger.debug("from a total of " + tasks.size() + " available tasks " + tasksToRunIDs.size() + " has been started");
 						}
 					} else {

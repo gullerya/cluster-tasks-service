@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <project xmlns="http://maven.apache.org/POM/4.0.0"
-		 xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
-		 xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
+         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
 	<modelVersion>4.0.0</modelVersion>
 
 	<artifactId>cluster-tasks-service</artifactId>
@@ -53,7 +53,7 @@
 		<maven-javadoc-plugin.version>3.0.1</maven-javadoc-plugin.version>
 		<maven-resources-plugin.version>3.1.0</maven-resources-plugin.version>
 		<maven-compiler-plugin.version>3.8.0</maven-compiler-plugin.version>
-		<maven-jar-plugin.version>3.1.0</maven-jar-plugin.version>
+		<maven-jar-plugin.version>3.1.1</maven-jar-plugin.version>
 		<maven-install-plugin.version>3.0.0-M1</maven-install-plugin.version>
 
 		<!--DEPLOY-->
@@ -64,14 +64,14 @@
 		<!--TESTS-->
 		<skipTests>true</skipTests>
 		<junit.version>4.12</junit.version>
-		<maven-surefire-plugin.version>2.22.1</maven-surefire-plugin.version>
-		<jacoco-maven-plugin.version>0.8.2</jacoco-maven-plugin.version>
-		<spotbugs.version>3.1.8</spotbugs.version>
+		<maven-surefire-plugin.version>3.0.0-M3</maven-surefire-plugin.version>
+		<jacoco-maven-plugin.version>0.8.3</jacoco-maven-plugin.version>
+		<spotbugs.version>3.1.11</spotbugs.version>
 		<sql-maven-plugin.version>1.5</sql-maven-plugin.version>
-		<mssql-jdbc.version>7.1.2.jre8-preview</mssql-jdbc.version>
+		<mssql-jdbc.version>7.2.1.jre8</mssql-jdbc.version>
 		<ojdbc.version>11.2.0.3</ojdbc.version>
 		<postgresql.version>42.2.5</postgresql.version>
-		<hikari.version>3.2.0</hikari.version>
+		<hikari.version>3.3.1</hikari.version>
 
 		<tests.db.schema>cts_tests_schema</tests.db.schema>
 		<tests.db.driver>TO_BE_REPLACED_DYNAMICALLY_BY_PROFILE</tests.db.driver>
@@ -163,10 +163,10 @@
 			<scope>test</scope>
 		</dependency>
 		<!--<dependency>-->
-			<!--<artifactId>ojdbc</artifactId>-->
-			<!--<groupId>com.oracle.jdbc</groupId>-->
-			<!--<version>${ojdbc.version}</version>-->
-			<!--<scope>test</scope>-->
+		<!--<artifactId>ojdbc</artifactId>-->
+		<!--<groupId>com.oracle.jdbc</groupId>-->
+		<!--<version>${ojdbc.version}</version>-->
+		<!--<scope>test</scope>-->
 		<!--</dependency>-->
 		<dependency>
 			<artifactId>spring-context</artifactId>

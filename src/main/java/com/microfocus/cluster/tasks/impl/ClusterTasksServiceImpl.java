@@ -39,6 +39,7 @@ import java.util.stream.Collectors;
 
 public class ClusterTasksServiceImpl implements ClusterTasksService {
 	private final Logger logger = LoggerFactory.getLogger(ClusterTasksServiceImpl.class);
+	private final static Gauge tasksInsertionAverageDuration;
 
 	private final String RUNTIME_INSTANCE_ID = UUID.randomUUID().toString();
 	private final CompletableFuture<Boolean> readyPromise = new CompletableFuture<>();
@@ -49,10 +50,17 @@ public class ClusterTasksServiceImpl implements ClusterTasksService {
 	private final SystemWorkersConfigurer workersConfigurer = new SystemWorkersConfigurer();
 	private final ClusterTasksDispatcher dispatcher = new ClusterTasksDispatcher(workersConfigurer);
 	private final ClusterTasksMaintainer maintainer = new ClusterTasksMaintainer(workersConfigurer);
-	private final Gauge tasksInsertionAverageDuration;
 
 	private ClusterTasksServiceConfigurerSPI serviceConfigurer;
 	private ClusterTasksServiceSchemaManager schemaManager;
+
+	static {
+		tasksInsertionAverageDuration = Gauge.build()
+				.name("cts_task_insert_average_time")
+				.help("CTS task insert average time (in millis)")
+				.labelNames("runtime_instance_id")
+				.register();
+	}
 
 	@Autowired
 	private ClusterTasksServiceImpl(ClusterTasksServiceConfigurerSPI serviceConfigurer, ClusterTasksServiceSchemaManager schemaManager) {
@@ -61,10 +69,6 @@ public class ClusterTasksServiceImpl implements ClusterTasksService {
 		logger.info("------------------------------------------------");
 		logger.info("------------- Cluster Tasks Service ------------");
 
-		tasksInsertionAverageDuration = Gauge.build()
-				.name("cts_task_insert_average_time_" + RUNTIME_INSTANCE_ID.replaceAll("-", "_"))
-				.help("CTS task insert average time (in millis)")
-				.register();
 
 		if (serviceConfigurer.getConfigReadyLatch() == null) {
 			initService();
@@ -157,7 +161,7 @@ public class ClusterTasksServiceImpl implements ClusterTasksService {
 			TaskInternal[] taskInternals = convertTasks(tasks, processorType);
 			ClusterTaskPersistenceResult[] result = dataProvidersMap.get(dataProviderType).storeTasks(taskInternals);
 			long timeForAll = System.currentTimeMillis() - startStore;
-			tasksInsertionAverageDuration.set((double) timeForAll / tasks.length);
+			tasksInsertionAverageDuration.labels(RUNTIME_INSTANCE_ID).set((double) timeForAll / tasks.length);
 			return result;
 		} else {
 			throw new IllegalArgumentException("unknown data provider of type '" + processorType + "'");
