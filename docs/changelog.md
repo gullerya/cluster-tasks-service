@@ -1,5 +1,10 @@
 ### Changelog
 
+##### 1.6
+- fixed [Issue #3](https://github.com/MicroFocus/cluster-tasks-service/issues/3)
+- fixed [Issue #4](https://github.com/MicroFocus/cluster-tasks-service/issues/4)
+- fixed [Issue #5](https://github.com/MicroFocus/cluster-tasks-service/issues/5)
+
 ##### 1.5
 - improved detection and removal of staled tasks
 - added tracking of active nodes
