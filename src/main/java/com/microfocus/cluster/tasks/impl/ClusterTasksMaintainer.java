@@ -54,12 +54,12 @@ final class ClusterTasksMaintainer extends ClusterTasksInternalWorker {
 		pendingTasksCounter = Gauge.build()
 				.name("cts_pending_tasks_counter")
 				.help("CTS pending tasks counter (by CTP type)")
-				.labelNames("runtime_instance_id", "processor_type")
+				.labelNames("processor_type")
 				.register();
 		taskBodiesCounter = Gauge.build()
 				.name("cts_task_bodies_counter")
 				.help("CTS task bodies counter (per partition)")
-				.labelNames("runtime_instance_id", "partition")
+				.labelNames("partition")
 				.register();
 	}
 
@@ -158,12 +158,12 @@ final class ClusterTasksMaintainer extends ClusterTasksInternalWorker {
 			try {
 				Map<String, Integer> pendingTasksCounters = dataProvider.countTasks(ClusterTaskStatus.PENDING);
 				for (Map.Entry<String, Integer> counter : pendingTasksCounters.entrySet()) {
-					pendingTasksCounter.labels(RUNTIME_INSTANCE_ID, counter.getKey()).set(counter.getValue());
+					pendingTasksCounter.labels(counter.getKey()).set(counter.getValue());
 				}
 				everKnownTaskProcessors.addAll(pendingTasksCounters.keySet());          //  adding all task processors to the cached set
 				for (String knownTaskProcessor : everKnownTaskProcessors) {
 					if (!pendingTasksCounters.containsKey(knownTaskProcessor)) {
-						pendingTasksCounter.labels(RUNTIME_INSTANCE_ID, knownTaskProcessor).set(0);          //  zeroing value for known task processor that got no data this round
+						pendingTasksCounter.labels(knownTaskProcessor).set(0);          //  zeroing value for known task processor that got no data this round
 					}
 				}
 			} catch (Exception e) {
@@ -174,7 +174,7 @@ final class ClusterTasksMaintainer extends ClusterTasksInternalWorker {
 			try {
 				Map<String, Integer> taskBodiesCounters = dataProvider.countBodies();
 				for (Map.Entry<String, Integer> counter : taskBodiesCounters.entrySet()) {
-					taskBodiesCounter.labels(RUNTIME_INSTANCE_ID, counter.getKey()).set(counter.getValue());
+					taskBodiesCounter.labels(counter.getKey()).set(counter.getValue());
 				}
 			} catch (Exception e) {
 				logger.error("failed to count task bodies", e);
