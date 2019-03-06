@@ -70,7 +70,7 @@ class ClusterTasksProcessorWorker implements Runnable {
 	public void run() {
 		//  reinsert scheduled task at the soonest possible point in time
 		if (task.taskType == ClusterTaskType.SCHEDULED) {
-			reinsertScheduleTask();
+			reinsertScheduledTask(task);
 		}
 
 		Summary.Timer taskSelfDurationTimer = tasksPerProcessorDuration.labels(processor.getType()).startTimer();           //  metric
@@ -97,9 +97,10 @@ class ClusterTasksProcessorWorker implements Runnable {
 	}
 
 	//  scheduled task reinsert is mission critical part of functionality - MUST be handled and validated
-	private void reinsertScheduleTask() {
+	private void reinsertScheduledTask(TaskInternal originalTask) {
+		TaskInternal newTask = new TaskInternal(originalTask);
 		boolean reinserted = CTSUtils.retry(6, () -> {
-			int reinsertResult = dataProvider.reinsertScheduledTasks(Collections.singletonList(task));
+			int reinsertResult = dataProvider.reinsertScheduledTasks(Collections.singletonList(newTask));
 			if (reinsertResult == 1) {
 				return true;
 			} else {

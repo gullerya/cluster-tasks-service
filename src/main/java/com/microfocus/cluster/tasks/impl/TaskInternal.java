@@ -27,6 +27,24 @@ class TaskInternal {
 	String body;
 	Long partitionIndex;
 
+	public TaskInternal() {
+	}
+
+	public TaskInternal(TaskInternal origin) {
+		if (origin == null) {
+			throw new IllegalArgumentException("origin task, when specified, MUST NOT be null");
+		}
+		id = origin.id;
+		taskType = origin.taskType;
+		processorType = origin.processorType;
+		uniquenessKey = origin.uniquenessKey;
+		concurrencyKey = origin.concurrencyKey;
+		orderingFactor = origin.orderingFactor;
+		delayByMillis = origin.delayByMillis;
+		body = origin.body;
+		partitionIndex = origin.partitionIndex;
+	}
+
 	@Override
 	public String toString() {
 		return "TaskInternal {" +
