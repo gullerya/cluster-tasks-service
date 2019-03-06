@@ -163,7 +163,6 @@ public class FairnessTest extends CTSTestsBase {
 		}
 		if (eventStore.size() == expectedSize) {
 			logger.info("expectation fulfilled in " + timePassed + "ms");
-			System.out.println("expectation fulfilled in " + timePassed + "ms");
 		}
 	}
 }

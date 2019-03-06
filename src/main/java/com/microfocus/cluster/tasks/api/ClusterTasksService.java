@@ -56,6 +56,16 @@ public interface ClusterTasksService {
 	ClusterTaskPersistenceResult[] enqueueTasks(ClusterTasksDataProviderType dataProviderType, String processorType, ClusterTask... tasks);
 
 	/**
+	 * updates scheduled task with new run interval
+	 * - this method will also reset task CREATED time so that the interval will take effect as from NOW
+	 *
+	 * @param dataProviderType         data provider type that scheduled task is working with
+	 * @param processorType            scheduled processor type to update (effectively
+	 * @param newTaskRunIntervalMillis new interval in millis
+	 */
+	void updateScheduledTaskInterval(ClusterTasksDataProviderType dataProviderType, String processorType, long newTaskRunIntervalMillis);
+
+	/**
 	 * stops all internal processes (thread) of the Cluster Tasks Service
 	 *
 	 * @return boolean result of was or was not the operation finished erroneously

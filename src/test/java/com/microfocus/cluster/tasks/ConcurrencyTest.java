@@ -93,7 +93,6 @@ public class ConcurrencyTest extends CTSTestsBase {
 		}
 		if (clusterTasksProcessorConcurrency_test.tasksProcessed == expectedSize) {
 			logger.info("expectation fulfilled in " + timePassed + "ms");
-			System.out.println("expectation fulfilled in " + timePassed + "ms");
 		}
 	}
 }

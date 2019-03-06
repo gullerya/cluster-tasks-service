@@ -36,7 +36,6 @@ import java.util.Collection;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.LinkedHashMap;
-import java.util.LinkedHashSet;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
@@ -45,8 +44,6 @@ import java.util.function.Function;
 import java.util.stream.Collectors;
 
 import javax.sql.DataSource;
-
-import static java.sql.Types.BIGINT;
 
 /**
  * Created by gullery on 08/05/2016.
@@ -105,7 +102,6 @@ abstract class ClusterTasksDbDataProvider implements ClusterTasksDataProvider {
 	private final String countScheduledPendingTasksSQL;
 
 	private final Map<Long, String> lookupOrphansByPartitionSQLs = new LinkedHashMap<>();
-	private final Map<Long, String> deleteTaskBodyByPartitionSQLs = new LinkedHashMap<>();
 	private final Map<Long, String> truncateByPartitionSQLs = new LinkedHashMap<>();
 
 	private final String countTasksByStatusSQL;
@@ -132,8 +128,6 @@ abstract class ClusterTasksDbDataProvider implements ClusterTasksDataProvider {
 		for (long partition = 0; partition < PARTITIONS_NUMBER; partition++) {
 			lookupOrphansByPartitionSQLs.put(partition, "SELECT " + String.join(",", BODY_ID, BODY, META_ID) + " FROM " + BODY_TABLE_NAME + partition +
 					" LEFT OUTER JOIN " + META_TABLE_NAME + " ON " + META_ID + " = " + BODY_ID);
-			deleteTaskBodyByPartitionSQLs.put(partition, "DELETE FROM " + BODY_TABLE_NAME + partition +
-					" WHERE " + BODY_ID + " = ?");
 
 			selectDanglingBodiesSQLs.put(partition, "SELECT " + BODY_ID + " AS bodyId FROM " + BODY_TABLE_NAME + partition +
 					" WHERE NOT EXISTS (SELECT 1 FROM " + META_TABLE_NAME + " WHERE " + META_ID + " = " + BODY_ID + ")");
@@ -155,9 +149,32 @@ abstract class ClusterTasksDbDataProvider implements ClusterTasksDataProvider {
 
 	abstract String[] getSelectReRunnableStaledTasksSQL();
 
+	abstract String getUpdateScheduledTaskIntervalSQL();
+
 	@Override
 	public ClusterTasksDataProviderType getType() {
 		return ClusterTasksDataProviderType.DB;
+	}
+
+	@Override
+	public void updateScheduledTaskInterval(String scheduledTaskType, long newTaskRunInterval) {
+		String sql = getUpdateScheduledTaskIntervalSQL();
+		JdbcTemplate jdbcTemplate = getJdbcTemplate();
+
+		boolean done = CTSUtils.retry(6, () -> {
+			int updatedEntries = jdbcTemplate.update(sql, new Object[]{newTaskRunInterval, scheduledTaskType}, new int[]{Types.BIGINT, Types.NVARCHAR});
+			if (updatedEntries == 1) {
+				logger.info("successfully updated scheduled task " + scheduledTaskType + " to a new interval " + newTaskRunInterval);
+				return true;
+			} else {
+				logger.warn("unexpectedly got " + updatedEntries + " updated entries count while expected for 1 (updating " + scheduledTaskType + " with new interval " + newTaskRunInterval + "); won't retry");
+				return false;
+			}
+		});
+
+		if (!done) {
+			logger.error("finally failed to update interval of scheduled task " + scheduledTaskType);
+		}
 	}
 
 	@Override
@@ -289,7 +306,6 @@ abstract class ClusterTasksDbDataProvider implements ClusterTasksDataProvider {
 			if (!pendingCount.containsKey(task.processorType) || pendingCount.get(task.processorType) == 0) {
 				task.uniquenessKey = task.processorType;
 				task.concurrencyKey = task.processorType;
-				task.delayByMillis = 0L;
 				tasksToReschedule.add(task);
 			}
 		});
@@ -452,42 +468,6 @@ abstract class ClusterTasksDbDataProvider implements ClusterTasksDataProvider {
 		return hour / (24 / PARTITIONS_NUMBER);
 	}
 
-	//  [YG] TODO: fix this, since it is NOT doing its job now
-	void deleteGarbageTasksData(JdbcTemplate jdbcTemplate, Map<Long, Long> taskIDsBodyPartitionsMap) {
-		try {
-			//  delete metas
-			List<Object[]> mParams = taskIDsBodyPartitionsMap.keySet().stream()
-					.sorted()
-					.map(id -> new Object[]{id})
-					.collect(Collectors.toList());
-			int[] deletedMetas = jdbcTemplate.batchUpdate(removeFinishedTaskSQL, mParams, new int[]{BIGINT});
-			logger.debug("deleted " + deletedMetas.length + " task/s (metadata)");
-
-			//  delete bodies
-			Map<Long, Set<Long>> partitionsToIdsMap = new LinkedHashMap<>();
-			taskIDsBodyPartitionsMap.forEach((taskId, partitionIndex) -> {
-				if (partitionIndex != null) {
-					partitionsToIdsMap
-							.computeIfAbsent(partitionIndex, pId -> new LinkedHashSet<>())
-							.add(taskId);
-				}
-			});
-			partitionsToIdsMap.forEach((partitionId, taskIDsInPartition) -> {
-				String deleteTimedoutBodySQL = buildDeleteTaskBodySQL(partitionId);
-				List<Object[]> bParams = taskIDsInPartition.stream()
-						.map(id -> new Object[]{id})
-						.collect(Collectors.toList());
-				int[] deletedBodies = jdbcTemplate.batchUpdate(deleteTimedoutBodySQL, bParams, new int[]{BIGINT});
-				logger.debug("deleted " + deletedBodies.length + " task/s (content)");
-			});
-
-			//  truncate currently non-active body tables (that are safe to truncate)
-			checkAndTruncateBodyTables();
-		} catch (Exception e) {
-			logger.error("failed to delete Garbage tasks data", e);
-		}
-	}
-
 	private Map<String, Integer> scheduledPendingReader(ResultSet resultSet) throws SQLException {
 		Map<String, Integer> result = new LinkedHashMap<>();
 		while (resultSet.next()) {
@@ -513,6 +493,7 @@ abstract class ClusterTasksDbDataProvider implements ClusterTasksDataProvider {
 					task.partitionIndex = tmpLong;
 				}
 				task.processorType = resultSet.getString(PROCESSOR_TYPE);
+				task.delayByMillis = resultSet.getLong(DELAY_BY_MILLIS);
 				result.add(task);
 			} catch (SQLException sqle) {
 				logger.error("failed to read cluster task body", sqle);
@@ -587,7 +568,7 @@ abstract class ClusterTasksDbDataProvider implements ClusterTasksDataProvider {
 			queryClauses.add(PROCESSOR_TYPE + " = '" + processorType + "'");
 		}
 		if (statuses != null && !statuses.isEmpty()) {
-			queryClauses.add(STATUS + " IN (" + String.join(",", statuses.stream().map(status -> String.valueOf(status.value)).collect(Collectors.toList())) + ")");
+			queryClauses.add(STATUS + " IN (" + statuses.stream().map(status -> String.valueOf(status.value)).collect(Collectors.joining(",")) + ")");
 		}
 
 		return buildCountSQLByQueries(queryClauses);
@@ -604,7 +585,7 @@ abstract class ClusterTasksDbDataProvider implements ClusterTasksDataProvider {
 			queryClauses.add(CONCURRENCY_KEY + " IS NULL");
 		}
 		if (statuses != null && !statuses.isEmpty()) {
-			queryClauses.add(STATUS + " IN (" + String.join(",", statuses.stream().map(status -> String.valueOf(status.value)).collect(Collectors.toList())) + ")");
+			queryClauses.add(STATUS + " IN (" + statuses.stream().map(status -> String.valueOf(status.value)).collect(Collectors.joining(",")) + ")");
 		}
 
 		return buildCountSQLByQueries(queryClauses);
@@ -613,10 +594,6 @@ abstract class ClusterTasksDbDataProvider implements ClusterTasksDataProvider {
 	private static String buildCountSQLByQueries(List<String> queryClauses) {
 		return "SELECT COUNT(*) FROM " + META_TABLE_NAME +
 				(queryClauses.isEmpty() ? "" : " WHERE " + String.join(" AND ", queryClauses));
-	}
-
-	private String buildDeleteTaskBodySQL(long partitionIndex) {
-		return deleteTaskBodyByPartitionSQLs.get(partitionIndex);
 	}
 
 	private String buildSelectVerifyBodyTableSQL(long partitionIndex) {

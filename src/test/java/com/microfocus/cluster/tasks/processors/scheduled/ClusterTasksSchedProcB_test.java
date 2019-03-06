@@ -11,7 +11,7 @@ import com.microfocus.cluster.tasks.CTSTestsUtils;
 
 public class ClusterTasksSchedProcB_test extends ClusterTasksProcessorScheduled {
 	public static volatile boolean suspended = true;
-	public static int tasksCounter = 0;
+	public static int executionsCounter = 0;
 
 	protected ClusterTasksSchedProcB_test() {
 		super(ClusterTasksDataProviderType.DB);
@@ -21,7 +21,7 @@ public class ClusterTasksSchedProcB_test extends ClusterTasksProcessorScheduled 
 	public void processTask(ClusterTask task) {
 		if (!suspended) {
 			CTSTestsUtils.waitSafely(2000);
-			tasksCounter++;
+			executionsCounter++;
 		}
 	}
 }

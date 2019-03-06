@@ -18,7 +18,7 @@ import java.util.Set;
 
 /**
  * Created by gullery on 08/05/2016.
- *
+ * <p>
  * API definition of cluster tasks data provider; implementation MUST be thread/scope safe
  * This API is intended for internal implementation only and should NOT be used/implemented by no mean by hosting application
  */
@@ -46,6 +46,15 @@ interface ClusterTasksDataProvider {
 	 * @return an array of Optionals, corresponding to the array of the tasks, having either the task ID in case of successful push or an exception in case of failure
 	 */
 	ClusterTaskPersistenceResult[] storeTasks(TaskInternal... tasks);
+
+	/**
+	 * Updates single scheduled task with new task run interval
+	 * - implementation should also update the CREATED field so that the new interval will be effective from NOW
+	 *
+	 * @param scheduledTaskType  task type targeted for update
+	 * @param newTaskRunInterval new interval
+	 */
+	void updateScheduledTaskInterval(String scheduledTaskType, long newTaskRunInterval);
 
 	/**
 	 * Attempts to retrieve next valid task per type, marks the retrieved task as running and possible checks is there are more tasks valid to be executed

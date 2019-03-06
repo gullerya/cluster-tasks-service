@@ -33,9 +33,6 @@ import java.util.Set;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
-import static java.sql.Types.BIGINT;
-import static java.sql.Types.VARCHAR;
-
 /**
  * Created by gullery on 12/04/2018.
  * <p>
@@ -55,6 +52,8 @@ final class OracleDbDataProvider extends ClusterTasksDbDataProvider {
 
 	private final String insertTaskWithoutBodySQL;
 	private final Map<Long, String> insertTaskWithBodySQL = new LinkedHashMap<>();
+	private final String updateScheduledTaskIntervalSQL;
+
 	private final String lockMetadataTable;
 	private final Map<Integer, String> selectForUpdateTasksSQLs = new LinkedHashMap<>();
 	private final Map<Long, String> selectTaskBodyByPartitionSQLs = new LinkedHashMap<>();
@@ -78,10 +77,15 @@ final class OracleDbDataProvider extends ClusterTasksDbDataProvider {
 		updateSelfLastSeenSQL = "UPDATE " + ACTIVE_NODES_TABLE_NAME + " SET " + ACTIVE_NODE_LAST_SEEN + " = SYSDATE WHERE " + ACTIVE_NODE_ID + " = ?";
 		removeLongTimeNoSeeSQL = "DELETE FROM " + ACTIVE_NODES_TABLE_NAME + " WHERE " + ACTIVE_NODE_LAST_SEEN + " < (SYSDATE - NUMTODSINTERVAL(? / 1000, 'SECOND'))";
 
+		//  insert / update tasks
 		String insertFields = String.join(",", META_ID, TASK_TYPE, PROCESSOR_TYPE, UNIQUENESS_KEY, CONCURRENCY_KEY, DELAY_BY_MILLIS, BODY_PARTITION, ORDERING_FACTOR, CREATED, STATUS);
 		insertTaskWithoutBodySQL = "INSERT INTO " + META_TABLE_NAME + " (" + insertFields + ")" +
 				" VALUES (" + CLUSTER_TASK_ID_SEQUENCE + ".NEXTVAL, ?, ?, ?, ?, ?, ?, COALESCE(?, TO_NUMBER(TO_CHAR(SYSTIMESTAMP,'yyyymmddhh24missff3')) + ?), SYSDATE, " + ClusterTaskStatus.PENDING.value + ")";
+		updateScheduledTaskIntervalSQL = "UPDATE " + META_TABLE_NAME +
+				" SET " + CREATED + " = SYSDATE, " + DELAY_BY_MILLIS + " = ?" +
+				" WHERE " + PROCESSOR_TYPE + " = ? AND " + TASK_TYPE + " = " + ClusterTaskType.SCHEDULED.value + " AND " + STATUS + " = " + ClusterTaskStatus.PENDING.value;
 
+		//  select and run tasks flow
 		lockMetadataTable = "LOCK TABLE " + META_TABLE_NAME + " IN EXCLUSIVE MODE";
 		String selectForRunFields = String.join(",", META_ID, TASK_TYPE, PROCESSOR_TYPE, UNIQUENESS_KEY, CONCURRENCY_KEY, ORDERING_FACTOR, DELAY_BY_MILLIS, BODY_PARTITION, STATUS);
 		for (int maxProcessorTypes : new Integer[]{20, 50, 100, 500}) {
@@ -107,11 +111,11 @@ final class OracleDbDataProvider extends ClusterTasksDbDataProvider {
 					"       VALUES (taskId, ?, ?, ?, ?, ?, ?, COALESCE(?, TO_NUMBER(TO_CHAR(SYSTIMESTAMP,'yyyymmddhh24missff3')) + ?), SYSDATE, " + ClusterTaskStatus.PENDING.value + ");" +
 					" END;");
 		}
-
 		updateTasksStartedSQL = "UPDATE " + META_TABLE_NAME + " SET " + STATUS + " = " + ClusterTaskStatus.RUNNING.value + ", " + STARTED + " = SYSDATE, " + RUNTIME_INSTANCE + " = ?" +
 				" WHERE " + META_ID + " = ?";
 
-		String selectedForGCFields = String.join(",", META_ID, BODY_PARTITION, TASK_TYPE, PROCESSOR_TYPE, STATUS);
+		//  clean up tasks flow
+		String selectedForGCFields = String.join(",", META_ID, BODY_PARTITION, TASK_TYPE, PROCESSOR_TYPE, DELAY_BY_MILLIS, STATUS);
 		selectStaledTasksSQL = "SELECT " + selectedForGCFields + " FROM " + META_TABLE_NAME +
 				" WHERE " + TASK_TYPE + " = " + ClusterTaskType.SCHEDULED.value +
 				"   AND " + RUNTIME_INSTANCE + " IS NOT NULL" +
@@ -122,6 +126,11 @@ final class OracleDbDataProvider extends ClusterTasksDbDataProvider {
 	@Override
 	String[] getSelectReRunnableStaledTasksSQL() {
 		return new String[]{selectStaledTasksSQL};
+	}
+
+	@Override
+	String getUpdateScheduledTaskIntervalSQL() {
+		return updateScheduledTaskIntervalSQL;
 	}
 
 	@Override
@@ -194,9 +203,9 @@ final class OracleDbDataProvider extends ClusterTasksDbDataProvider {
 						paramTypes = new int[]{
 								Types.CLOB,                 //  task body -  will be used only if actually has body
 								Types.BIGINT,               //  task type
-								VARCHAR,              //  processor type
-								VARCHAR,              //  uniqueness key
-								VARCHAR,              //  concurrency key
+								Types.NVARCHAR,             //  processor type
+								Types.NVARCHAR,             //  uniqueness key
+								Types.NVARCHAR,             //  concurrency key
 								Types.BIGINT,               //  delay by millis
 								Types.BIGINT,               //  partition index
 								Types.BIGINT,               //  ordering factor
@@ -216,9 +225,9 @@ final class OracleDbDataProvider extends ClusterTasksDbDataProvider {
 						};
 						paramTypes = new int[]{
 								Types.BIGINT,               //  task type
-								VARCHAR,              //  processor type
-								VARCHAR,              //  uniqueness key
-								VARCHAR,              //  concurrency key
+								Types.NVARCHAR,             //  processor type
+								Types.NVARCHAR,             //  uniqueness key
+								Types.NVARCHAR,             //  concurrency key
 								Types.BIGINT,               //  delay by millis
 								Types.BIGINT,               //  partition index
 								Types.BIGINT,               //  ordering factor
@@ -306,7 +315,7 @@ final class OracleDbDataProvider extends ClusterTasksDbDataProvider {
 								.sorted()
 								.map(id -> new Object[]{runtimeInstanceID, id})
 								.collect(Collectors.toList());
-						int[] updateResults = jdbcTemplate.batchUpdate(updateTasksStartedSQL, updateParams, new int[]{VARCHAR, BIGINT});
+						int[] updateResults = jdbcTemplate.batchUpdate(updateTasksStartedSQL, updateParams, new int[]{Types.NVARCHAR, Types.BIGINT});
 						if (logger.isDebugEnabled()) {
 							logger.debug("update tasks to RUNNING result: " + Stream.of(updateResults).map(String::valueOf).collect(Collectors.joining(", ")));
 							logger.debug("from a total of " + tasks.size() + " available tasks " + tasksToRunIDs.size() + " has been started");
@@ -343,7 +352,7 @@ final class OracleDbDataProvider extends ClusterTasksDbDataProvider {
 			return jdbcTemplate.query(
 					sql,
 					new Object[]{taskId},
-					new int[]{BIGINT},
+					new int[]{Types.BIGINT},
 					this::rowToTaskBodyReader);
 		} catch (Exception e) {
 			throw new CtsGeneralFailure(clusterTasksService.getInstanceID() + " failed to retrieve task's body", e);
@@ -353,10 +362,10 @@ final class OracleDbDataProvider extends ClusterTasksDbDataProvider {
 	@Override
 	public void updateSelfLastSeen(String nodeId) {
 		try {
-			int updated = getJdbcTemplate().update(updateSelfLastSeenSQL, new Object[]{nodeId}, new int[]{VARCHAR});
+			int updated = getJdbcTemplate().update(updateSelfLastSeenSQL, new Object[]{nodeId}, new int[]{Types.NVARCHAR});
 			if (updated == 0) {
 				logger.info("node " + nodeId + " activity was NOT UPDATED, performing initial registration...");
-				int affected = getJdbcTemplate().update(insertSelfLastSeenSQL, new Object[]{nodeId}, new int[]{VARCHAR});
+				int affected = getJdbcTemplate().update(insertSelfLastSeenSQL, new Object[]{nodeId}, new int[]{Types.NVARCHAR});
 				if (affected != 1) {
 					logger.warn("expected to see exactly 1 record affected while registering " + nodeId + ", yet actual result is " + affected);
 				} else {
