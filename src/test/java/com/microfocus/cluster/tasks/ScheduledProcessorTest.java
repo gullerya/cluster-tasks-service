@@ -57,22 +57,37 @@ public class ScheduledProcessorTest extends CTSTestsBase {
 
 	@Test
 	public void testB_rescheduling_scheduled_task_when_pending() {
+		ClusterTasksSchedProcD_test.runAndHold = false;
 		ClusterTasksSchedProcD_test.suspended = true;
 		clusterTasksSchedProcD_test.reschedule(5000);
 		ClusterTasksSchedProcD_test.executionsCounter = 0;
 		ClusterTasksSchedProcD_test.suspended = false;
 		CTSTestsUtils.waitSafely(7000);
 		assertEquals(1, ClusterTasksSchedProcD_test.executionsCounter);
+
+		clusterTasksSchedProcD_test.reschedule(0);
 	}
 
 	@Test
 	public void testB_rescheduling_scheduled_task_when_running() {
-		ClusterTasksSchedProcD_test.suspended = true;
-		clusterTasksSchedProcD_test.reschedule(5000);
 		ClusterTasksSchedProcD_test.executionsCounter = 0;
 		ClusterTasksSchedProcD_test.suspended = false;
+		ClusterTasksSchedProcD_test.runAndHold = true;
+		CTSTestsUtils.waitUntil(3000, () -> {
+			if (ClusterTasksSchedProcD_test.executionsCounter > 0) {
+				return true;
+			} else {
+				return null;
+			}
+		});
+
+		clusterTasksSchedProcD_test.reschedule(5000);
+		ClusterTasksSchedProcD_test.executionsCounter = 0;
+		ClusterTasksSchedProcD_test.runAndHold = false;
 		CTSTestsUtils.waitSafely(7000);
 		assertEquals(1, ClusterTasksSchedProcD_test.executionsCounter);
+
+		clusterTasksSchedProcD_test.reschedule(0);
 	}
 
 	@Test
