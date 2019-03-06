@@ -10,7 +10,7 @@
 
 	<name>Cluster Tasks Service (CTS)</name>
 	<description>Tasks management, distribution and execution service, working in cluster aware fashion, providing
-		queue-like functionalities, embedded.
+		queue-like functionality, embedded.
 	</description>
 	<url>https://github.com/MicroFocus/cluster-tasks-service</url>
 
