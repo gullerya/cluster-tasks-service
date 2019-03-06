@@ -17,6 +17,7 @@ import java.util.List;
 import java.util.concurrent.CountDownLatch;
 
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertTrue;
 
 /**
  * Created by gullery on 02/06/2016.
@@ -109,7 +110,7 @@ public class MultiClusterScheduledTasksTest {
 		ClusterTasksSchedProcMultiNodesB_test.executionsCounter = 0;
 		ClusterTasksSchedProcMultiNodesB_test.suspended = false;
 		CTSTestsUtils.waitSafely(7000);
-		assertEquals(1, ClusterTasksSchedProcMultiNodesB_test.executionsCounter);
+		assertTrue(ClusterTasksSchedProcMultiNodesB_test.executionsCounter == 1 || ClusterTasksSchedProcMultiNodesB_test.executionsCounter == 2);
 
 		//  stop all CTS instances
 		contexts.forEach(c -> {
