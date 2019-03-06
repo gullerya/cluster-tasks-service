@@ -47,6 +47,9 @@ public abstract class ClusterTasksProcessorBase {
 	private int numberOfWorkersPerNode;
 	private int minimalTasksTakeInterval;
 	private long lastTaskHandledLocalTime;
+	protected long scheduledTaskRunInterval;
+	protected boolean forceUpdateSchedulingInterval;
+
 	private ExecutorService workersThreadPool;
 
 	@Autowired
@@ -84,6 +87,24 @@ public abstract class ClusterTasksProcessorBase {
 	//
 
 	/**
+	 * processor's custom task processing logic
+	 *
+	 * @param task task that is to be processed
+	 * @throws Exception processor MAY throw Exception and the service will manage it (catch, log, metrics)
+	 */
+	abstract public void processTask(ClusterTask task) throws Exception;
+
+	/**
+	 * updates scheduled task with new run interval
+	 * - this method will also reset task CREATED time so that the interval will take effect as from NOW
+	 *
+	 * @param newTaskRunIntervalMillis new interval in millis
+	 */
+	public final void reschedule(long newTaskRunIntervalMillis) {
+		clusterTasksService.updateScheduledTaskInterval(getDataProviderType(), getType(), Math.max(0, newTaskRunIntervalMillis));
+	}
+
+	/**
 	 * returns processor's type key
 	 * - MUST be a NON-NULL and NON-EMPTY string
 	 * - any 2 different processors is the single process MUST NOT have the same type (it is possible to run different processors for the same type in different processes, FWIW)
@@ -115,14 +136,6 @@ public abstract class ClusterTasksProcessorBase {
 	protected boolean isReadyToHandleTask() {
 		return true;
 	}
-
-	/**
-	 * processor's custom task processing logic
-	 *
-	 * @param task task that is to be processed
-	 * @throws Exception processor MAY throw Exception and the service will manage it (catch, log, metrics)
-	 */
-	abstract public void processTask(ClusterTask task) throws Exception;
 
 	//
 	//  INTERNAL STUFF FROM HERE

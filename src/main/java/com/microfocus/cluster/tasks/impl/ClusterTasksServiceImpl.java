@@ -145,6 +145,9 @@ public class ClusterTasksServiceImpl implements ClusterTasksService {
 		if (dataProviderType == null) {
 			throw new IllegalArgumentException("data provider type MUST NOT be null");
 		}
+		if (!dataProvidersMap.containsKey(dataProviderType)) {
+			throw new IllegalStateException("unknown data provider of type " + dataProviderType);
+		}
 		if (processorType == null || processorType.isEmpty()) {
 			throw new IllegalArgumentException("processor type MUST NOT be null nor empty");
 		}
@@ -166,6 +169,29 @@ public class ClusterTasksServiceImpl implements ClusterTasksService {
 		} else {
 			throw new IllegalArgumentException("unknown data provider of type '" + processorType + "'");
 		}
+	}
+
+	@Override
+	public void updateScheduledTaskInterval(ClusterTasksDataProviderType dataProviderType, String processorType, long newTaskRunIntervalMillis) {
+		if (!readyPromise.isDone()) {
+			throw new IllegalStateException("cluster tasks service has not yet been initialized; either postpone tasks submission or listen to completion of [clusterTasksService].getReadyPromise()");
+		}
+		if (readyPromise.isCompletedExceptionally()) {
+			throw new IllegalStateException("cluster tasks service failed to initialize; check previous logs for a root cause");
+		}
+
+		if (dataProviderType == null) {
+			throw new IllegalArgumentException("data provider type MUST NOT be null");
+		}
+		if (!dataProvidersMap.containsKey(dataProviderType)) {
+			throw new IllegalStateException("unknown data provider of type " + dataProviderType);
+		}
+		if (processorType == null || processorType.isEmpty()) {
+			throw new IllegalArgumentException("processor type MUST NOT be null nor empty");
+		}
+
+		ClusterTasksDataProvider dataProvider = dataProvidersMap.get(dataProviderType);
+		dataProvider.updateScheduledTaskInterval(processorType, Math.max(0, newTaskRunIntervalMillis));
 	}
 
 	@Override
@@ -198,15 +224,17 @@ public class ClusterTasksServiceImpl implements ClusterTasksService {
 
 		setupDataProviders();
 
+		logger.info("initialising scheduled tasks...");
+		ensureScheduledTasksInitialized();
+		logger.info("... scheduled tasks initialization verified");
+
+		logger.info("initialising Dispatcher and Maintainer threads...");
 		dispatcherExecutor.execute(dispatcher);
 		maintainerExecutor.execute(maintainer);
-		logger.info("tasks dispatcher and maintenance threads initialized");
+		logger.info("... Dispatcher and Maintainer threads initialized");
 
 		logger.info("CTS is configured & initialized, instance ID: " + RUNTIME_INSTANCE_ID);
 		readyPromise.complete(true);
-
-		ensureScheduledTasksInitialized();
-		logger.info("scheduled tasks initialization verified");
 	}
 
 	private void setupDataProviders() {
@@ -241,37 +269,45 @@ public class ClusterTasksServiceImpl implements ClusterTasksService {
 	}
 
 	private void ensureScheduledTasksInitialized() {
-		processorsMap.forEach((type, processor) -> {
-			if (processor instanceof ClusterTasksProcessorScheduled) {
-				logger.info("performing initial scheduled task upsert for the first-ever-run case on behalf of " + type);
-				ClusterTasksDataProvider dataProvider = dataProvidersMap.get(processor.getDataProviderType());
-				ClusterTaskPersistenceResult enqueueResult;
-				int maxEnqueueAttempts = 20, enqueueAttemptsCount = 0;
-				ClusterTask clusterTask = TaskBuilders.uniqueTask()
-						.setUniquenessKey(type)
-						.build();
-				TaskInternal[] scheduledTasks = convertTasks(new ClusterTask[]{clusterTask}, type);
-				scheduledTasks[0].taskType = ClusterTaskType.SCHEDULED;
-				do {
-					enqueueAttemptsCount++;
-					enqueueResult = dataProvider.storeTasks(scheduledTasks[0])[0];
-					if (enqueueResult.getStatus() == ClusterTaskInsertStatus.SUCCESS) {
-						logger.info("initial task for " + type + " created");
-						break;
-					} else if (enqueueResult.getStatus() == ClusterTaskInsertStatus.UNIQUE_CONSTRAINT_FAILURE) {
-						logger.info("failed to create initial scheduled task for " + type + " with unique constraint violation, assuming that task was already created, will not reattempt");
-						break;
-					} else {
-						logger.error("failed to create scheduled task for " + type + " with error " + enqueueResult.getStatus() + "; will reattempt for more " + (maxEnqueueAttempts - enqueueAttemptsCount) + " times");
-						try {
-							Thread.sleep(3000);
-						} catch (InterruptedException ie) {
-							logger.warn("interrupted while breathing, proceeding with reattempts");
+		processorsMap.entrySet().stream()
+				.filter(entry -> entry.getValue() instanceof ClusterTasksProcessorScheduled)
+				.forEach(entry -> {
+					String type = entry.getKey();
+					ClusterTasksProcessorBase processor = entry.getValue();
+					logger.info("performing initial scheduled task upsert for the first-ever-run case on behalf of " + type);
+					ClusterTasksDataProvider dataProvider = dataProvidersMap.get(processor.getDataProviderType());
+					ClusterTaskPersistenceResult enqueueResult;
+					int maxEnqueueAttempts = 20, enqueueAttemptsCount = 0;
+					ClusterTask clusterTask = TaskBuilders.uniqueTask()
+							.setUniquenessKey(type)
+							.setDelayByMillis(processor.scheduledTaskRunInterval)
+							.build();
+					TaskInternal[] scheduledTasks = convertTasks(new ClusterTask[]{clusterTask}, type);
+					scheduledTasks[0].taskType = ClusterTaskType.SCHEDULED;
+					do {
+						enqueueAttemptsCount++;
+						enqueueResult = dataProvider.storeTasks(scheduledTasks[0])[0];
+						if (enqueueResult.getStatus() == ClusterTaskInsertStatus.SUCCESS) {
+							logger.info("initial task for " + type + " created");
+							break;
+						} else if (enqueueResult.getStatus() == ClusterTaskInsertStatus.UNIQUE_CONSTRAINT_FAILURE) {
+							logger.info("failed to create initial scheduled task for " + type + " with unique constraint violation, assuming that task is already present");
+							if (processor.forceUpdateSchedulingInterval) {
+								logger.info("task processor " + type + " said to force update run interval (specified interval is " + processor.scheduledTaskRunInterval + "), updating...");
+								dataProvider.updateScheduledTaskInterval(processor.getType(), processor.scheduledTaskRunInterval);
+								logger.info("... update task processor " + type + " to new interval finished");
+							}
+							break;
+						} else {
+							logger.error("failed to create scheduled task for " + type + " with error " + enqueueResult.getStatus() + "; will reattempt for more " + (maxEnqueueAttempts - enqueueAttemptsCount) + " times");
+							try {
+								Thread.sleep(3000);
+							} catch (InterruptedException ie) {
+								logger.warn("interrupted while breathing, proceeding with reattempts");
+							}
 						}
-					}
-				} while (enqueueAttemptsCount < maxEnqueueAttempts);
-			}
-		});
+					} while (enqueueAttemptsCount < maxEnqueueAttempts);
+				});
 	}
 
 	private TaskInternal[] convertTasks(ClusterTask[] sourceTasks, String targetProcessorType) {
@@ -328,7 +364,7 @@ public class ClusterTasksServiceImpl implements ClusterTasksService {
 	}
 
 	/**
-	 * Configurer with a very limited creation access level but wider read access level for protected internal configuration flows
+	 * Configurer class with a very limited creation access level, but wider read access level for protected internal configuration flows
 	 * - for a most reasons this class is just a proxy for getting ClusterTasksService private properties in a safe way
 	 */
 	final class SystemWorkersConfigurer {

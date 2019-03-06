@@ -68,73 +68,75 @@ class ClusterTasksProcessorWorker implements Runnable {
 
 	@Override
 	public void run() {
-		if (task.partitionIndex != null) {
-			boolean done = false;
-			int attempts = 0;
-			int maxAttempts = 3;
-			do {
-				attempts++;
-				try {
-					task.body = dataProvider.retrieveTaskBody(task.id, task.partitionIndex);
-					done = true;
-					logger.debug(task + " has body: " + task.body);
-				} catch (Throwable t) {
-					logger.error("failed to retrieve body of the " + task + ", attempt/s " + attempts + " out of max " + maxAttempts, t);
-					ctsOwnErrorsCounter.labels(BODY_RETRIEVAL_PHASE, t.getClass().getSimpleName()).inc();                   //  metric
-				}
-			} while (!done && attempts < maxAttempts);
-			if (!done) {
-				logger.error("finally failed to retrieve body of the " + task + ", aborting task execution");
-				return;
-			}
-		} else {
-			logger.debug(task + " is bodiless");
+		//  reinsert scheduled task at the soonest possible point in time
+		if (task.taskType == ClusterTaskType.SCHEDULED) {
+			reinsertScheduledTask(task);
 		}
 
-		Summary.Timer taskSelfDurationTimer = tasksPerProcessorDuration.labels(processor.getType()).startTimer();       //  metric
+		Summary.Timer taskSelfDurationTimer = tasksPerProcessorDuration.labels(processor.getType()).startTimer();           //  metric
 		try {
-			processor.processTask(ClusterTaskImpl.from(task));
+			if (enrichTaskWithBodyIfRelevant(task)) {
+				processor.processTask(ClusterTaskImpl.from(task));
+			} else {
+				logger.error(task + " found to have body, but body retrieval failed (see previous logs), won't execute");
+			}
 		} catch (Throwable t) {
 			logger.error("failed processing " + task + ", body: " + task.body, t);
-			errorsPerProcessorCounter.labels(processor.getType(), t.getClass().getSimpleName()).inc();                  //  metric
+			errorsPerProcessorCounter.labels(processor.getType(), t.getClass().getSimpleName()).inc();                      //  metric
 		} finally {
-			taskSelfDurationTimer.observeDuration();                                                                    //  metric
+			taskSelfDurationTimer.observeDuration();                                                                        //  metric
 			try {
-				long taskIdToRemove = task.id;
-				if (task.taskType == ClusterTaskType.SCHEDULED) {
-					int reinsertResult = dataProvider.reinsertScheduledTasks(Collections.singletonList(task));
-					if (reinsertResult != 1) {
-						logger.warn("unexpectedly failed to reschedule self (reinsert result is " + reinsertResult + ")");
-					}
-				}
-				removeFinishedTask(taskIdToRemove);
+				removeFinishedTask(task.id);
 			} catch (Throwable t) {
-				logger.error("failed to update finished on " + task, t);
-				ctsOwnErrorsCounter.labels(TASK_FINALIZATION_PHASE, t.getClass().getSimpleName()).inc();                //  metric
+				logger.error("failed to remove finished " + task, t);
+				ctsOwnErrorsCounter.labels(TASK_FINALIZATION_PHASE, t.getClass().getSimpleName()).inc();                    //  metric
 			} finally {
 				processor.notifyTaskWorkerFinished(dataProvider, task);
 			}
 		}
 	}
 
+	//  scheduled task reinsert is mission critical part of functionality - MUST be handled and validated
+	private void reinsertScheduledTask(TaskInternal originalTask) {
+		TaskInternal newTask = new TaskInternal(originalTask);
+		boolean reinserted = CTSUtils.retry(6, () -> {
+			int reinsertResult = dataProvider.reinsertScheduledTasks(Collections.singletonList(newTask));
+			if (reinsertResult == 1) {
+				return true;
+			} else {
+				logger.warn("unexpectedly failed to reschedule self (reinsert result is " + reinsertResult + ")");
+				return false;
+			}
+		});
+		if (!reinserted) {
+			logger.error("finally failed to reinsert schedule task " + processor.getType());
+		}
+	}
+
+	private boolean enrichTaskWithBodyIfRelevant(TaskInternal task) {
+		if (task.partitionIndex != null) {
+			return CTSUtils.retry(3, () -> {
+				try {
+					task.body = dataProvider.retrieveTaskBody(task.id, task.partitionIndex);
+					logger.debug(task + " has body: " + task.body);
+					return true;
+				} catch (Throwable t) {
+					ctsOwnErrorsCounter.labels(BODY_RETRIEVAL_PHASE, t.getClass().getSimpleName()).inc();                   //  metric
+					return false;
+				}
+			});
+		} else {
+			logger.debug(task + " is bodiless");
+			return true;
+		}
+	}
+
 	//  task removal is mission critical part of functionality - MUST be handled and validated
 	private void removeFinishedTask(Long taskId) {
-		boolean done = false;
-		int attempts = 0;
-		int maxAttempts = 12;
-		do {
-			attempts++;
-			try {
-				done = dataProvider.removeTaskById(taskId);
-			} catch (Exception e) {
-				logger.error("failed to remove task " + taskId + ", attempt/s " + attempts + " out of max " + maxAttempts, e);
-			}
-		} while (!done && attempts < maxAttempts);
+		boolean done = CTSUtils.retry(12, () -> dataProvider.removeTaskById(taskId));
 
 		if (!done) {
 			logger.error("possibly CRITICAL error, failed to remove task " + taskId + ", check its uniqueness/concurrency settings and remove manually if needed");
-		} else if (attempts > 1) {
-			logger.info("finally succeeded to remove task " + taskId + " (took " + attempts + " attempts)");
 		}
 	}
 }

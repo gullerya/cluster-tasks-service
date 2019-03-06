@@ -35,9 +35,6 @@ import java.util.Set;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
-import static java.sql.Types.BIGINT;
-import static java.sql.Types.VARCHAR;
-
 /**
  * Created by gullery on 12/04/2018.
  * <p>
@@ -55,10 +52,11 @@ final class PostgreSqlDbDataProvider extends ClusterTasksDbDataProvider {
 	private final String removeLongTimeNoSeeSQL;
 
 	private final String insertTaskSQL;
+	private final String updateScheduledTaskIntervalSQL;
+
 	private final String lockForSelectForRunTasksSQL;
 	private final Map<Integer, String> selectForUpdateTasksSQLs = new HashMap<>();
 	private final Map<Long, String> selectTaskBodyByPartitionSQLs = new HashMap<>();
-
 	private final String updateTasksStartedSQL;
 
 	private final String lockForSelectForCleanTasksSQL;
@@ -77,8 +75,13 @@ final class PostgreSqlDbDataProvider extends ClusterTasksDbDataProvider {
 		updateSelfLastSeenSQL = "UPDATE " + ACTIVE_NODES_TABLE_NAME + " SET " + ACTIVE_NODE_LAST_SEEN + " = LOCALTIMESTAMP WHERE " + ACTIVE_NODE_ID + " = ?";
 		removeLongTimeNoSeeSQL = "DELETE FROM " + ACTIVE_NODES_TABLE_NAME + " WHERE " + ACTIVE_NODE_LAST_SEEN + " < LOCALTIMESTAMP - MAKE_INTERVAL(SECS := ? / 1000)";
 
+		//  insert / update tasks
 		insertTaskSQL = "SELECT insert_task(" + String.join(",", Collections.nCopies(8, "?")) + ")";
+		updateScheduledTaskIntervalSQL = "UPDATE " + META_TABLE_NAME +
+				" SET " + CREATED + " = LOCALTIMESTAMP, " + DELAY_BY_MILLIS + " = ?" +
+				" WHERE " + PROCESSOR_TYPE + " = ? AND " + TASK_TYPE + " = " + ClusterTaskType.SCHEDULED.value + " AND " + STATUS + " = " + ClusterTaskStatus.PENDING.value;
 
+		//  select and run tasks flow
 		lockForSelectForRunTasksSQL = "SELECT pg_advisory_xact_lock(1, 1)";
 		String selectForRunFields = String.join(",", META_ID, TASK_TYPE, PROCESSOR_TYPE, UNIQUENESS_KEY, CONCURRENCY_KEY, ORDERING_FACTOR, DELAY_BY_MILLIS, BODY_PARTITION, STATUS);
 		for (int maxProcessorTypes : new Integer[]{20, 50, 100, 500}) {
@@ -98,12 +101,12 @@ final class PostgreSqlDbDataProvider extends ClusterTasksDbDataProvider {
 			selectTaskBodyByPartitionSQLs.put(partition, "SELECT " + BODY + " FROM " + BODY_TABLE_NAME + partition +
 					" WHERE " + BODY_ID + " = ?");
 		}
-
 		updateTasksStartedSQL = "UPDATE " + META_TABLE_NAME + " SET " + STATUS + " = " + ClusterTaskStatus.RUNNING.value + ", " + STARTED + " = LOCALTIMESTAMP, " + RUNTIME_INSTANCE + " = ?" +
 				" WHERE " + META_ID + " = ?";
 
+		//  clean up tasks flow
 		lockForSelectForCleanTasksSQL = "SELECT pg_advisory_xact_lock(1, 2)";
-		String selectedForGCFields = String.join(",", META_ID, BODY_PARTITION, TASK_TYPE, PROCESSOR_TYPE, STATUS);
+		String selectedForGCFields = String.join(",", META_ID, BODY_PARTITION, TASK_TYPE, PROCESSOR_TYPE, DELAY_BY_MILLIS, STATUS);
 		selectReRunnableStaledTasksSQL = "SELECT " + selectedForGCFields + " FROM " + META_TABLE_NAME +
 				" WHERE " + TASK_TYPE + " = " + ClusterTaskType.SCHEDULED.value +
 				"   AND " + RUNTIME_INSTANCE + " IS NOT NULL" +
@@ -113,6 +116,11 @@ final class PostgreSqlDbDataProvider extends ClusterTasksDbDataProvider {
 	@Override
 	String[] getSelectReRunnableStaledTasksSQL() {
 		return new String[]{lockForSelectForCleanTasksSQL, selectReRunnableStaledTasksSQL};
+	}
+
+	@Override
+	String getUpdateScheduledTaskIntervalSQL() {
+		return updateScheduledTaskIntervalSQL;
 	}
 
 	@Override
@@ -262,7 +270,7 @@ final class PostgreSqlDbDataProvider extends ClusterTasksDbDataProvider {
 								.sorted()
 								.map(id -> new Object[]{runtimeInstanceID, id})
 								.collect(Collectors.toList());
-						int[] updateResults = jdbcTemplate.batchUpdate(updateTasksStartedSQL, updateParams, new int[]{VARCHAR, BIGINT});
+						int[] updateResults = jdbcTemplate.batchUpdate(updateTasksStartedSQL, updateParams, new int[]{Types.VARCHAR, Types.BIGINT});
 						if (logger.isDebugEnabled()) {
 							logger.debug("update tasks to RUNNING results: " + Stream.of(updateResults).map(String::valueOf).collect(Collectors.joining(", ")));
 							logger.debug("from a total of " + tasks.size() + " available tasks " + tasksToRunIDs.size() + " has been started");
@@ -296,7 +304,7 @@ final class PostgreSqlDbDataProvider extends ClusterTasksDbDataProvider {
 		try {
 			JdbcTemplate jdbcTemplate = getJdbcTemplate();
 			String sql = selectTaskBodyByPartitionSQLs.get(partitionIndex);
-			return jdbcTemplate.query(sql, new Object[]{taskId}, new int[]{BIGINT}, rs -> {
+			return jdbcTemplate.query(sql, new Object[]{taskId}, new int[]{Types.BIGINT}, rs -> {
 				String result = null;
 				try {
 					if (rs.next()) {

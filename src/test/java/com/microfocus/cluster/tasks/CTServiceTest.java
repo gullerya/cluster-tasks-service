@@ -264,7 +264,6 @@ public class CTServiceTest extends CTSTestsBase {
 		}
 		if (container.size() == expectedSize) {
 			logger.info("expectation fulfilled in " + timePassed + "ms");
-			System.out.println("expectation fulfilled in " + timePassed + "ms");
 		} else {
 			fail("expectation " + expectedSize + " was not fulfilled (found " + container.size() + ") in given " + maxTimeToWait + "ms");
 		}

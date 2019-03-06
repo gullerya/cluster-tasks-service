@@ -37,7 +37,7 @@ public class UniquenessTest extends CTSTestsBase {
 	private ClusterTasksService clusterTasksService;
 
 	@Test
-	public void UniquenessTest_A_no_concurrency_keys() {
+	public void uniquenessTest_A_no_concurrency_keys() {
 		ClusterTask task;
 		ClusterTaskPersistenceResult[] results;
 
@@ -120,7 +120,6 @@ public class UniquenessTest extends CTSTestsBase {
 		}
 		if (ClusterTasksProcessorUniqueness_test.bodies.size() == expectedSize) {
 			logger.info("expectation fulfilled in " + timePassed + "ms");
-			System.out.println("expectation fulfilled in " + timePassed + "ms");
 		} else {
 			fail("expected to have " + expectedSize + " results, but found " + ClusterTasksProcessorUniqueness_test.bodies.size());
 		}

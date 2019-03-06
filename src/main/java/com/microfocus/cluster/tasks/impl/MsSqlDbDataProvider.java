@@ -32,9 +32,6 @@ import java.util.Set;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
-import static java.sql.Types.BIGINT;
-import static java.sql.Types.VARCHAR;
-
 /**
  * Created by gullery on 12/04/2018.
  * <p>
@@ -54,6 +51,8 @@ final class MsSqlDbDataProvider extends ClusterTasksDbDataProvider {
 
 	private final String insertTaskWithoutBodySQL;
 	private final Map<Long, String> insertTaskWithBodySQLs = new HashMap<>();
+	private final String updateScheduledTaskIntervalSQL;
+
 	private final String takeLockForSelectForRunTasksSQL;
 	private final Map<Integer, String> selectForUpdateTasksSQLs = new HashMap<>();
 	private final Map<Long, String> selectTaskBodyByPartitionSQLs = new HashMap<>();
@@ -79,9 +78,13 @@ final class MsSqlDbDataProvider extends ClusterTasksDbDataProvider {
 		updateSelfLastSeenSQL = "UPDATE " + ACTIVE_NODES_TABLE_NAME + " SET " + ACTIVE_NODE_LAST_SEEN + " = GETDATE() WHERE " + ACTIVE_NODE_ID + " = ?";
 		removeLongTimeNoSeeSQL = "DELETE FROM " + ACTIVE_NODES_TABLE_NAME + " WHERE " + ACTIVE_NODE_LAST_SEEN + " < DATEADD(MILLISECOND, -?, GETDATE())";
 
+		//  insert / update tasks
 		String insertFields = String.join(",", META_ID, TASK_TYPE, PROCESSOR_TYPE, UNIQUENESS_KEY, CONCURRENCY_KEY, DELAY_BY_MILLIS, BODY_PARTITION, ORDERING_FACTOR, CREATED, STATUS);
 		insertTaskWithoutBodySQL = "INSERT INTO " + META_TABLE_NAME + " (" + insertFields + ")" +
 				" VALUES (NEXT VALUE FOR " + CLUSTER_TASK_ID_SEQUENCE + ", ?, ?, ?, ?, ?, ?, COALESCE(?, CAST(FORMAT(CURRENT_TIMESTAMP,'yyyyMMddHHmmssfff') AS BIGINT) + ?), GETDATE(), " + ClusterTaskStatus.PENDING.value + ")";
+		updateScheduledTaskIntervalSQL = "UPDATE " + META_TABLE_NAME +
+				" SET " + CREATED + " = GETDATE(), " + DELAY_BY_MILLIS + " = ?" +
+				" WHERE " + PROCESSOR_TYPE + " = ? AND " + TASK_TYPE + " = " + ClusterTaskType.SCHEDULED.value + " AND " + STATUS + " = " + ClusterTaskStatus.PENDING.value;
 
 		//  select and run tasks flow
 		takeLockForSelectForRunTasksSQL = "BEGIN TRAN; EXEC sp_getapplock @Resource = 'LOCK_FOR_TASKS_DISPATCH', @LockMode = 'Exclusive', @LockOwner = 'Transaction'";
@@ -91,8 +94,8 @@ final class MsSqlDbDataProvider extends ClusterTasksDbDataProvider {
 			selectForUpdateTasksSQLs.put(maxProcessorTypes,
 					"SELECT * FROM" +
 							"   (SELECT " + selectFields + "," +
-							"       ROW_NUMBER() OVER (PARTITION BY COALESCE(" + CONCURRENCY_KEY + ",CAST(NEWID() AS VARCHAR(36))) ORDER BY " + ORDERING_FACTOR + "," + CREATED + "," + META_ID + " ASC) AS row_index," +
-							"       COUNT(CASE WHEN " + STATUS + " = " + ClusterTaskStatus.RUNNING.value + " THEN 1 ELSE NULL END) OVER (PARTITION BY COALESCE(" + CONCURRENCY_KEY + ",CAST(NEWID() AS VARCHAR(36)))) AS running_count" +
+							"       ROW_NUMBER() OVER (PARTITION BY COALESCE(" + CONCURRENCY_KEY + ",CAST(NEWID() AS NVARCHAR(36))) ORDER BY " + ORDERING_FACTOR + "," + CREATED + "," + META_ID + " ASC) AS row_index," +
+							"       COUNT(CASE WHEN " + STATUS + " = " + ClusterTaskStatus.RUNNING.value + " THEN 1 ELSE NULL END) OVER (PARTITION BY COALESCE(" + CONCURRENCY_KEY + ",CAST(NEWID() AS NVARCHAR(36)))) AS running_count" +
 							"   FROM " + META_TABLE_NAME +
 							"   WHERE " + PROCESSOR_TYPE + " IN(" + processorTypesInParameter + ")" +
 							"       AND " + STATUS + " < " + ClusterTaskStatus.FINISHED.value +
@@ -114,7 +117,7 @@ final class MsSqlDbDataProvider extends ClusterTasksDbDataProvider {
 
 		//  clean up tasks flow
 		takeLockForSelectForCleanTasksSQL = "BEGIN TRAN; EXEC sp_getapplock @Resource = 'LOCK_FOR_TASKS_GC', @LockMode = 'Exclusive', @LockOwner = 'Transaction'";
-		String selectedForGCFields = String.join(",", META_ID, BODY_PARTITION, TASK_TYPE, PROCESSOR_TYPE, STATUS);
+		String selectedForGCFields = String.join(",", META_ID, BODY_PARTITION, TASK_TYPE, PROCESSOR_TYPE, DELAY_BY_MILLIS, STATUS);
 		selectReRunnableStaledTasksSQL = "SELECT " + selectedForGCFields + " FROM " + META_TABLE_NAME +
 				" WHERE " + TASK_TYPE + " = " + ClusterTaskType.SCHEDULED.value +
 				"   AND " + RUNTIME_INSTANCE + " IS NOT NULL" +
@@ -125,6 +128,11 @@ final class MsSqlDbDataProvider extends ClusterTasksDbDataProvider {
 	@Override
 	String[] getSelectReRunnableStaledTasksSQL() {
 		return new String[]{takeLockForSelectForCleanTasksSQL, selectReRunnableStaledTasksSQL, releaseLockForSelectForCleanTasksSQL};
+	}
+
+	@Override
+	String getUpdateScheduledTaskIntervalSQL() {
+		return updateScheduledTaskIntervalSQL;
 	}
 
 	@Override
@@ -199,9 +207,9 @@ final class MsSqlDbDataProvider extends ClusterTasksDbDataProvider {
 						paramTypes = new int[]{
 								Types.CLOB,                 //  task body -  will be used only if actually has body
 								Types.BIGINT,               //  task type
-								Types.VARCHAR,              //  processor type
-								Types.VARCHAR,              //  uniqueness key
-								Types.VARCHAR,              //  concurrency key
+								Types.NVARCHAR,             //  processor type
+								Types.NVARCHAR,             //  uniqueness key
+								Types.NVARCHAR,             //  concurrency key
 								Types.BIGINT,               //  delay by millis
 								Types.BIGINT,               //  partition index
 								Types.BIGINT,               //  ordering factor
@@ -221,9 +229,9 @@ final class MsSqlDbDataProvider extends ClusterTasksDbDataProvider {
 						};
 						paramTypes = new int[]{
 								Types.BIGINT,               //  task type
-								Types.VARCHAR,              //  processor type
-								Types.VARCHAR,              //  uniqueness key
-								Types.VARCHAR,              //  concurrency key
+								Types.NVARCHAR,             //  processor type
+								Types.NVARCHAR,             //  uniqueness key
+								Types.NVARCHAR,             //  concurrency key
 								Types.BIGINT,               //  delay by millis
 								Types.BIGINT,               //  partition index
 								Types.BIGINT,               //  ordering factor
@@ -308,7 +316,7 @@ final class MsSqlDbDataProvider extends ClusterTasksDbDataProvider {
 								.sorted()
 								.map(id -> new Object[]{runtimeInstanceID, id})
 								.collect(Collectors.toList());
-						int[] updateResults = jdbcTemplate.batchUpdate(updateTasksStartedSQL, updateParams, new int[]{VARCHAR, BIGINT});
+						int[] updateResults = jdbcTemplate.batchUpdate(updateTasksStartedSQL, updateParams, new int[]{Types.NVARCHAR, Types.BIGINT});
 						if (logger.isDebugEnabled()) {
 							logger.debug("update tasks to RUNNING results: " + Stream.of(updateResults).map(String::valueOf).collect(Collectors.joining(", ")));
 							logger.debug("from a total of " + tasks.size() + " available tasks " + tasksToRunIDs.size() + " has been started");
@@ -347,7 +355,7 @@ final class MsSqlDbDataProvider extends ClusterTasksDbDataProvider {
 			return jdbcTemplate.query(
 					sql,
 					new Object[]{taskId},
-					new int[]{BIGINT},
+					new int[]{Types.BIGINT},
 					this::rowToTaskBodyReader);
 		} catch (Exception e) {
 			throw new CtsGeneralFailure(clusterTasksService.getInstanceID() + " failed to retrieve task's body", e);
@@ -356,10 +364,10 @@ final class MsSqlDbDataProvider extends ClusterTasksDbDataProvider {
 
 	@Override
 	public void updateSelfLastSeen(String nodeId) {
-		int updated = getJdbcTemplate().update(updateSelfLastSeenSQL, new Object[]{nodeId}, new int[]{Types.VARCHAR});
+		int updated = getJdbcTemplate().update(updateSelfLastSeenSQL, new Object[]{nodeId}, new int[]{Types.NVARCHAR});
 		if (updated == 0) {
 			logger.info("node " + nodeId + " activity was NOT UPDATED, performing initial registration...");
-			int affected = getJdbcTemplate().update(insertSelfLastSeenSQL, new Object[]{nodeId}, new int[]{Types.VARCHAR});
+			int affected = getJdbcTemplate().update(insertSelfLastSeenSQL, new Object[]{nodeId}, new int[]{Types.NVARCHAR});
 			if (affected != 1) {
 				logger.warn("expected to see exactly 1 record affected while registering " + nodeId + ", yet actual result is " + affected);
 			} else {
