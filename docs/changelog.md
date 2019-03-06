@@ -1,5 +1,9 @@
 ### Changelog
 
+##### 1.7
+- fixed [Issue #6](https://github.com/MicroFocus/cluster-tasks-service/issues/6)
+- fixed [Issue #7](https://github.com/MicroFocus/cluster-tasks-service/issues/7)
+
 ##### 1.6
 - fixed [Issue #3](https://github.com/MicroFocus/cluster-tasks-service/issues/3)
 - fixed [Issue #4](https://github.com/MicroFocus/cluster-tasks-service/issues/4)
