@@ -37,7 +37,7 @@ public class UniquenessTest extends CTSTestsBase {
 	private ClusterTasksService clusterTasksService;
 
 	@Test
-	public void UniquenessTest_A_no_concurrency_keys() {
+	public void uniquenessTest_A_no_concurrency_keys() {
 		ClusterTask task;
 		ClusterTaskPersistenceResult[] results;
 
