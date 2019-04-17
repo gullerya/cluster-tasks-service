@@ -310,8 +310,8 @@ public class ClusterTasksServiceImpl implements ClusterTasksService {
 								}
 							}
 						} while (enqueueAttemptsCount < maxEnqueueAttempts);
-					} catch (Exception e) {
-						logger.error("failed to initialize scheduled task for processor type " + entry.getKey());
+					} catch (RuntimeException re) {
+						logger.error("failed to initialize scheduled task for processor type " + entry.getKey(), re);
 					}
 				});
 	}
