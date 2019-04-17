@@ -143,18 +143,18 @@ final class OracleDbDataProvider extends ClusterTasksDbDataProvider {
 			//  check tables existence
 			Set<String> tableNames = getCTSTableNames();
 			sql = areTablesReadySQL;
-			int tablesCount = getJdbcTemplate().queryForObject(sql, (resultSet, index) -> resultSet.getInt("cts_tables_count"));
-			if (tablesCount == tableNames.size()) {
+			Integer tablesCount = getJdbcTemplate().queryForObject(sql, (resultSet, index) -> resultSet.getInt("cts_tables_count"));
+			if (tablesCount != null && tablesCount == tableNames.size()) {
 				//  check indices existence
 				Set<String> indexNames = getCTSIndexNames();
 				sql = areIndicesReadySQL;
-				int indicesCount = getJdbcTemplate().queryForObject(sql, (resultSet, index) -> resultSet.getInt("cts_indices_count"));
-				if (indicesCount == indexNames.size()) {
+				Integer indicesCount = getJdbcTemplate().queryForObject(sql, (resultSet, index) -> resultSet.getInt("cts_indices_count"));
+				if (indicesCount != null && indicesCount == indexNames.size()) {
 					//  check sequences existence
 					Set<String> sequenceNames = getCTSSequenceNames();
 					sql = areSequencesReadySQL;
-					int sequencesCount = getJdbcTemplate().queryForObject(sql, (resultSet, index) -> resultSet.getInt("cts_sequences_count"));
-					if (sequencesCount == sequenceNames.size()) {
+					Integer sequencesCount = getJdbcTemplate().queryForObject(sql, (resultSet, index) -> resultSet.getInt("cts_sequences_count"));
+					if (sequencesCount != null && sequencesCount == sequenceNames.size()) {
 						logger.info(dataProviderName + " found to be READY");
 						isReady = true;
 					} else {
@@ -296,7 +296,7 @@ final class OracleDbDataProvider extends ClusterTasksDbDataProvider {
 				List<TaskInternal> tasks;
 				jdbcTemplate.execute(lockMetadataTable);
 				tasks = jdbcTemplate.query(sql, params, paramTypes, this::tasksMetadataReader);
-				if (!tasks.isEmpty()) {
+				if (tasks != null && !tasks.isEmpty()) {
 					Map<String, List<TaskInternal>> tasksByProcessor = tasks.stream().collect(Collectors.groupingBy(ti -> ti.processorType));
 					Set<Long> tasksToRunIDs = new LinkedHashSet<>();
 

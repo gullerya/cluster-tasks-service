@@ -22,6 +22,7 @@ class ClusterTaskImpl implements ClusterTask {
 	Long id;
 	String uniquenessKey;
 	String concurrencyKey;
+	boolean concurrencyKeyUntouched;
 	Long orderingFactor;
 	Long delayByMillis;
 	String body;

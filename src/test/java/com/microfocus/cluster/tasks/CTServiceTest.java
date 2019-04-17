@@ -103,7 +103,7 @@ public class CTServiceTest extends CTSTestsBase {
 
 		for (int i = 0; i < 5; i++) {
 			tmp = TaskBuilders.channeledTask()
-					.setConcurrencyKey(concurrencyKey)
+					.setConcurrencyKey(concurrencyKey, true)
 					.setBody(String.valueOf(i))
 					.build();
 			tasks.add(tmp);

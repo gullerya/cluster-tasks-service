@@ -12,9 +12,10 @@ import com.microfocus.cluster.tasks.api.builders.TaskBuilders;
 import com.microfocus.cluster.tasks.api.dto.ClusterTask;
 
 abstract public class TaskBuilderBase implements TaskBuilders.TaskBuilder {
-	protected volatile boolean locked = false;
+	protected volatile boolean locked;
 	protected String uniquenessKey;
 	protected String concurrencyKey;
+	protected boolean concurrencyKeyUntouched;
 	private Long delayByMillis;
 	private String body;
 
@@ -39,6 +40,7 @@ abstract public class TaskBuilderBase implements TaskBuilders.TaskBuilder {
 		ClusterTaskImpl result = new ClusterTaskImpl();
 		result.uniquenessKey = uniquenessKey;
 		result.concurrencyKey = concurrencyKey;
+		result.concurrencyKeyUntouched = concurrencyKeyUntouched;
 		result.delayByMillis = delayByMillis;
 		result.body = body;
 		return result;

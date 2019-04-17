@@ -358,8 +358,12 @@ public class ClusterTasksServiceImpl implements ClusterTasksService {
 		}
 
 		if (cKey != null && !cKey.isEmpty()) {
-			String weakHash = CTSHashingUtils.get6CharsChecksum(processorType);
-			target.concurrencyKey = cKey + weakHash;
+			if (source instanceof ClusterTaskImpl && !((ClusterTaskImpl) source).concurrencyKeyUntouched) {
+				String weakHash = CTSHashingUtils.get6CharsChecksum(processorType);
+				target.concurrencyKey = cKey + weakHash;
+			} else {
+				target.concurrencyKey = cKey;
+			}
 		}
 	}
 

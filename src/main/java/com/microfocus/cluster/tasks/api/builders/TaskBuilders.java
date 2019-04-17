@@ -9,6 +9,7 @@
 package com.microfocus.cluster.tasks.api.builders;
 
 import com.microfocus.cluster.tasks.api.dto.ClusterTask;
+import com.microfocus.cluster.tasks.impl.TaskBuilderBase;
 
 /**
  * Tasks builder is the only valid mean to create guaranteed valid tasks to submit to Cluster Tasks Service
@@ -41,7 +42,7 @@ public class TaskBuilders {
 	 * @return Channel tasks' oriented TaskBuilder
 	 */
 	public static ChanneledTaskBuilder channeledTask() {
-		return new ChanneledTaskBuilderImpl();
+		return new ChanneledTaskBuilder();
 	}
 
 	/**
@@ -55,7 +56,7 @@ public class TaskBuilders {
 	 * @return Unique tasks' oriented TaskBuilder
 	 */
 	public static UniqueTaskBuilder uniqueTask() {
-		return new UniqueTaskBuilderImpl();
+		return new UniqueTaskBuilder();
 	}
 
 	/**
@@ -95,6 +96,11 @@ public class TaskBuilders {
 		ClusterTask build() throws IllegalStateException;
 	}
 
+	private static class SimpleTaskBuilder extends TaskBuilderBase {
+		private SimpleTaskBuilder() {
+		}
+	}
+
 	/**
 	 * API for CHANNELED task builder
 	 * - channeled tasks should be used when there is a need to process tasks in a strict serial order
@@ -102,20 +108,49 @@ public class TaskBuilders {
 	 * - tuning the number of resources (treads) per processor from one side, and a well-thought concurrency key from the other - those two provide
 	 * good means to tune CTS throughput and resources utilization
 	 */
-	public interface ChanneledTaskBuilder {
+	public static class ChanneledTaskBuilder extends TaskBuilderBase {
+		private ChanneledTaskBuilder() {
+		}
 
 		/**
 		 * Sets concurrency key for the task
 		 * - concurrency key will cause all tasks having the same key to be executed SERIALLY
 		 * - it is promised, that at any given moment only one (or zero) task of a specific concurrency key will be executed across all the treads across all the nodes in the cluster
-		 * - concurrency key effective across the processors
+		 * - concurrency key will internally be padded with weak hash of processor type to ensure concurrency effect in scope of each task processor separately
 		 *
 		 * @param concurrencyKey concurrency key (34 chars max length)
 		 * @return task builder instance
 		 * @throws IllegalStateException    if the {@link com.microfocus.cluster.tasks.api.builders.TaskBuilders.TaskBuilder#build() build} method has already been called on this builder instance
 		 * @throws IllegalArgumentException if the key is NULL or EMPTY of bigger than allowed
 		 */
-		TaskBuilders.TaskBuilder setConcurrencyKey(String concurrencyKey) throws IllegalStateException, IllegalArgumentException;
+		public TaskBuilders.TaskBuilder setConcurrencyKey(String concurrencyKey) throws IllegalStateException, IllegalArgumentException {
+			return setConcurrencyKey(concurrencyKey, false);
+		}
+
+		/**
+		 * Sets concurrency key for the task
+		 * - concurrency key will cause all tasks having the same key to be executed SERIALLY
+		 * - it is promised, that at any given moment only one (or zero) task of a specific concurrency key will be executed across all the treads across all the nodes in the cluster
+		 * - if 'untouched' set to be true, concurrency key won't be strengthen for processor type, thus effectively allowing channelling across processor types
+		 *
+		 * @param concurrencyKey concurrency key (34 chars max length)
+		 * @param untouched      should or should not this concurrency key be strengthen by hashing of task processor
+		 * @return task builder instance
+		 * @throws IllegalStateException    if the {@link com.microfocus.cluster.tasks.api.builders.TaskBuilders.TaskBuilder#build() build} method has already been called on this builder instance
+		 * @throws IllegalArgumentException if the key is NULL or EMPTY of bigger than allowed
+		 */
+		public TaskBuilders.TaskBuilder setConcurrencyKey(String concurrencyKey, boolean untouched) throws IllegalStateException, IllegalArgumentException {
+			if (locked) throw new IllegalStateException("task builder MAY BE used only once");
+			if (concurrencyKey == null || concurrencyKey.isEmpty()) {
+				throw new IllegalArgumentException("concurrency key MUST NOT be null nor empty");
+			}
+			if (concurrencyKey.length() > 34) {
+				throw new IllegalArgumentException("concurrency key's length MUST BE less than or equal to 34 chars");
+			}
+			this.concurrencyKey = concurrencyKey;
+			this.concurrencyKeyUntouched = untouched;
+			return this;
+		}
 	}
 
 	/**
@@ -127,7 +162,9 @@ public class TaskBuilders {
 	 * while there is no danger of accidentally breaking the chain from one side, and multiplying the tasks from another
 	 * - if the desired flow is to have a single unique task running each specific (yet even adjustable) period of time - scheduled tasks mechanism should be checked
 	 */
-	public interface UniqueTaskBuilder {
+	public static class UniqueTaskBuilder extends TaskBuilderBase {
+		private UniqueTaskBuilder() {
+		}
 
 		/**
 		 * Sets uniqueness key
@@ -141,6 +178,16 @@ public class TaskBuilders {
 		 * @throws IllegalStateException    if the {@link com.microfocus.cluster.tasks.api.builders.TaskBuilders.TaskBuilder#build() build} method has already been called on this builder instance
 		 * @throws IllegalArgumentException if the key is NULL or EMPTY of bigger than allowed
 		 */
-		TaskBuilder setUniquenessKey(String uniquenessKey) throws IllegalStateException, IllegalArgumentException;
+		public TaskBuilder setUniquenessKey(String uniquenessKey) throws IllegalStateException, IllegalArgumentException {
+			if (locked) throw new IllegalStateException("task builder MAY BE used only once");
+			if (uniquenessKey == null || uniquenessKey.isEmpty()) {
+				throw new IllegalArgumentException("uniqueness key MUST NOT be null nor empty");
+			}
+			if (uniquenessKey.length() > 34) {
+				throw new IllegalArgumentException("uniqueness key's length MUST BE less than or equal to 34 chars");
+			}
+			this.uniquenessKey = uniquenessKey;
+			return this;
+		}
 	}
 }
