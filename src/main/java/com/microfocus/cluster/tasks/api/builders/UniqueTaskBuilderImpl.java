@@ -13,10 +13,12 @@ import com.microfocus.cluster.tasks.impl.TaskBuilderBase;
 class UniqueTaskBuilderImpl extends TaskBuilderBase implements TaskBuilders.UniqueTaskBuilder {
 	public TaskBuilders.TaskBuilder setUniquenessKey(String uniquenessKey) throws IllegalStateException, IllegalArgumentException {
 		if (locked) throw new IllegalStateException("task builder MAY BE used only once");
-		if (uniquenessKey == null || uniquenessKey.isEmpty())
+		if (uniquenessKey == null || uniquenessKey.isEmpty()) {
 			throw new IllegalArgumentException("uniqueness key MUST NOT be null nor empty");
-		if (uniquenessKey.length() > 40)
-			throw new IllegalArgumentException("uniqueness key's length MUST BE less than or equal to 40 chars");
+		}
+		if (uniquenessKey.length() > 34) {
+			throw new IllegalArgumentException("uniqueness key's length MUST BE less than or equal to 34 chars");
+		}
 		this.uniquenessKey = uniquenessKey;
 		return this;
 	}

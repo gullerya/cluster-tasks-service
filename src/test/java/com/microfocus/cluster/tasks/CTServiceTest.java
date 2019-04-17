@@ -139,7 +139,7 @@ public class CTServiceTest extends CTSTestsBase {
 	public void TestC_processor_custom_dispatch_interval() {
 		List<ClusterTask> tasks = new LinkedList<>();
 		ClusterTask tmp;
-		String concurrencyKey = UUID.randomUUID().toString();
+		String concurrencyKey = UUID.randomUUID().toString().replaceAll("-", "");
 		ClusterTaskPersistenceResult[] results;
 
 		clusterTasksProcessorD_test.tasksProcessed.clear();
@@ -189,7 +189,7 @@ public class CTServiceTest extends CTSTestsBase {
 	@Test
 	public void TestE_delayed_tasks() {
 		ClusterTask tmp;
-		String concurrencyKey = UUID.randomUUID().toString();
+		String concurrencyKey = UUID.randomUUID().toString().replaceAll("-", "");
 		long delay = 7000L;
 		ClusterTaskPersistenceResult[] results;
 		clusterTasksProcessorA_test.tasksProcessed.clear();
@@ -234,7 +234,7 @@ public class CTServiceTest extends CTSTestsBase {
 	public void TestF_non_available_task_holding_concurrency_key() {
 		ClusterTask tmp;
 		ClusterTaskPersistenceResult[] results;
-		String concurrencyKey = UUID.randomUUID().toString();
+		String concurrencyKey = UUID.randomUUID().toString().replaceAll("-", "");
 		String taskBodyToCheck = "visited here";
 
 		//  enqueue first task to an ever-non-available processor

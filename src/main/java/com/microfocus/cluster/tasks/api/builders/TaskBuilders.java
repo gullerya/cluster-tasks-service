@@ -33,7 +33,7 @@ public class TaskBuilders {
 
 	/**
 	 * Entry point for creation of CHANNELED task, which is:
-	 * - REQUIRED to have defined concurrency key (32 chars maximum, '|' [pipe] is NOT allowed)
+	 * - REQUIRED to have defined concurrency key (34 chars maximum)
 	 * - ONLY a SINGLE task of a specific concurrency key will be executed at any given moment ACROSS the cluster
 	 * - concurrency/channelling is enforced PER processor (2 tasks submitted for 2 different processor with the same concurrency key will [possibly] run in parallel)
 	 * - having the rest of the attributes of the simple task
@@ -46,7 +46,7 @@ public class TaskBuilders {
 
 	/**
 	 * Entry point for creation of UNIQUE task, which is:
-	 * - REQUIRED to have defined uniqueness key (40 chars maximum)
+	 * - REQUIRED to have defined uniqueness key (34 chars maximum)
 	 * - WON'T have concurrency notion (obviously, there is nothing to concur with)
 	 * - ONLY a single task of a specific uniqueness key will be present at any given moment in the queue, UNLESS...
 	 * - there is another task of the same uniqueness key already RUNNING (thus enabling continuous existence of some unique task in the system without a danger to cut the chain)
@@ -110,7 +110,7 @@ public class TaskBuilders {
 		 * - it is promised, that at any given moment only one (or zero) task of a specific concurrency key will be executed across all the treads across all the nodes in the cluster
 		 * - concurrency key effective across the processors
 		 *
-		 * @param concurrencyKey concurrency key (32 chars max length), MAY NOT contain '|' (pipe) character
+		 * @param concurrencyKey concurrency key (34 chars max length)
 		 * @return task builder instance
 		 * @throws IllegalStateException    if the {@link com.microfocus.cluster.tasks.api.builders.TaskBuilders.TaskBuilder#build() build} method has already been called on this builder instance
 		 * @throws IllegalArgumentException if the key is NULL or EMPTY of bigger than allowed
@@ -136,7 +136,7 @@ public class TaskBuilders {
 		 * - if there is a running task of the same uniqueness key - the new task is allowed
 		 * - uniqueness key is enforced only in context of the specific tasks processor, in other words 2 different processors may have co-existing tasks with the same uniqueness key
 		 *
-		 * @param uniquenessKey uniqueness key (40 chars max length)
+		 * @param uniquenessKey uniqueness key (34 chars max length)
 		 * @return task builder instance
 		 * @throws IllegalStateException    if the {@link com.microfocus.cluster.tasks.api.builders.TaskBuilders.TaskBuilder#build() build} method has already been called on this builder instance
 		 * @throws IllegalArgumentException if the key is NULL or EMPTY of bigger than allowed

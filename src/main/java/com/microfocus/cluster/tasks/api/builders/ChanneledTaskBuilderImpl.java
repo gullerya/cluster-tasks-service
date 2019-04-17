@@ -16,11 +16,8 @@ class ChanneledTaskBuilderImpl extends TaskBuilderBase implements TaskBuilders.C
 		if (concurrencyKey == null || concurrencyKey.isEmpty()) {
 			throw new IllegalArgumentException("concurrency key MUST NOT be null nor empty");
 		}
-		if (concurrencyKey.length() > 32) {
-			throw new IllegalArgumentException("concurrency key's length MUST BE less than or equal to 32 chars");
-		}
-		if (concurrencyKey.contains("|")) {
-			throw new IllegalArgumentException("concurrency key MUST NOT contain reserved '|' (pipe) character");
+		if (concurrencyKey.length() > 34) {
+			throw new IllegalArgumentException("concurrency key's length MUST BE less than or equal to 34 chars");
 		}
 		this.concurrencyKey = concurrencyKey;
 		return this;
