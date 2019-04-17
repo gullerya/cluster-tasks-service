@@ -272,41 +272,47 @@ public class ClusterTasksServiceImpl implements ClusterTasksService {
 		processorsMap.entrySet().stream()
 				.filter(entry -> entry.getValue() instanceof ClusterTasksProcessorScheduled)
 				.forEach(entry -> {
-					String type = entry.getKey();
-					ClusterTasksProcessorBase processor = entry.getValue();
-					logger.info("performing initial scheduled task upsert for the first-ever-run case on behalf of " + type);
-					ClusterTasksDataProvider dataProvider = dataProvidersMap.get(processor.getDataProviderType());
-					ClusterTaskPersistenceResult enqueueResult;
-					int maxEnqueueAttempts = 20, enqueueAttemptsCount = 0;
-					ClusterTask clusterTask = TaskBuilders.uniqueTask()
-							.setUniquenessKey(type)
-							.setDelayByMillis(processor.scheduledTaskRunInterval)
-							.build();
-					TaskInternal[] scheduledTasks = convertTasks(new ClusterTask[]{clusterTask}, type);
-					scheduledTasks[0].taskType = ClusterTaskType.SCHEDULED;
-					do {
-						enqueueAttemptsCount++;
-						enqueueResult = dataProvider.storeTasks(scheduledTasks[0])[0];
-						if (enqueueResult.getStatus() == ClusterTaskInsertStatus.SUCCESS) {
-							logger.info("initial task for " + type + " created");
-							break;
-						} else if (enqueueResult.getStatus() == ClusterTaskInsertStatus.UNIQUE_CONSTRAINT_FAILURE) {
-							logger.info("failed to create initial scheduled task for " + type + " with unique constraint violation, assuming that task is already present");
-							if (processor.forceUpdateSchedulingInterval) {
-								logger.info("task processor " + type + " said to force update run interval (specified interval is " + processor.scheduledTaskRunInterval + "), updating...");
-								dataProvider.updateScheduledTaskInterval(processor.getType(), processor.scheduledTaskRunInterval);
-								logger.info("... update task processor " + type + " to new interval finished");
+					try {
+						String type = entry.getKey();
+						ClusterTasksProcessorBase processor = entry.getValue();
+						logger.info("performing initial scheduled task upsert for the first-ever-run case on behalf of " + type);
+						ClusterTasksDataProvider dataProvider = dataProvidersMap.get(processor.getDataProviderType());
+						ClusterTaskPersistenceResult enqueueResult;
+						int maxEnqueueAttempts = 20, enqueueAttemptsCount = 0;
+						ClusterTask clusterTask = TaskBuilders.uniqueTask()
+								.setUniquenessKey(type.length() > 34
+										? type.substring(0, 34)
+										: type)
+								.setDelayByMillis(processor.scheduledTaskRunInterval)
+								.build();
+						TaskInternal[] scheduledTasks = convertTasks(new ClusterTask[]{clusterTask}, type);
+						scheduledTasks[0].taskType = ClusterTaskType.SCHEDULED;
+						do {
+							enqueueAttemptsCount++;
+							enqueueResult = dataProvider.storeTasks(scheduledTasks[0])[0];
+							if (enqueueResult.getStatus() == ClusterTaskInsertStatus.SUCCESS) {
+								logger.info("initial task for " + type + " created");
+								break;
+							} else if (enqueueResult.getStatus() == ClusterTaskInsertStatus.UNIQUE_CONSTRAINT_FAILURE) {
+								logger.info("failed to create initial scheduled task for " + type + " with unique constraint violation, assuming that task is already present");
+								if (processor.forceUpdateSchedulingInterval) {
+									logger.info("task processor " + type + " said to force update run interval (specified interval is " + processor.scheduledTaskRunInterval + "), updating...");
+									dataProvider.updateScheduledTaskInterval(processor.getType(), processor.scheduledTaskRunInterval);
+									logger.info("... update task processor " + type + " to new interval finished");
+								}
+								break;
+							} else {
+								logger.error("failed to create scheduled task for " + type + " with error " + enqueueResult.getStatus() + "; will reattempt for more " + (maxEnqueueAttempts - enqueueAttemptsCount) + " times");
+								try {
+									Thread.sleep(3000);
+								} catch (InterruptedException ie) {
+									logger.warn("interrupted while breathing, proceeding with reattempts");
+								}
 							}
-							break;
-						} else {
-							logger.error("failed to create scheduled task for " + type + " with error " + enqueueResult.getStatus() + "; will reattempt for more " + (maxEnqueueAttempts - enqueueAttemptsCount) + " times");
-							try {
-								Thread.sleep(3000);
-							} catch (InterruptedException ie) {
-								logger.warn("interrupted while breathing, proceeding with reattempts");
-							}
-						}
-					} while (enqueueAttemptsCount < maxEnqueueAttempts);
+						} while (enqueueAttemptsCount < maxEnqueueAttempts);
+					} catch (Exception e) {
+						logger.error("failed to initialize scheduled task for processor type " + entry.getKey());
+					}
 				});
 	}
 
