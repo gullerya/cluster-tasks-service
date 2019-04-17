@@ -12,7 +12,12 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.test.context.ContextConfiguration;
 import org.springframework.test.context.junit4.SpringJUnit4ClassRunner;
 
+import java.nio.ByteBuffer;
+import java.nio.charset.StandardCharsets;
+import java.util.Arrays;
+import java.util.Base64;
 import java.util.UUID;
+import java.util.zip.CRC32;
 
 import static org.junit.Assert.assertEquals;
 
@@ -33,7 +38,7 @@ public class ConcurrencyTest extends CTSTestsBase {
 	private ClusterTasksProcessorConcurrency_test clusterTasksProcessorConcurrency_test;
 
 	@Test
-	public void TestA_concurrency_value_all_null() {
+	public void testA_concurrency_value_all_null() {
 		ClusterTask[] tasks = new ClusterTask[2];
 		tasks[0] = TaskBuilders.simpleTask()
 				.setBody("test A - task 1 - concurrency value is NULL")
@@ -50,7 +55,7 @@ public class ConcurrencyTest extends CTSTestsBase {
 	}
 
 	@Test
-	public void TestB_concurrency_value_some_null() {
+	public void testB_concurrency_value_some_null() {
 		String concurrencyKeyA = UUID.randomUUID().toString();
 		String concurrencyKeyB = UUID.randomUUID().toString();
 		ClusterTask[] tasks = new ClusterTask[6];
@@ -82,6 +87,46 @@ public class ConcurrencyTest extends CTSTestsBase {
 		waitForEndCondition(6, 14000);
 
 		assertEquals(6, clusterTasksProcessorConcurrency_test.tasksProcessed);
+	}
+
+	@Test
+	public void testC() {
+		String input;
+		long value;
+		ByteBuffer buffer = ByteBuffer.allocate(Long.BYTES);
+		CRC32 crc32 = new CRC32();
+
+		input = "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa";
+		crc32.update(input.getBytes(StandardCharsets.UTF_8));
+		value = crc32.getValue();
+		buffer.putLong(value);
+		System.out.println(Base64.getEncoder().encodeToString(Arrays.copyOfRange(buffer.array(), 4, 8)).substring(0, 6));
+		buffer.clear();
+		crc32.reset();
+
+		input = "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA";
+		crc32.update(input.getBytes(StandardCharsets.UTF_8));
+		value = crc32.getValue();
+		buffer.putLong(value);
+		System.out.println(Base64.getEncoder().encodeToString(Arrays.copyOfRange(buffer.array(), 4, 8)).substring(0, 6));
+		buffer.clear();
+		crc32.reset();
+
+		input = "zzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzz";
+		crc32.update(input.getBytes(StandardCharsets.UTF_8));
+		value = crc32.getValue();
+		buffer.putLong(value);
+		System.out.println(Base64.getEncoder().encodeToString(Arrays.copyOfRange(buffer.array(), 4, 8)).substring(0, 6));
+		buffer.clear();
+		crc32.reset();
+
+		input = "ZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZ";
+		crc32.update(input.getBytes(StandardCharsets.UTF_8));
+		value = crc32.getValue();
+		buffer.putLong(value);
+		System.out.println(Base64.getEncoder().encodeToString(Arrays.copyOfRange(buffer.array(), 4, 8)).substring(0, 6));
+		buffer.clear();
+		crc32.reset();
 	}
 
 	private void waitForEndCondition(int expectedSize, long maxTimeToWait) {

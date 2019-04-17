@@ -23,6 +23,8 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 
+import java.nio.ByteBuffer;
+import java.nio.charset.StandardCharsets;
 import java.util.*;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutorService;
@@ -30,6 +32,7 @@ import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
 import java.util.concurrent.ThreadFactory;
 import java.util.stream.Collectors;
+import java.util.zip.CRC32;
 
 /**
  * Created by gullery on 08/05/2016.
@@ -320,16 +323,13 @@ public class ClusterTasksServiceImpl implements ClusterTasksService {
 
 			TaskInternal target = new TaskInternal();
 
-			if (source.getUniquenessKey() != null) {
-				target.uniquenessKey = source.getUniquenessKey();
-				target.concurrencyKey = source.getUniquenessKey();
-				if (source.getConcurrencyKey() != null) {
-					logger.warn("concurrency key MUST NOT be used along with uniqueness key, falling back to uniqueness key as concurrency key");
-				}
-			} else {
-				target.uniquenessKey = UUID.randomUUID().toString();
-				target.concurrencyKey = source.getConcurrencyKey();
-			}
+			//  uniqueness key
+			target.uniquenessKey = source.getUniquenessKey() != null
+					? source.getUniquenessKey()
+					: UUID.randomUUID().toString();
+
+			//  concurrency key
+			preprocessConcurrencyKey(source, target, targetProcessorType);
 
 			target.processorType = targetProcessorType;
 			target.orderingFactor = null;
@@ -341,6 +341,27 @@ public class ClusterTasksServiceImpl implements ClusterTasksService {
 		}
 
 		return result;
+	}
+
+	private void preprocessConcurrencyKey(ClusterTask source, TaskInternal target, String processorType) {
+		String cKey;
+		if (source.getUniquenessKey() != null) {
+			cKey = source.getUniquenessKey();
+			if (source.getConcurrencyKey() != null) {
+				logger.warn("concurrency key MUST NOT be used along with uniqueness key, falling back to uniqueness key as concurrency key");
+			}
+		} else {
+			cKey = source.getConcurrencyKey();
+		}
+
+		if (cKey != null && !cKey.isEmpty()) {
+			CRC32 crc32 = new CRC32();
+			crc32.update(processorType.getBytes(StandardCharsets.UTF_8));
+			ByteBuffer buffer = ByteBuffer.allocate(Long.BYTES);
+			buffer.putLong(crc32.getValue());
+			byte[] bytes = Arrays.copyOfRange(buffer.array(), 4, 8);
+			target.concurrencyKey = cKey + "|" + Base64.getEncoder().encodeToString(bytes);
+		}
 	}
 
 	private static final class ClusterTasksDispatcherThreadFactory implements ThreadFactory {

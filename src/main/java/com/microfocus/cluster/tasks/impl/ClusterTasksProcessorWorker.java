@@ -76,6 +76,10 @@ class ClusterTasksProcessorWorker implements Runnable {
 		Summary.Timer taskSelfDurationTimer = tasksPerProcessorDuration.labels(processor.getType()).startTimer();           //  metric
 		try {
 			if (enrichTaskWithBodyIfRelevant(task)) {
+				ClusterTaskImpl clusterTask = ClusterTaskImpl.from(task);
+				if (clusterTask.concurrencyKey != null && clusterTask.concurrencyKey.contains("|")) {
+					clusterTask.concurrencyKey = clusterTask.concurrencyKey.substring(0, clusterTask.concurrencyKey.indexOf("|"));
+				}
 				processor.processTask(ClusterTaskImpl.from(task));
 			} else {
 				logger.error(task + " found to have body, but body retrieval failed (see previous logs), won't execute");

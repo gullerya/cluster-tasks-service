@@ -8,10 +8,10 @@
 
 package com.microfocus.cluster.tasks.impl;
 
-import com.microfocus.cluster.tasks.api.builders.TaskBuilder;
+import com.microfocus.cluster.tasks.api.builders.TaskBuilders;
 import com.microfocus.cluster.tasks.api.dto.ClusterTask;
 
-abstract public class TaskBuilderBase implements TaskBuilder {
+abstract public class TaskBuilderBase implements TaskBuilders.TaskBuilder {
 	protected volatile boolean locked = false;
 	protected String uniquenessKey;
 	protected String concurrencyKey;
@@ -21,13 +21,13 @@ abstract public class TaskBuilderBase implements TaskBuilder {
 	protected TaskBuilderBase() {
 	}
 
-	public TaskBuilder setDelayByMillis(Long delayByMillis) {
+	public TaskBuilders.TaskBuilder setDelayByMillis(Long delayByMillis) {
 		if (locked) throw new IllegalStateException("task builder MAY BE used only once");
 		this.delayByMillis = delayByMillis;
 		return this;
 	}
 
-	public TaskBuilder setBody(String body) {
+	public TaskBuilders.TaskBuilder setBody(String body) {
 		if (locked) throw new IllegalStateException("task builder MAY BE used only once");
 		this.body = body;
 		return this;

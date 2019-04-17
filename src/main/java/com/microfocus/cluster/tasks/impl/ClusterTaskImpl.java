@@ -59,7 +59,7 @@ class ClusterTaskImpl implements ClusterTask {
 		return body;
 	}
 
-	static ClusterTask from(TaskInternal origin) {
+	static ClusterTaskImpl from(TaskInternal origin) {
 		ClusterTaskImpl result = new ClusterTaskImpl();
 		result.id = origin.id;
 		result.uniquenessKey = origin.uniquenessKey;

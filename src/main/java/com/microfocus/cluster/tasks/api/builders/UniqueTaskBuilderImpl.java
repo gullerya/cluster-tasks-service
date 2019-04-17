@@ -10,8 +10,8 @@ package com.microfocus.cluster.tasks.api.builders;
 
 import com.microfocus.cluster.tasks.impl.TaskBuilderBase;
 
-class UniqueTaskBuilderImpl extends TaskBuilderBase implements UniqueTaskBuilder {
-	public TaskBuilder setUniquenessKey(String uniquenessKey) throws IllegalStateException, IllegalArgumentException {
+class UniqueTaskBuilderImpl extends TaskBuilderBase implements TaskBuilders.UniqueTaskBuilder {
+	public TaskBuilders.TaskBuilder setUniquenessKey(String uniquenessKey) throws IllegalStateException, IllegalArgumentException {
 		if (locked) throw new IllegalStateException("task builder MAY BE used only once");
 		if (uniquenessKey == null || uniquenessKey.isEmpty())
 			throw new IllegalArgumentException("uniqueness key MUST NOT be null nor empty");
