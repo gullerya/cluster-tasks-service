@@ -65,8 +65,8 @@ public class StaledTasksTest {
 		pickupContext.getBean(ClusterTasksStaledTest_A.class).suspended = true;
 
 		//  push 4 tasks, 2 pairs of 2 concurrency keys
-		String concurrencyKeyA = UUID.randomUUID().toString();
-		String concurrencyKeyB = UUID.randomUUID().toString();
+		String concurrencyKeyA = UUID.randomUUID().toString().replaceAll("-", "");
+		String concurrencyKeyB = UUID.randomUUID().toString().replaceAll("-", "");
 		ClusterTask task1 = TaskBuilders.channeledTask().setConcurrencyKey(concurrencyKeyA).build();
 		ClusterTask task2 = TaskBuilders.channeledTask().setConcurrencyKey(concurrencyKeyA).build();
 		ClusterTask task3 = TaskBuilders.channeledTask().setConcurrencyKey(concurrencyKeyB).build();

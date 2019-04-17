@@ -14,7 +14,11 @@ class CTSHashingUtils {
 	private CTSHashingUtils() {
 	}
 
-	static String get4CharsWeakHash(String input) {
+	/**
+	 * this method is for internal usage ONLY
+	 * creates weak 'hash', which is CRC32 checksum, encoded to Base64, of which only 6 significant characters are used
+	 */
+	static String get6CharsChecksum(String input) {
 		if (!hashes.containsKey(input)) {
 			CRC32 crc32 = new CRC32();
 			crc32.update(input.getBytes(StandardCharsets.UTF_8));

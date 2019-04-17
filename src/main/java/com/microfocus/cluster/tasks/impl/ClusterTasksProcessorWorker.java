@@ -77,7 +77,7 @@ class ClusterTasksProcessorWorker implements Runnable {
 		try {
 			if (enrichTaskWithBodyIfRelevant(task)) {
 				ClusterTaskImpl clusterTask = ClusterTaskImpl.from(task);
-				String weakHash = CTSHashingUtils.get4CharsWeakHash(processor.getType());
+				String weakHash = CTSHashingUtils.get6CharsChecksum(processor.getType());
 				if (clusterTask.concurrencyKey != null && clusterTask.concurrencyKey.endsWith(weakHash)) {
 					clusterTask.concurrencyKey = clusterTask.concurrencyKey.substring(0, clusterTask.concurrencyKey.length() - 4);
 				}

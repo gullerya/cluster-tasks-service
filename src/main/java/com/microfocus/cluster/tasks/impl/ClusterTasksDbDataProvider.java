@@ -162,7 +162,7 @@ abstract class ClusterTasksDbDataProvider implements ClusterTasksDataProvider {
 		JdbcTemplate jdbcTemplate = getJdbcTemplate();
 
 		boolean done = CTSUtils.retry(6, () -> {
-			int updatedEntries = jdbcTemplate.update(sql, new Object[]{newTaskRunInterval, scheduledTaskType}, new int[]{Types.BIGINT, Types.NVARCHAR});
+			int updatedEntries = jdbcTemplate.update(sql, new Object[]{newTaskRunInterval, scheduledTaskType}, new int[]{Types.BIGINT, Types.VARCHAR});
 			if (updatedEntries == 1) {
 				logger.info("successfully updated scheduled task " + scheduledTaskType + " to a new interval " + newTaskRunInterval);
 				return true;
@@ -228,7 +228,7 @@ abstract class ClusterTasksDbDataProvider implements ClusterTasksDataProvider {
 				resultSet.close();
 				return result;
 			});
-			if (!toBeRemoved.isEmpty()) {
+			if (toBeRemoved != null && !toBeRemoved.isEmpty()) {
 				logger.debug("found " + toBeRemoved.size() + " dangling bodies to be removed from partition " + partitionIndex);
 				Object[] params = new Object[removeDanglingBodiesBulkSize];
 				Integer[] types = Collections.nCopies(removeDanglingBodiesBulkSize, Types.BIGINT).toArray(new Integer[0]);
@@ -264,7 +264,7 @@ abstract class ClusterTasksDbDataProvider implements ClusterTasksDataProvider {
 					selectStaledSQL = sqls[0];
 				}
 				List<TaskInternal> gcCandidates = jdbcTemplate.query(selectStaledSQL, this::gcCandidatesReader);
-				if (!gcCandidates.isEmpty()) {
+				if (gcCandidates != null && !gcCandidates.isEmpty()) {
 					logger.info("found " + gcCandidates.size() + " re-runnable tasks as staled, processing...");
 
 					//  collect tasks valid for re-enqueue
@@ -303,7 +303,7 @@ abstract class ClusterTasksDbDataProvider implements ClusterTasksDataProvider {
 		Map<String, Integer> pendingCount = getJdbcTemplate().query(countScheduledPendingTasksSQL, this::scheduledPendingReader);
 		List<TaskInternal> tasksToReschedule = new ArrayList<>();
 		candidatesToReschedule.forEach(task -> {
-			if (!pendingCount.containsKey(task.processorType) || pendingCount.get(task.processorType) == 0) {
+			if (pendingCount != null && (!pendingCount.containsKey(task.processorType) || pendingCount.get(task.processorType) == 0)) {
 				task.uniquenessKey = task.processorType;
 				task.concurrencyKey = task.processorType;
 				tasksToReschedule.add(task);
@@ -369,14 +369,16 @@ abstract class ClusterTasksDbDataProvider implements ClusterTasksDataProvider {
 	@Override
 	public int countTasks(String processorType, Set<ClusterTaskStatus> statuses) {
 		String countTasksSQL = buildCountTasksSQL(processorType, statuses);
-		return getJdbcTemplate().queryForObject(countTasksSQL, Integer.class);
+		Integer result = getJdbcTemplate().queryForObject(countTasksSQL, Integer.class);
+		return result != null ? result : 0;
 	}
 
 	@Deprecated
 	@Override
 	public int countTasks(String processorType, String concurrencyKey, Set<ClusterTaskStatus> statuses) {
 		String countTasksSQL = buildCountTasksSQL(processorType, concurrencyKey, statuses);
-		return getJdbcTemplate().queryForObject(countTasksSQL, Integer.class);
+		Integer result = getJdbcTemplate().queryForObject(countTasksSQL, Integer.class);
+		return result != null ? result : 0;
 	}
 
 	JdbcTemplate getJdbcTemplate() {
@@ -535,7 +537,7 @@ abstract class ClusterTasksDbDataProvider implements ClusterTasksDataProvider {
 			String truncateBodyTableSQL = buildTruncateBodyTableSQL(partitionIndex);
 
 			BodyTablePreTruncateVerificationResult verificationResult = jdbcTemplate.query(findAnyRowsInBodySQL, this::rowsToIDsInPartitionReader);
-			if (verificationResult.getEntries().isEmpty()) {
+			if (verificationResult == null || verificationResult.getEntries().isEmpty()) {
 				logger.info("... partition " + partitionIndex + " found empty, proceeding with truncate ...");
 				jdbcTemplate.execute(truncateBodyTableSQL);
 				logger.info("... partition " + partitionIndex + " truncate done");
