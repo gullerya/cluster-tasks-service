@@ -169,7 +169,7 @@ public class CTServiceTest extends CTSTestsBase {
 		List<ClusterTask> tasks = new LinkedList<>();
 		ClusterTask tmp;
 		ClusterTaskPersistenceResult[] results;
-		String uniqueKey = UUID.randomUUID().toString();
+		String uniqueKey = UUID.randomUUID().toString().replaceAll("-", "");
 		clusterTasksProcessorA_test.tasksProcessed.clear();
 
 		//  task 1 with the same unique key
