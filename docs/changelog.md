@@ -1,5 +1,8 @@
 ### Changelog
 
+##### 1.8
+- implemented [Issue #10](https://github.com/MicroFocus/cluster-tasks-service/issues/10)
+
 ##### 1.7
 - fixed [Issue #6](https://github.com/MicroFocus/cluster-tasks-service/issues/6)
 - fixed [Issue #7](https://github.com/MicroFocus/cluster-tasks-service/issues/7)
