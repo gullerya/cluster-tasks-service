@@ -46,7 +46,7 @@ public class UniquenessTest extends CTSTestsBase {
 		//  enqueue first unique task with short delay
 		task = TaskBuilders.uniqueTask()
 				.setUniquenessKey("task")
-				.setDelayByMillis(500L)
+				.setDelayByMillis(500)
 				.setBody("4000")
 				.build();
 		results = clusterTasksService.enqueueTasks(ClusterTasksDataProviderType.DB, ClusterTasksProcessorUniqueness_test.class.getSimpleName(), task);

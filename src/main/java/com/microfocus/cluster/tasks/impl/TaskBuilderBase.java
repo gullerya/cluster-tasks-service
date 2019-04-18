@@ -22,7 +22,7 @@ abstract public class TaskBuilderBase implements TaskBuilders.TaskBuilder {
 	protected TaskBuilderBase() {
 	}
 
-	public TaskBuilders.TaskBuilder setDelayByMillis(Long delayByMillis) {
+	public TaskBuilders.TaskBuilder setDelayByMillis(long delayByMillis) {
 		if (locked) throw new IllegalStateException("task builder MAY BE used only once");
 		this.delayByMillis = delayByMillis;
 		return this;
@@ -30,6 +30,9 @@ abstract public class TaskBuilderBase implements TaskBuilders.TaskBuilder {
 
 	public TaskBuilders.TaskBuilder setBody(String body) {
 		if (locked) throw new IllegalStateException("task builder MAY BE used only once");
+		if (body == null || body.isEmpty()) {
+			throw new IllegalArgumentException("body, if/when set, MUST NOT be NULL nor EMPTY");
+		}
 		this.body = body;
 		return this;
 	}

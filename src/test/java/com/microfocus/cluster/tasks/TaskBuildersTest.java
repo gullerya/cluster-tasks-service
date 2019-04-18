@@ -2,6 +2,7 @@ package com.microfocus.cluster.tasks;
 
 import com.microfocus.cluster.tasks.api.builders.TaskBuilders;
 import com.microfocus.cluster.tasks.api.dto.ClusterTask;
+import com.microfocus.cluster.tasks.api.enums.ClusterTaskType;
 import org.junit.Assert;
 import org.junit.Test;
 import org.junit.runner.RunWith;
@@ -45,11 +46,19 @@ public class TaskBuildersTest extends CTSTestsBase {
 				.setConcurrencyKey(String.join("", Collections.nCopies(35, "0")));
 	}
 
-	@Test
+	@Test(expected = IllegalStateException.class)
 	public void testChD() {
+		TaskBuilders.ChanneledTaskBuilder chBuilder = TaskBuilders.channeledTask();
+		chBuilder.setConcurrencyKey("something");
+		chBuilder.build();
+		chBuilder.setConcurrencyKey("some");
+	}
+
+	@Test
+	public void testChE() {
 		ClusterTask task = TaskBuilders.channeledTask()
 				.setConcurrencyKey("some key")
-				.setDelayByMillis(1000L)
+				.setDelayByMillis(1000)
 				.setBody("body")
 				.build();
 
@@ -80,11 +89,19 @@ public class TaskBuildersTest extends CTSTestsBase {
 				.setUniquenessKey(String.join("", Collections.nCopies(35, "0")));
 	}
 
-	@Test
+	@Test(expected = IllegalStateException.class)
 	public void testUnD() {
+		TaskBuilders.UniqueTaskBuilder chBuilder = TaskBuilders.uniqueTask();
+		chBuilder.setUniquenessKey("something");
+		chBuilder.build();
+		chBuilder.setUniquenessKey("some");
+	}
+
+	@Test
+	public void testUnE() {
 		ClusterTask task = TaskBuilders.uniqueTask()
 				.setUniquenessKey("some key")
-				.setDelayByMillis(1000L)
+				.setDelayByMillis(1000)
 				.setBody("body")
 				.build();
 
@@ -93,6 +110,42 @@ public class TaskBuildersTest extends CTSTestsBase {
 		Assert.assertNull(task.getConcurrencyKey());
 		Assert.assertEquals(1000, (long) task.getDelayByMillis());
 		Assert.assertEquals("body", task.getBody());
+	}
+
+	//  simple tasks
+	@Test(expected = IllegalArgumentException.class)
+	public void testStA() {
+		TaskBuilders.simpleTask()
+				.setBody(null);
+	}
+
+	@Test(expected = IllegalArgumentException.class)
+	public void testStB() {
+		TaskBuilders.simpleTask()
+				.setBody("");
+	}
+
+	@Test(expected = IllegalStateException.class)
+	public void testStC() {
+		TaskBuilders.TaskBuilder taskBuilder = TaskBuilders.simpleTask();
+		taskBuilder.setBody("something");
+		taskBuilder.build();
+		taskBuilder.setBody("some");
+	}
+
+	@Test(expected = IllegalStateException.class)
+	public void testStD() {
+		TaskBuilders.TaskBuilder taskBuilder = TaskBuilders.simpleTask();
+		taskBuilder.setDelayByMillis(1000);
+		taskBuilder.build();
+		taskBuilder.setDelayByMillis(900);
+	}
+
+	//  enums
+
+	@Test(expected = IllegalArgumentException.class)
+	public void testEnumA() {
+		ClusterTaskType.byValue(2);
 	}
 }
 

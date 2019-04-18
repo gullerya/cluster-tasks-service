@@ -74,7 +74,7 @@ public class TaskBuilders {
 		 * @return task builder instance
 		 * @throws IllegalStateException if the {@link #build() build} method has already been called on this builder instance
 		 */
-		TaskBuilder setDelayByMillis(Long delayByMillis) throws IllegalStateException;
+		TaskBuilder setDelayByMillis(long delayByMillis) throws IllegalStateException;
 
 		/**
 		 * Sets task's body
