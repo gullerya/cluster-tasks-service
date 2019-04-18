@@ -26,9 +26,9 @@ Most significant feature, the one that `CTS` was originally written for, is an a
 ```
 
 2. Make `CTS`'s Spring beans available to your application.
-This could be done by either adding `cluster-tasks-service-context.xml` file to the list of your context path's in Java driven context initialization, or importing it from one of your own Spring's XMLs.
+This could be done by either adding `cluster-tasks-service-context.xml` file to the list of your context path's in Java driven context initialization, or importing it from one of your own Spring's XML.
 
-3. Implement `ClusterTasksServiceConfigurerSPI` interface as a __Spring__ bean (singleton).
+3. Implement `ClusterTasksServiceConfigurerSPI` interface and define your implementation as a __Spring__ bean (singleton).
 Upon application start, `CTS` will wire this bean and take everything it needs from it (DataSource object, for example).
 See [CTS configuration SPI overview](docs/cts-configurer-spi.md) for more details.
   
