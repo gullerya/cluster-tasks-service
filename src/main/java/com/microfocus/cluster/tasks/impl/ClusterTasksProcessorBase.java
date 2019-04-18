@@ -169,18 +169,23 @@ public abstract class ClusterTasksProcessorBase {
 		Map<Long, TaskInternal> tasksToRunByID = new LinkedHashMap<>();
 		int availableWorkersTmp = availableWorkers.get();
 
-		candidates.sort(Comparator.comparing(t -> t.orderingFactor));
-
 		//  group tasks by concurrency key
 		Map<String, List<TaskInternal>> tasksGroupedByConcurrencyKeys = candidates.stream()
 				.collect(Collectors.groupingBy(t -> t.concurrencyKey != null ? t.concurrencyKey : NON_CONCURRENT_TASKS_GROUP_KEY));
+
+		//  order tasks within the groups
+		tasksGroupedByConcurrencyKeys.values().forEach(tasksList -> tasksList.sort(Comparator.comparing(t -> t.orderingFactor)));
 
 		//  order relevant concurrency keys by fairness logic
 		List<String> orderedRelevantKeys = new ArrayList<>(tasksGroupedByConcurrencyKeys.keySet());
 		orderedRelevantKeys.sort((keyA, keyB) -> {
 			Long keyALastTouch = concurrencyKeysFairnessMap.getOrDefault(keyA, 0L);
 			Long keyBLastTouch = concurrencyKeysFairnessMap.getOrDefault(keyB, 0L);
-			return Long.compare(keyALastTouch, keyBLastTouch);
+			if (!keyALastTouch.equals(keyBLastTouch)) {
+				return Long.compare(keyALastTouch, keyBLastTouch);
+			} else {
+				return Long.compare(tasksGroupedByConcurrencyKeys.get(keyA).get(0).orderingFactor, tasksGroupedByConcurrencyKeys.get(keyB).get(0).orderingFactor);
+			}
 		});
 
 		//  first - select tasks fairly - including NON_CONCURRENT_TASKS_GROUP to let them chance to run as well

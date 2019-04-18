@@ -33,7 +33,7 @@ public class ConcurrencyTest extends CTSTestsBase {
 	private ClusterTasksProcessorConcurrency_test clusterTasksProcessorConcurrency_test;
 
 	@Test
-	public void TestA_concurrency_value_all_null() {
+	public void testA_concurrency_value_all_null() {
 		ClusterTask[] tasks = new ClusterTask[2];
 		tasks[0] = TaskBuilders.simpleTask()
 				.setBody("test A - task 1 - concurrency value is NULL")
@@ -50,9 +50,9 @@ public class ConcurrencyTest extends CTSTestsBase {
 	}
 
 	@Test
-	public void TestB_concurrency_value_some_null() {
-		String concurrencyKeyA = UUID.randomUUID().toString();
-		String concurrencyKeyB = UUID.randomUUID().toString();
+	public void testB_concurrency_value_some_null() {
+		String concurrencyKeyA = UUID.randomUUID().toString().replaceAll("-", "");
+		String concurrencyKeyB = UUID.randomUUID().toString().replaceAll("-", "");
 		ClusterTask[] tasks = new ClusterTask[6];
 		tasks[0] = TaskBuilders.channeledTask()
 				.setConcurrencyKey(concurrencyKeyA)

@@ -50,8 +50,8 @@ public class CountTasksTest extends CTSTestsBase {
 		drainOutOldTasks();
 
 		ClusterTask[] tasks;
-		String concurrencyKeyA = UUID.randomUUID().toString();
-		String concurrencyKeyB = UUID.randomUUID().toString();
+		String concurrencyKeyA = UUID.randomUUID().toString().replaceAll("-", "");
+		String concurrencyKeyB = UUID.randomUUID().toString().replaceAll("-", "");
 
 		//  create 6 tasks
 		//      1 without concurrency key
@@ -93,7 +93,7 @@ public class CountTasksTest extends CTSTestsBase {
 		drainOutOldTasks();
 
 		ClusterTask[] tasks;
-		String concurrencyKey = UUID.randomUUID().toString();
+		String concurrencyKey = UUID.randomUUID().toString().replaceAll("-", "");
 
 		//  create 3 tasks with concurrency key
 		tasks = new ClusterTask[3];
