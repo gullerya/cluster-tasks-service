@@ -11,10 +11,18 @@ package com.microfocus.cluster.tasks.impl;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.nio.ByteBuffer;
+import java.nio.charset.StandardCharsets;
+import java.util.Arrays;
+import java.util.Base64;
+import java.util.HashMap;
+import java.util.Map;
 import java.util.function.Supplier;
+import java.util.zip.CRC32;
 
 final class CTSUtils {
 	private static final Logger logger = LoggerFactory.getLogger(CTSUtils.class);
+	private static final Map<String, String> hashes = new HashMap<>();
 
 	private CTSUtils() {
 	}
@@ -36,5 +44,21 @@ final class CTSUtils {
 		}
 
 		return done != null && done;
+	}
+
+	/**
+	 * this method is for internal usage ONLY
+	 * creates weak 'hash', which is CRC32 checksum, encoded to Base64, of which only 6 significant characters are used
+	 */
+	static String get6CharsChecksum(String input) {
+		if (!hashes.containsKey(input)) {
+			CRC32 crc32 = new CRC32();
+			crc32.update(input.getBytes(StandardCharsets.UTF_8));
+			ByteBuffer buffer = ByteBuffer.allocate(Long.BYTES);
+			buffer.putLong(crc32.getValue());
+			byte[] bytes = Arrays.copyOfRange(buffer.array(), 4, 8);
+			hashes.put(input, Base64.getEncoder().encodeToString(bytes).substring(0, 6));
+		}
+		return hashes.get(input);
 	}
 }
