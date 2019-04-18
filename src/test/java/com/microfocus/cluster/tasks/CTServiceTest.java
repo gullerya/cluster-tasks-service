@@ -180,10 +180,9 @@ public class CTServiceTest extends CTSTestsBase {
 		tmp = TaskBuilders.uniqueTask().setUniquenessKey(uniqueKey).build();
 		tasks.add(tmp);
 
-		results = clusterTasksService.enqueueTasks(ClusterTasksDataProviderType.DB, "NonExistingProcessor", tasks.toArray(new ClusterTask[0]));
+		results = clusterTasksService.enqueueTasks(ClusterTasksDataProviderType.DB, "ClusterTasksProcessorA_test", tasks.toArray(new ClusterTask[0]));
 		Assert.assertEquals(ClusterTaskInsertStatus.SUCCESS, results[0].getStatus());
 		Assert.assertEquals(ClusterTaskInsertStatus.UNIQUE_CONSTRAINT_FAILURE, results[1].getStatus());
-		waitResultsContainerComplete(clusterTasksProcessorA_test.tasksProcessed, 1, 3000);
 	}
 
 	@Test
