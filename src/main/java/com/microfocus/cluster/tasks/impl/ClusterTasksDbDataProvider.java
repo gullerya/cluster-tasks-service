@@ -126,7 +126,7 @@ abstract class ClusterTasksDbDataProvider implements ClusterTasksDataProvider {
 		removeFinishedTasksByQuerySQL = "DELETE FROM " + META_TABLE_NAME + " WHERE " + STATUS + " = " + ClusterTaskStatus.FINISHED.value;
 
 		for (long partition = 0; partition < PARTITIONS_NUMBER; partition++) {
-			lookupOrphansByPartitionSQLs.put(partition, "SELECT " + String.join(",", BODY_ID, BODY, META_ID) + " FROM " + BODY_TABLE_NAME + partition +
+			lookupOrphansByPartitionSQLs.put(partition, "SELECT " + String.join(",", BODY_ID, META_ID) + " FROM " + BODY_TABLE_NAME + partition +
 					" LEFT OUTER JOIN " + META_TABLE_NAME + " ON " + META_ID + " = " + BODY_ID);
 
 			selectDanglingBodiesSQLs.put(partition, "SELECT " + BODY_ID + " AS bodyId FROM " + BODY_TABLE_NAME + partition +
@@ -612,25 +612,18 @@ abstract class ClusterTasksDbDataProvider implements ClusterTasksDataProvider {
 			while (resultSet.next()) {
 				try {
 					Long bodyId;
-					String body;
 					Long metaId;
 
 					bodyId = resultSet.getLong(BODY_ID);
 					if (resultSet.wasNull()) {
 						bodyId = null;
 					}
-					Clob clobBody = resultSet.getClob(BODY);
-					if (!resultSet.wasNull() && clobBody != null) {
-						body = clobBody.getSubString(1, (int) clobBody.length());
-					} else {
-						body = null;
-					}
 					metaId = resultSet.getLong(META_ID);
 					if (resultSet.wasNull()) {
 						metaId = null;
 					}
 
-					result.addEntry(metaId, bodyId, body);
+					result.addEntry(metaId, bodyId);
 				} catch (SQLException sqle) {
 					logger.error("failed to read cluster task (body ID)", sqle);
 				}
@@ -644,8 +637,8 @@ abstract class ClusterTasksDbDataProvider implements ClusterTasksDataProvider {
 	private static class BodyTablePreTruncateVerificationResult {
 		private final List<Entry> entries = new LinkedList<>();
 
-		void addEntry(Long metaId, Long bodyId, String body) {
-			entries.add(new Entry(metaId, bodyId, body));
+		void addEntry(Long metaId, Long bodyId) {
+			entries.add(new Entry(metaId, bodyId));
 		}
 
 		List<Entry> getEntries() {
@@ -655,12 +648,10 @@ abstract class ClusterTasksDbDataProvider implements ClusterTasksDataProvider {
 		private static class Entry {
 			final Long metaId;
 			final Long bodyId;
-			final String body;
 
-			private Entry(Long metaId, Long bodyId, String body) {
+			private Entry(Long metaId, Long bodyId) {
 				this.metaId = metaId;
 				this.bodyId = bodyId;
-				this.body = body;
 			}
 		}
 	}
