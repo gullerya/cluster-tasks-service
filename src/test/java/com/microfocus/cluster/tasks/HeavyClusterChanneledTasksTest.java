@@ -15,10 +15,7 @@ import org.slf4j.LoggerFactory;
 import org.springframework.context.ApplicationContext;
 import org.springframework.context.support.ClassPathXmlApplicationContext;
 
-import java.util.AbstractMap;
-import java.util.LinkedList;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
@@ -103,30 +100,35 @@ public class HeavyClusterChanneledTasksTest {
 						ClusterTask task = TaskBuilders
 								.channeledTask()
 								.setConcurrencyKey(ClusterTasksHC_A_test.class.getSimpleName() + cnt)
+								.setApplicationKey(UUID.randomUUID().toString())
 								.setBody(ClusterTasksHC_A_test.CONTENT).build();
 						clusterTasksService.enqueueTasks(ClusterTasksDataProviderType.DB, ClusterTasksHC_A_test.class.getSimpleName(), task);
 
 						task = TaskBuilders
 								.channeledTask()
 								.setConcurrencyKey(ClusterTasksHC_B_test.class.getSimpleName() + cnt)
+								.setApplicationKey(UUID.randomUUID().toString())
 								.setBody(ClusterTasksHC_B_test.CONTENT).build();
 						clusterTasksService.enqueueTasks(ClusterTasksDataProviderType.DB, ClusterTasksHC_B_test.class.getSimpleName(), task);
 
 						task = TaskBuilders
 								.channeledTask()
 								.setConcurrencyKey(ClusterTasksHC_C_test.class.getSimpleName() + cnt)
+								.setApplicationKey(UUID.randomUUID().toString())
 								.setBody(ClusterTasksHC_C_test.CONTENT).build();
 						clusterTasksService.enqueueTasks(ClusterTasksDataProviderType.DB, ClusterTasksHC_C_test.class.getSimpleName(), task);
 
 						task = TaskBuilders
 								.channeledTask()
 								.setConcurrencyKey(ClusterTasksHC_D_test.class.getSimpleName() + cnt)
+								.setApplicationKey(UUID.randomUUID().toString())
 								.setBody(ClusterTasksHC_D_test.CONTENT).build();
 						clusterTasksService.enqueueTasks(ClusterTasksDataProviderType.DB, ClusterTasksHC_D_test.class.getSimpleName(), task);
 
 						task = TaskBuilders
 								.channeledTask()
 								.setConcurrencyKey(ClusterTasksHC_E_test.class.getSimpleName() + cnt)
+								.setApplicationKey(UUID.randomUUID().toString())
 								.setBody(ClusterTasksHC_E_test.CONTENT).build();
 						clusterTasksService.enqueueTasks(ClusterTasksDataProviderType.DB, ClusterTasksHC_E_test.class.getSimpleName(), task);
 					}

@@ -418,7 +418,6 @@ abstract class ClusterTasksDbDataProvider implements ClusterTasksDataProvider {
 		List<ClusterTaskImpl> result = new LinkedList<>();
 		ClusterTaskImpl tmpTask;
 		Long tmpLong;
-		String tmpString;
 		while (resultSet.next()) {
 			try {
 				tmpTask = new ClusterTaskImpl();
@@ -426,10 +425,8 @@ abstract class ClusterTasksDbDataProvider implements ClusterTasksDataProvider {
 				tmpTask.taskType = ClusterTaskType.byValue(resultSet.getLong(TASK_TYPE));
 				tmpTask.processorType = resultSet.getString(PROCESSOR_TYPE);
 				tmpTask.uniquenessKey = resultSet.getString(UNIQUENESS_KEY);
-				tmpString = resultSet.getString(CONCURRENCY_KEY);
-				if (!resultSet.wasNull()) {
-					tmpTask.concurrencyKey = tmpString;
-				}
+				tmpTask.concurrencyKey = resultSet.getString(CONCURRENCY_KEY);
+				tmpTask.applicationKey = resultSet.getString(APPLICATION_KEY);
 				tmpLong = resultSet.getLong(ORDERING_FACTOR);
 				if (!resultSet.wasNull()) {
 					tmpTask.orderingFactor = tmpLong;
