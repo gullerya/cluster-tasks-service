@@ -93,7 +93,7 @@ final class OracleDbDataProvider extends ClusterTasksDbDataProvider {
 			selectForUpdateTasksSQLs.put(maxProcessorTypes,
 					"SELECT * FROM" +
 							"   (SELECT " + selectForRunFields + "," +
-							"       ROW_NUMBER() OVER (PARTITION BY COALESCE(" + CONCURRENCY_KEY + ",RAWTOHEX(SYS_GUID())) ORDER BY " + ORDERING_FACTOR + "," + CREATED + "," + META_ID + " ASC) AS row_index," +
+							"       ROW_NUMBER() OVER (PARTITION BY COALESCE(" + CONCURRENCY_KEY + ",RAWTOHEX(SYS_GUID())) ORDER BY " + ORDERING_FACTOR + "," + META_ID + " ASC) AS row_index," +
 							"       COUNT(CASE WHEN " + STATUS + " = " + ClusterTaskStatus.RUNNING.value + " THEN 1 ELSE NULL END) OVER (PARTITION BY COALESCE(" + CONCURRENCY_KEY + ",RAWTOHEX(SYS_GUID()))) AS running_count" +
 							"   FROM /*+ INDEX(CTSKM_IDX_5) */ " + META_TABLE_NAME +
 							"   WHERE " + PROCESSOR_TYPE + " IN(" + processorTypesInParameter + ")" +
