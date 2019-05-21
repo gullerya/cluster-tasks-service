@@ -18,7 +18,7 @@ public class ClusterTasksProcessorCount_test extends ClusterTasksProcessorSimple
 	}
 
 	@Override
-	protected boolean isReadyToHandleTask() {
+	protected boolean isReadyToHandleTasks() {
 		return readyToTakeTasks;
 	}
 

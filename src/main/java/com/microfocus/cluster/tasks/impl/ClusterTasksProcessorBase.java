@@ -128,12 +128,27 @@ public abstract class ClusterTasksProcessorBase {
 	}
 
 	/**
-	 * gets a processor's status as of ability to handle another task
+	 * gets a processor's status as of ability to handle tasks in general (not specific one)
+	 * - call to this API performed each dispatch cycle BEFORE even going to DB
 	 * - delayed tasks MAY are expected to run withing the following span of time: delay - delay + tasksTakeInterval
 	 *
-	 * @return current condition of the processor as of readiness to take [any] task
+	 * @return current condition of the processor as of readiness to take [any] task, if FALSE returned tasks of this processor won't be even pulled from the DB
 	 */
-	protected boolean isReadyToHandleTask() {
+	protected boolean isReadyToHandleTasks() {
+		return true;
+	}
+
+	/**
+	 * allows implementations to check application readiness state per each specific task by custom application key
+	 * - this API will be called each dispatch cycle AFTER the tasks were pulled from the DB, for each and every task 'in hand'
+	 * - denying task will effectively leave it in queue without switching to RUNNING state
+	 * - denying channeled task will effectively hold the whole channel (even if later tasks in the channel have different application key)
+	 * - denying simple task will not have effect on other tasks beside the fact, that the order of execution will change, naturally
+	 *
+	 * @param applicationKey application key provided by consumer at enqueue time
+	 * @return true if the application can run the task [default] or false to keep the task pending in queue
+	 */
+	protected boolean isTaskAbleToRun(String applicationKey) {
 		return true;
 	}
 
@@ -156,10 +171,10 @@ public abstract class ClusterTasksProcessorBase {
 		boolean foreignResult = true;
 		if (internalResult) {
 			long foreignCallStart = System.currentTimeMillis();
-			foreignResult = isReadyToHandleTask();
+			foreignResult = isReadyToHandleTasks();
 			long foreignCallDuration = System.currentTimeMillis() - foreignCallStart;
 			if (foreignCallDuration > FOREIGN_CHECK_DURATION_THRESHOLD) {
-				logger.warn("call to a foreign method 'isReadyToHandleTask' took more than " + FOREIGN_CHECK_DURATION_THRESHOLD + "ms (" + foreignCallDuration + "ms)");
+				logger.warn("call to a foreign method 'isReadyToHandleTasks' took more than " + FOREIGN_CHECK_DURATION_THRESHOLD + "ms (" + foreignCallDuration + "ms)");
 			}
 		}
 		return internalResult && foreignResult;

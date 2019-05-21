@@ -65,6 +65,18 @@ public class TaskBuilders {
 	public interface TaskBuilder {
 
 		/**
+		 * Sets application key
+		 * - this is an arbitrary parameter for the hosting application use only
+		 * - it is used in the pre-execution APIs (see ClusterTasksProcessorBase#isTaskAbleToRun(java.lang.String) for example)
+		 *
+		 * @param applicationKey application key of max 64 characters
+		 * @return task builder instance
+		 * @throws IllegalStateException    if the {@link #build() build} method has already been called on this builder instance
+		 * @throws IllegalArgumentException if applicationKey parameter is NULL, EMPTY or exceeds 64 chars length
+		 */
+		TaskBuilder setApplicationKey(String applicationKey) throws IllegalStateException, IllegalArgumentException;
+
+		/**
 		 * Sets delay for the task execution
 		 * - delay will be counted from the point of tasks enqueue
 		 * - delay promised to occur in N to (N + tasks dispatch interval), which normally is ~1 second
@@ -72,9 +84,10 @@ public class TaskBuilders {
 		 *
 		 * @param delayByMillis delay for task execution, in milliseconds
 		 * @return task builder instance
-		 * @throws IllegalStateException if the {@link #build() build} method has already been called on this builder instance
+		 * @throws IllegalStateException    if the {@link #build() build} method has already been called on this builder instance
+		 * @throws IllegalArgumentException if delayByMillis parameter is negative
 		 */
-		TaskBuilder setDelayByMillis(long delayByMillis) throws IllegalStateException;
+		TaskBuilder setDelayByMillis(long delayByMillis) throws IllegalStateException, IllegalArgumentException;
 
 		/**
 		 * Sets task's body
@@ -83,9 +96,10 @@ public class TaskBuilders {
 		 *
 		 * @param body task's body
 		 * @return task builder instance
-		 * @throws IllegalStateException if the {@link #build() build} method has already been called on this builder instance
+		 * @throws IllegalStateException    if the {@link #build() build} method has already been called on this builder instance
+		 * @throws IllegalArgumentException if body parameter is NULL or EMPTY
 		 */
-		TaskBuilder setBody(String body) throws IllegalStateException;
+		TaskBuilder setBody(String body) throws IllegalStateException, IllegalArgumentException;
 
 		/**
 		 * Finalizes the build task process and locks the builder instance for further changes

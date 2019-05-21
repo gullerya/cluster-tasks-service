@@ -14,7 +14,7 @@ public class ClusterTasksProcessorE_test_na extends ClusterTasksProcessorSimple 
 	}
 
 	@Override
-	protected boolean isReadyToHandleTask() {
+	protected boolean isReadyToHandleTasks() {
 		return false;
 	}
 
