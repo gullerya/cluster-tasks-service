@@ -88,7 +88,7 @@ final class MsSqlDbDataProvider extends ClusterTasksDbDataProvider {
 
 		//  select and run tasks flow
 		takeLockForSelectForRunTasksSQL = "BEGIN TRAN; EXEC sp_getapplock @Resource = 'LOCK_FOR_TASKS_DISPATCH', @LockMode = 'Exclusive', @LockOwner = 'Transaction'";
-		String selectFields = String.join(",", META_ID, TASK_TYPE, PROCESSOR_TYPE, UNIQUENESS_KEY, CONCURRENCY_KEY, ORDERING_FACTOR, DELAY_BY_MILLIS, BODY_PARTITION, STATUS);
+		String selectFields = String.join(",", META_ID, TASK_TYPE, PROCESSOR_TYPE, UNIQUENESS_KEY, CONCURRENCY_KEY, APPLICATION_KEY, ORDERING_FACTOR, DELAY_BY_MILLIS, BODY_PARTITION, STATUS);
 		for (int maxProcessorTypes : new Integer[]{20, 50, 100, 500}) {
 			String processorTypesInParameter = String.join(",", Collections.nCopies(maxProcessorTypes, "?"));
 			selectForUpdateTasksSQLs.put(maxProcessorTypes,
