@@ -16,13 +16,7 @@ import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 
 import javax.annotation.PostConstruct;
-import java.util.ArrayList;
-import java.util.Collection;
-import java.util.Collections;
-import java.util.Comparator;
-import java.util.LinkedHashMap;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ThreadFactory;
@@ -180,52 +174,67 @@ public abstract class ClusterTasksProcessorBase {
 		return internalResult && foreignResult;
 	}
 
-	final Collection<TaskInternal> selectTasksToRun(List<TaskInternal> candidates) {
-		Map<Long, TaskInternal> tasksToRunByID = new LinkedHashMap<>();
+	final Collection<ClusterTaskImpl> selectTasksToRun(List<ClusterTaskImpl> candidates) {
+		Map<Long, ClusterTaskImpl> tasksToRunByID = new LinkedHashMap<>();
 		int availableWorkersTmp = availableWorkers.get();
 
-		//  group tasks by concurrency key
-		Map<String, List<TaskInternal>> tasksGroupedByConcurrencyKeys = candidates.stream()
-				.collect(Collectors.groupingBy(t -> t.concurrencyKey != null ? t.concurrencyKey : NON_CONCURRENT_TASKS_GROUP_KEY));
+		//  filter out tasks rejected on applicative per-task validation
+		candidates = candidates.stream()
+				.filter(candidate -> {
+					long startingForeignCall = System.currentTimeMillis();
+					boolean keepTaskToRun = isTaskAbleToRun(candidate.applicationKey);
+					long foreignCallDuration = System.currentTimeMillis() - startingForeignCall;
+					if (foreignCallDuration > 5) {
+						logger.warn("call to 'isTaskAbleToRun' took more than 5 millis (" + foreignCallDuration + ")");
+					}
+					return keepTaskToRun;
+				})
+				.collect(Collectors.toList());
 
-		//  order tasks within the groups
-		tasksGroupedByConcurrencyKeys.values().forEach(tasksList -> tasksList.sort(Comparator.comparing(t -> t.orderingFactor)));
+		if (!candidates.isEmpty()) {
+			//  group tasks by concurrency key
+			Map<String, List<ClusterTaskImpl>> tasksGroupedByConcurrencyKeys = candidates.stream()
+					.collect(Collectors.groupingBy(t -> t.concurrencyKey != null ? t.concurrencyKey : NON_CONCURRENT_TASKS_GROUP_KEY));
 
-		//  order relevant concurrency keys by fairness logic
-		List<String> orderedRelevantKeys = new ArrayList<>(tasksGroupedByConcurrencyKeys.keySet());
-		orderedRelevantKeys.sort((keyA, keyB) -> {
-			Long keyALastTouch = concurrencyKeysFairnessMap.getOrDefault(keyA, 0L);
-			Long keyBLastTouch = concurrencyKeysFairnessMap.getOrDefault(keyB, 0L);
-			if (!keyALastTouch.equals(keyBLastTouch)) {
-				return Long.compare(keyALastTouch, keyBLastTouch);
-			} else {
-				return Long.compare(tasksGroupedByConcurrencyKeys.get(keyA).get(0).orderingFactor, tasksGroupedByConcurrencyKeys.get(keyB).get(0).orderingFactor);
-			}
-		});
+			//  order tasks within the groups
+			tasksGroupedByConcurrencyKeys.values().forEach(tasksList -> tasksList.sort(Comparator.comparing(t -> t.orderingFactor)));
 
-		//  first - select tasks fairly - including NON_CONCURRENT_TASKS_GROUP to let them chance to run as well
-		//  here we taking a single (first) task from each CONCURRENT CHANNEL
-		for (String concurrencyKey : orderedRelevantKeys) {
-			if (availableWorkersTmp <= 0) break;
-			List<TaskInternal> channeledTasksGroup = tasksGroupedByConcurrencyKeys.get(concurrencyKey);
-			tasksToRunByID.put(channeledTasksGroup.get(0).id, channeledTasksGroup.get(0));
-			availableWorkersTmp--;
-		}
+			//  order relevant concurrency keys by fairness logic
+			List<String> orderedRelevantKeys = new ArrayList<>(tasksGroupedByConcurrencyKeys.keySet());
+			orderedRelevantKeys.sort((keyA, keyB) -> {
+				Long keyALastTouch = concurrencyKeysFairnessMap.getOrDefault(keyA, 0L);
+				Long keyBLastTouch = concurrencyKeysFairnessMap.getOrDefault(keyB, 0L);
+				if (!keyALastTouch.equals(keyBLastTouch)) {
+					return Long.compare(keyALastTouch, keyBLastTouch);
+				} else {
+					return Long.compare(tasksGroupedByConcurrencyKeys.get(keyA).get(0).orderingFactor, tasksGroupedByConcurrencyKeys.get(keyB).get(0).orderingFactor);
+				}
+			});
 
-		//  second - if there are still available threads, give'em to the rest of the NON_CONCURRENT_TASKS_GROUP
-		List<TaskInternal> nonConcurrentTasks = tasksGroupedByConcurrencyKeys.getOrDefault(NON_CONCURRENT_TASKS_GROUP_KEY, Collections.emptyList());
-		for (TaskInternal task : nonConcurrentTasks) {
-			if (availableWorkersTmp <= 0) break;
-			if (!tasksToRunByID.containsKey(task.id)) {
-				tasksToRunByID.put(task.id, task);
+			//  first - select tasks fairly - including NON_CONCURRENT_TASKS_GROUP to let them chance to run as well
+			//  here we taking a single (first) task from each CONCURRENT CHANNEL
+			for (String concurrencyKey : orderedRelevantKeys) {
+				if (availableWorkersTmp <= 0) break;
+				List<ClusterTaskImpl> channeledTasksGroup = tasksGroupedByConcurrencyKeys.get(concurrencyKey);
+				tasksToRunByID.put(channeledTasksGroup.get(0).id, channeledTasksGroup.get(0));
 				availableWorkersTmp--;
+			}
+
+			//  second - if there are still available threads, give'em to the rest of the NON_CONCURRENT_TASKS_GROUP
+			List<ClusterTaskImpl> nonConcurrentTasks = tasksGroupedByConcurrencyKeys.getOrDefault(NON_CONCURRENT_TASKS_GROUP_KEY, Collections.emptyList());
+			for (ClusterTaskImpl task : nonConcurrentTasks) {
+				if (availableWorkersTmp <= 0) break;
+				if (!tasksToRunByID.containsKey(task.id)) {
+					tasksToRunByID.put(task.id, task);
+					availableWorkersTmp--;
+				}
 			}
 		}
 
 		return tasksToRunByID.values();
 	}
 
-	final void handleTasks(Collection<TaskInternal> tasks, ClusterTasksDataProvider dataProvider) {
+	final void handleTasks(Collection<ClusterTaskImpl> tasks, ClusterTasksDataProvider dataProvider) {
 		tasks.forEach(task -> {
 			if (handoutTaskToWorker(dataProvider, task)) {
 				concurrencyKeysFairnessMap.put(
@@ -241,7 +250,7 @@ public abstract class ClusterTasksProcessorBase {
 				.set(((double) (numberOfWorkersPerNode - availableWorkers.get())) / ((double) numberOfWorkersPerNode));
 	}
 
-	final void notifyTaskWorkerFinished(ClusterTasksDataProvider dataProvider, TaskInternal task) {
+	final void notifyTaskWorkerFinished(ClusterTasksDataProvider dataProvider, ClusterTaskImpl task) {
 		int aWorkers = availableWorkers.incrementAndGet();
 		lastTaskHandledLocalTime = System.currentTimeMillis();
 		logger.debug(type + " available workers " + aWorkers);
@@ -250,7 +259,7 @@ public abstract class ClusterTasksProcessorBase {
 		clusterTasksService.getMaintainer().submitTaskToRemove(dataProvider, task);
 	}
 
-	private boolean handoutTaskToWorker(ClusterTasksDataProvider dataProvider, TaskInternal task) {
+	private boolean handoutTaskToWorker(ClusterTasksDataProvider dataProvider, ClusterTaskImpl task) {
 		try {
 			ClusterTasksProcessorWorker worker = new ClusterTasksProcessorWorker(dataProvider, this, task);
 			workersThreadPool.execute(worker);

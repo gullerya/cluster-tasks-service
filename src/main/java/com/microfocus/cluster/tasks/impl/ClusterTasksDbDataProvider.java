@@ -74,6 +74,7 @@ abstract class ClusterTasksDbDataProvider implements ClusterTasksDataProvider {
 	static final String PROCESSOR_TYPE = META_COLUMNS_PREFIX.concat("PROCESSOR_TYPE");
 	static final String UNIQUENESS_KEY = META_COLUMNS_PREFIX.concat("UNIQUENESS_KEY");
 	static final String CONCURRENCY_KEY = META_COLUMNS_PREFIX.concat("CONCURRENCY_KEY");
+	static final String APPLICATION_KEY = META_COLUMNS_PREFIX.concat("APPLICATION_KEY");
 	static final String ORDERING_FACTOR = META_COLUMNS_PREFIX.concat("ORDERING_FACTOR");
 	static final String STATUS = META_COLUMNS_PREFIX.concat("STATUS");
 	static final String CREATED = META_COLUMNS_PREFIX.concat("CREATED");
@@ -263,12 +264,12 @@ abstract class ClusterTasksDbDataProvider implements ClusterTasksDataProvider {
 				} else {
 					selectStaledSQL = sqls[0];
 				}
-				List<TaskInternal> gcCandidates = jdbcTemplate.query(selectStaledSQL, this::gcCandidatesReader);
+				List<ClusterTaskImpl> gcCandidates = jdbcTemplate.query(selectStaledSQL, this::gcCandidatesReader);
 				if (gcCandidates != null && !gcCandidates.isEmpty()) {
 					logger.info("found " + gcCandidates.size() + " re-runnable tasks as staled, processing...");
 
 					//  collect tasks valid for re-enqueue
-					Collection<TaskInternal> tasksToReschedule = gcCandidates.stream()
+					Collection<ClusterTaskImpl> tasksToReschedule = gcCandidates.stream()
 							.collect(Collectors.toMap(task -> task.processorType, Function.identity(), (t1, t2) -> t2))
 							.values();
 
@@ -298,10 +299,10 @@ abstract class ClusterTasksDbDataProvider implements ClusterTasksDataProvider {
 	}
 
 	@Override
-	public int reinsertScheduledTasks(Collection<TaskInternal> candidatesToReschedule) {
+	public int reinsertScheduledTasks(Collection<ClusterTaskImpl> candidatesToReschedule) {
 		int result = 0;
 		Map<String, Integer> pendingCount = getJdbcTemplate().query(countScheduledPendingTasksSQL, this::scheduledPendingReader);
-		List<TaskInternal> tasksToReschedule = new ArrayList<>();
+		List<ClusterTaskImpl> tasksToReschedule = new ArrayList<>();
 		candidatesToReschedule.forEach(task -> {
 			if (pendingCount != null && (!pendingCount.containsKey(task.processorType) || pendingCount.get(task.processorType) == 0)) {
 				task.uniquenessKey = task.processorType;
@@ -310,7 +311,7 @@ abstract class ClusterTasksDbDataProvider implements ClusterTasksDataProvider {
 			}
 		});
 		if (!tasksToReschedule.isEmpty()) {
-			ClusterTaskPersistenceResult[] results = storeTasks(tasksToReschedule.toArray(new TaskInternal[0]));
+			ClusterTaskPersistenceResult[] results = storeTasks(tasksToReschedule.toArray(new ClusterTaskImpl[0]));
 			for (ClusterTaskPersistenceResult r : results) {
 				if (r.getStatus() == ClusterTaskInsertStatus.SUCCESS) {
 					result++;
@@ -413,14 +414,14 @@ abstract class ClusterTasksDbDataProvider implements ClusterTasksDataProvider {
 		return transactionTemplate;
 	}
 
-	List<TaskInternal> tasksMetadataReader(ResultSet resultSet) throws SQLException {
-		List<TaskInternal> result = new LinkedList<>();
-		TaskInternal tmpTask;
+	List<ClusterTaskImpl> tasksMetadataReader(ResultSet resultSet) throws SQLException {
+		List<ClusterTaskImpl> result = new LinkedList<>();
+		ClusterTaskImpl tmpTask;
 		Long tmpLong;
 		String tmpString;
 		while (resultSet.next()) {
 			try {
-				tmpTask = new TaskInternal();
+				tmpTask = new ClusterTaskImpl();
 				tmpTask.id = resultSet.getLong(META_ID);
 				tmpTask.taskType = ClusterTaskType.byValue(resultSet.getLong(TASK_TYPE));
 				tmpTask.processorType = resultSet.getString(PROCESSOR_TYPE);
@@ -483,11 +484,11 @@ abstract class ClusterTasksDbDataProvider implements ClusterTasksDataProvider {
 		return result;
 	}
 
-	private List<TaskInternal> gcCandidatesReader(ResultSet resultSet) throws SQLException {
-		List<TaskInternal> result = new LinkedList<>();
+	private List<ClusterTaskImpl> gcCandidatesReader(ResultSet resultSet) throws SQLException {
+		List<ClusterTaskImpl> result = new LinkedList<>();
 		while (resultSet.next()) {
 			try {
-				TaskInternal task = new TaskInternal();
+				ClusterTaskImpl task = new ClusterTaskImpl();
 				task.id = resultSet.getLong(META_ID);
 				task.taskType = ClusterTaskType.byValue(resultSet.getLong(TASK_TYPE));
 				Long tmpLong = resultSet.getLong(BODY_PARTITION);

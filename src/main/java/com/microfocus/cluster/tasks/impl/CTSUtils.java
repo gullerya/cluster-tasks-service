@@ -57,7 +57,9 @@ final class CTSUtils {
 			ByteBuffer buffer = ByteBuffer.allocate(Long.BYTES);
 			buffer.putLong(crc32.getValue());
 			byte[] bytes = Arrays.copyOfRange(buffer.array(), 4, 8);
-			hashes.put(input, Base64.getEncoder().encodeToString(bytes).substring(0, 6));
+			String result = Base64.getEncoder().encodeToString(bytes).substring(0, 6);
+			hashes.put(input, result);
+			return result;
 		}
 		return hashes.get(input);
 	}

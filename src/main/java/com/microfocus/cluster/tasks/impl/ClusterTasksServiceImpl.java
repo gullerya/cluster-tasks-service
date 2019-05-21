@@ -161,7 +161,7 @@ public class ClusterTasksServiceImpl implements ClusterTasksService {
 		ClusterTasksDataProvider dataProvider = dataProvidersMap.get(dataProviderType);
 		if (dataProvider != null) {
 			long startStore = System.currentTimeMillis();
-			TaskInternal[] taskInternals = convertTasks(tasks, processorType);
+			ClusterTaskImpl[] taskInternals = convertTasks(tasks, processorType);
 			ClusterTaskPersistenceResult[] result = dataProvidersMap.get(dataProviderType).storeTasks(taskInternals);
 			long timeForAll = System.currentTimeMillis() - startStore;
 			tasksInsertionAverageDuration.labels(RUNTIME_INSTANCE_ID).set((double) timeForAll / tasks.length);
@@ -285,7 +285,7 @@ public class ClusterTasksServiceImpl implements ClusterTasksService {
 										: type)
 								.setDelayByMillis(processor.scheduledTaskRunInterval)
 								.build();
-						TaskInternal[] scheduledTasks = convertTasks(new ClusterTask[]{clusterTask}, type);
+						ClusterTaskImpl[] scheduledTasks = convertTasks(new ClusterTask[]{clusterTask}, type);
 						scheduledTasks[0].taskType = ClusterTaskType.SCHEDULED;
 						do {
 							enqueueAttemptsCount++;
@@ -316,15 +316,15 @@ public class ClusterTasksServiceImpl implements ClusterTasksService {
 				});
 	}
 
-	private TaskInternal[] convertTasks(ClusterTask[] sourceTasks, String targetProcessorType) {
-		TaskInternal[] result = new TaskInternal[sourceTasks.length];
+	private ClusterTaskImpl[] convertTasks(ClusterTask[] sourceTasks, String targetProcessorType) {
+		ClusterTaskImpl[] result = new ClusterTaskImpl[sourceTasks.length];
 		for (int i = 0; i < sourceTasks.length; i++) {
 			ClusterTask source = sourceTasks[i];
 			if (source == null) {
 				throw new IllegalArgumentException("of the submitted tasks NONE SHOULD BE NULL");
 			}
 
-			TaskInternal target = new TaskInternal();
+			ClusterTaskImpl target = new ClusterTaskImpl();
 
 			//  uniqueness key
 			target.uniquenessKey = source.getUniquenessKey() != null
@@ -346,7 +346,7 @@ public class ClusterTasksServiceImpl implements ClusterTasksService {
 		return result;
 	}
 
-	private void preprocessConcurrencyKey(ClusterTask source, TaskInternal target, String processorType) {
+	private void preprocessConcurrencyKey(ClusterTask source, ClusterTaskImpl target, String processorType) {
 		String cKey;
 		if (source.getUniquenessKey() != null) {
 			cKey = source.getUniquenessKey();

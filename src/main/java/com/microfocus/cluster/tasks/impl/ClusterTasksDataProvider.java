@@ -45,7 +45,7 @@ interface ClusterTasksDataProvider {
 	 * @param tasks one or more tasks content to be pushed into the queue
 	 * @return an array of Optionals, corresponding to the array of the tasks, having either the task ID in case of successful push or an exception in case of failure
 	 */
-	ClusterTaskPersistenceResult[] storeTasks(TaskInternal... tasks);
+	ClusterTaskPersistenceResult[] storeTasks(ClusterTaskImpl... tasks);
 
 	/**
 	 * Updates single scheduled task with new task run interval
@@ -114,7 +114,7 @@ interface ClusterTasksDataProvider {
 	 * @param candidatesToReschedule list of tasks of type SCHEDULE that should be re-run
 	 * @return actual number of rescheduled tasks
 	 */
-	int reinsertScheduledTasks(Collection<TaskInternal> candidatesToReschedule);
+	int reinsertScheduledTasks(Collection<ClusterTaskImpl> candidatesToReschedule);
 
 	/**
 	 * Implementation should provide a counter for all tasks in the specified status existing in the storage grouped be PROCESSOR TYPE

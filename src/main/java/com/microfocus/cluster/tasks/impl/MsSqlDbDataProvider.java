@@ -79,9 +79,9 @@ final class MsSqlDbDataProvider extends ClusterTasksDbDataProvider {
 		removeLongTimeNoSeeSQL = "DELETE FROM " + ACTIVE_NODES_TABLE_NAME + " WHERE " + ACTIVE_NODE_LAST_SEEN + " < DATEADD(MILLISECOND, -?, GETDATE())";
 
 		//  insert / update tasks
-		String insertFields = String.join(",", META_ID, TASK_TYPE, PROCESSOR_TYPE, UNIQUENESS_KEY, CONCURRENCY_KEY, DELAY_BY_MILLIS, BODY_PARTITION, ORDERING_FACTOR, CREATED, STATUS);
+		String insertFields = String.join(",", META_ID, TASK_TYPE, PROCESSOR_TYPE, UNIQUENESS_KEY, CONCURRENCY_KEY, APPLICATION_KEY, DELAY_BY_MILLIS, BODY_PARTITION, ORDERING_FACTOR, CREATED, STATUS);
 		insertTaskWithoutBodySQL = "INSERT INTO " + META_TABLE_NAME + " (" + insertFields + ")" +
-				" VALUES (NEXT VALUE FOR " + CLUSTER_TASK_ID_SEQUENCE + ", ?, ?, ?, ?, ?, ?, COALESCE(?, CAST(FORMAT(CURRENT_TIMESTAMP,'yyyyMMddHHmmssfff') AS BIGINT) + ?), GETDATE(), " + ClusterTaskStatus.PENDING.value + ")";
+				" VALUES (NEXT VALUE FOR " + CLUSTER_TASK_ID_SEQUENCE + ", ?, ?, ?, ?, ?, ?, ?, COALESCE(?, CAST(FORMAT(SYSDATETIME(),'yyMMddHHmmssfffffff') AS BIGINT) + ?), GETDATE(), " + ClusterTaskStatus.PENDING.value + ")";
 		updateScheduledTaskIntervalSQL = "UPDATE " + META_TABLE_NAME +
 				" SET " + CREATED + " = GETDATE(), " + DELAY_BY_MILLIS + " = ?" +
 				" WHERE " + PROCESSOR_TYPE + " = ? AND " + TASK_TYPE + " = " + ClusterTaskType.SCHEDULED.value + " AND " + STATUS + " = " + ClusterTaskStatus.PENDING.value;
@@ -94,7 +94,7 @@ final class MsSqlDbDataProvider extends ClusterTasksDbDataProvider {
 			selectForUpdateTasksSQLs.put(maxProcessorTypes,
 					"SELECT * FROM" +
 							"   (SELECT " + selectFields + "," +
-							"       ROW_NUMBER() OVER (PARTITION BY COALESCE(" + CONCURRENCY_KEY + ",CAST(NEWID() AS NVARCHAR(36))) ORDER BY " + ORDERING_FACTOR + "," + CREATED + "," + META_ID + " ASC) AS row_index," +
+							"       ROW_NUMBER() OVER (PARTITION BY COALESCE(" + CONCURRENCY_KEY + ",CAST(NEWID() AS NVARCHAR(36))) ORDER BY " + ORDERING_FACTOR + "," + META_ID + " ASC) AS row_index," +
 							"       COUNT(CASE WHEN " + STATUS + " = " + ClusterTaskStatus.RUNNING.value + " THEN 1 ELSE NULL END) OVER (PARTITION BY COALESCE(" + CONCURRENCY_KEY + ",CAST(NEWID() AS NVARCHAR(36)))) AS running_count" +
 							"   FROM " + META_TABLE_NAME +
 							"   WHERE " + PROCESSOR_TYPE + " IN(" + processorTypesInParameter + ")" +
@@ -108,7 +108,7 @@ final class MsSqlDbDataProvider extends ClusterTasksDbDataProvider {
 			insertTaskWithBodySQLs.put(partition, "DECLARE @taskId BIGINT = NEXT VALUE FOR " + CLUSTER_TASK_ID_SEQUENCE + ";" +
 					" INSERT INTO " + BODY_TABLE_NAME + partition + " (" + BODY_ID + "," + BODY + ") VALUES (@taskId, ?);" +
 					" INSERT INTO " + META_TABLE_NAME + " (" + insertFields + ")" +
-					" VALUES (@taskId, ?, ?, ?, ?, ?, ?, COALESCE(?, CAST(FORMAT(CURRENT_TIMESTAMP,'yyyyMMddHHmmssfff') AS BIGINT) + ?), GETDATE(), " + ClusterTaskStatus.PENDING.value + ");"
+					" VALUES (@taskId, ?, ?, ?, ?, ?, ?, ?, COALESCE(?, CAST(FORMAT(SYSDATETIME(),'yyMMddHHmmssfffffff') AS BIGINT) + ?), GETDATE(), " + ClusterTaskStatus.PENDING.value + ");"
 			);
 		}
 		updateTasksStartedSQL = "UPDATE " + META_TABLE_NAME + " SET " + STATUS + " = " + ClusterTaskStatus.RUNNING.value + ", " + STARTED + " = GETDATE(), " + RUNTIME_INSTANCE + " = ?" +
@@ -177,10 +177,10 @@ final class MsSqlDbDataProvider extends ClusterTasksDbDataProvider {
 	}
 
 	@Override
-	public ClusterTaskPersistenceResult[] storeTasks(TaskInternal... tasks) {
+	public ClusterTaskPersistenceResult[] storeTasks(ClusterTaskImpl... tasks) {
 		List<ClusterTaskPersistenceResult> result = new ArrayList<>(tasks.length);
 
-		for (TaskInternal task : tasks) {
+		for (ClusterTaskImpl task : tasks) {
 			getTransactionTemplate().execute(transactionStatus -> {
 				try {
 					JdbcTemplate jdbcTemplate = getJdbcTemplate();
@@ -199,6 +199,7 @@ final class MsSqlDbDataProvider extends ClusterTasksDbDataProvider {
 								task.processorType,
 								task.uniquenessKey,
 								task.concurrencyKey,
+								task.applicationKey,
 								task.delayByMillis,
 								task.partitionIndex,
 								task.orderingFactor,
@@ -210,6 +211,7 @@ final class MsSqlDbDataProvider extends ClusterTasksDbDataProvider {
 								Types.NVARCHAR,             //  processor type
 								Types.NVARCHAR,             //  uniqueness key
 								Types.NVARCHAR,             //  concurrency key
+								Types.NVARCHAR,             //  application key
 								Types.BIGINT,               //  delay by millis
 								Types.BIGINT,               //  partition index
 								Types.BIGINT,               //  ordering factor
@@ -222,6 +224,7 @@ final class MsSqlDbDataProvider extends ClusterTasksDbDataProvider {
 								task.processorType,
 								task.uniquenessKey,
 								task.concurrencyKey,
+								task.applicationKey,
 								task.delayByMillis,
 								task.partitionIndex,
 								task.orderingFactor,
@@ -232,6 +235,7 @@ final class MsSqlDbDataProvider extends ClusterTasksDbDataProvider {
 								Types.NVARCHAR,             //  processor type
 								Types.NVARCHAR,             //  uniqueness key
 								Types.NVARCHAR,             //  concurrency key
+								Types.NVARCHAR,             //  application key
 								Types.BIGINT,               //  delay by millis
 								Types.BIGINT,               //  partition index
 								Types.BIGINT,               //  ordering factor
@@ -263,7 +267,7 @@ final class MsSqlDbDataProvider extends ClusterTasksDbDataProvider {
 
 	@Override
 	public void retrieveAndDispatchTasks(Map<String, ClusterTasksProcessorBase> availableProcessors) {
-		Map<ClusterTasksProcessorBase, Collection<TaskInternal>> tasksToRun = new HashMap<>();
+		Map<ClusterTasksProcessorBase, Collection<ClusterTaskImpl>> tasksToRun = new HashMap<>();
 		JdbcTemplate jdbcTemplate = getJdbcTemplate();
 
 		//  within the same transaction do:
@@ -294,17 +298,17 @@ final class MsSqlDbDataProvider extends ClusterTasksDbDataProvider {
 				int[] paramTypes = new int[paramsTotal];
 				for (int i = 0; i < paramsTotal; i++) paramTypes[i] = Types.NVARCHAR;
 
-				List<TaskInternal> tasks;
+				List<ClusterTaskImpl> tasks;
 				jdbcTemplate.execute(takeLockForSelectForRunTasksSQL);
 				tasks = jdbcTemplate.query(sql, params, paramTypes, this::tasksMetadataReader);
 				if (tasks != null && !tasks.isEmpty()) {
-					Map<String, List<TaskInternal>> tasksByProcessor = tasks.stream().collect(Collectors.groupingBy(ti -> ti.processorType));
+					Map<String, List<ClusterTaskImpl>> tasksByProcessor = tasks.stream().collect(Collectors.groupingBy(ti -> ti.processorType));
 					Set<Long> tasksToRunIDs = new HashSet<>();
 
 					//  let processors decide which tasks will be processed from all available
 					tasksByProcessor.forEach((processorType, processorTasks) -> {
 						ClusterTasksProcessorBase processor = availableProcessors.get(processorType);
-						Collection<TaskInternal> tmpTasks = processor.selectTasksToRun(processorTasks);
+						Collection<ClusterTaskImpl> tmpTasks = processor.selectTasksToRun(processorTasks);
 						tasksToRun.put(processor, tmpTasks);
 						tasksToRunIDs.addAll(tmpTasks.stream().map(task -> task.id).collect(Collectors.toList()));
 					});

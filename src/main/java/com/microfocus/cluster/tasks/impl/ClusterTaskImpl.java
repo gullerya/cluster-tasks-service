@@ -9,6 +9,7 @@
 package com.microfocus.cluster.tasks.impl;
 
 import com.microfocus.cluster.tasks.api.dto.ClusterTask;
+import com.microfocus.cluster.tasks.api.enums.ClusterTaskType;
 
 /**
  * Created by gullery on 26/05/2016.
@@ -20,6 +21,8 @@ import com.microfocus.cluster.tasks.api.dto.ClusterTask;
 
 class ClusterTaskImpl implements ClusterTask {
 	Long id;
+	ClusterTaskType taskType = ClusterTaskType.REGULAR;
+	String processorType;
 	String uniquenessKey;
 	String concurrencyKey;
 	boolean concurrencyKeyUntouched;
@@ -27,8 +30,23 @@ class ClusterTaskImpl implements ClusterTask {
 	Long orderingFactor;
 	Long delayByMillis;
 	String body;
+	Long partitionIndex;
 
 	ClusterTaskImpl() {
+	}
+
+	ClusterTaskImpl(ClusterTaskImpl origin) {
+		id = origin.id;
+		taskType = origin.taskType;
+		processorType = origin.processorType;
+		uniquenessKey = origin.uniquenessKey;
+		concurrencyKey = origin.concurrencyKey;
+		concurrencyKeyUntouched = origin.concurrencyKeyUntouched;
+		applicationKey = origin.applicationKey;
+		orderingFactor = origin.orderingFactor;
+		delayByMillis = origin.delayByMillis;
+		body = origin.body;
+		partitionIndex = origin.partitionIndex;
 	}
 
 	@Override
@@ -61,28 +79,18 @@ class ClusterTaskImpl implements ClusterTask {
 		return body;
 	}
 
-	static ClusterTaskImpl from(TaskInternal origin) {
-		ClusterTaskImpl result = new ClusterTaskImpl();
-		result.id = origin.id;
-		result.uniquenessKey = origin.uniquenessKey;
-		result.concurrencyKey = origin.concurrencyKey;
-		result.applicationKey = origin.applicationKey;
-		result.orderingFactor = origin.orderingFactor;
-		result.delayByMillis = origin.delayByMillis;
-		result.body = origin.body;
-		return result;
-	}
-
 	@Override
 	public String toString() {
-		return "TaskToProcess {" +
-				", id: " + id +
+		return "ClusterTaskImpl {" +
+				"id: " + id +
+				", taskType: " + taskType +
+				", processorType: " + processorType +
 				", uniquenessKey: " + uniquenessKey +
 				", concurrencyKey: " + concurrencyKey +
 				", applicationKey: " + applicationKey +
 				", orderingFactor: " + orderingFactor +
 				", delayByMillis: " + delayByMillis +
 				", bodyLength: " + (body != null && !body.isEmpty() ? body.length() : "null") +
-				"}";
+				", partitionIndex: " + partitionIndex + "}";
 	}
 }
