@@ -150,6 +150,15 @@ interface ClusterTasksDataProvider {
 	int removeLongTimeNoSeeNodes(long maxTimeNoSeeMillis);
 
 	/**
+	 * Implementation should count tasks by the given application key and status
+	 *
+	 * @param applicationKey application key; MAY be NULL
+	 * @param status         status; MAY be NULL; if is NULL - count all tasks of the given application key
+	 * @return number of counted tasks
+	 */
+	int countTasksByApplicationKey(String applicationKey, ClusterTaskStatus status);
+
+	/**
 	 * Implementation should provide a counter of all tasks existing in the Storage right to the moment of query
 	 * Counter always works within boundaries of a specific processor's tasks type
 	 * Counter should take into consideration OPTIONAL concurrency key parameter

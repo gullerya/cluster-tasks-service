@@ -366,6 +366,30 @@ abstract class ClusterTasksDbDataProvider implements ClusterTasksDataProvider {
 		return result;
 	}
 
+	@Override
+	public int countTasksByApplicationKey(String applicationKey, ClusterTaskStatus status) {
+		String sql = "SELECT COUNT(*) FROM " + META_TABLE_NAME +
+				"   WHERE " + APPLICATION_KEY + (applicationKey == null ? " IS NULL" : " = ?") +
+				(status == null ? "" : ("    AND " + STATUS + " = ?"));
+		Integer result;
+		if (applicationKey == null && status == null) {
+			result = getJdbcTemplate().queryForObject(sql, Integer.class);
+		} else {
+			List<Object> values = new ArrayList<>();
+			List<Integer> types = new ArrayList<>();
+			if (applicationKey != null) {
+				values.add(applicationKey);
+				types.add(Types.VARCHAR);
+			}
+			if (status != null) {
+				values.add(status.value);
+				types.add(Types.BIGINT);
+			}
+			result = getJdbcTemplate().queryForObject(sql, values.toArray(new Object[0]), types.stream().mapToInt(Integer::intValue).toArray(), Integer.class);
+		}
+		return result != null ? result : 0;
+	}
+
 	@Deprecated
 	@Override
 	public int countTasks(String processorType, Set<ClusterTaskStatus> statuses) {

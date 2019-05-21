@@ -202,6 +202,25 @@ public class ClusterTasksServiceImpl implements ClusterTasksService {
 		).handleAsync((e, r) -> true);
 	}
 
+	@Override
+	public int countTasksByApplicationKey(ClusterTasksDataProviderType dataProviderType, String applicationKey, ClusterTaskStatus status) {
+		if (dataProviderType == null) {
+			throw new IllegalArgumentException("data provider type MUST NOT be NULL");
+		}
+		if (!dataProvidersMap.containsKey(dataProviderType)) {
+			throw new IllegalStateException("no data providers of type " + dataProviderType + " registered");
+		}
+		if (applicationKey == null || applicationKey.isEmpty()) {
+			throw new IllegalArgumentException("application key MUST NOT be NULL nor EMPTY");
+		}
+		if (applicationKey.length() > TaskBuilderBase.MAX_APPLICATION_KEY_LENGTH) {
+			throw new IllegalArgumentException("application key MAY NOT exceed " + TaskBuilderBase.MAX_APPLICATION_KEY_LENGTH + " chars length");
+		}
+
+		ClusterTasksDataProvider dataProvider = dataProvidersMap.get(dataProviderType);
+		return dataProvider.countTasksByApplicationKey(applicationKey, status);
+	}
+
 	@Deprecated
 	@Override
 	public int countTasks(ClusterTasksDataProviderType dataProviderType, String processorType, ClusterTaskStatus... statuses) {

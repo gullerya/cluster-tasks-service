@@ -12,6 +12,8 @@ import com.microfocus.cluster.tasks.api.builders.TaskBuilders;
 import com.microfocus.cluster.tasks.api.dto.ClusterTask;
 
 abstract public class TaskBuilderBase implements TaskBuilders.TaskBuilder {
+	static int MAX_APPLICATION_KEY_LENGTH = 64;
+
 	private volatile boolean locked;
 	private ClusterTaskImpl result = new ClusterTaskImpl();
 
@@ -48,7 +50,6 @@ abstract public class TaskBuilderBase implements TaskBuilders.TaskBuilder {
 	}
 
 	public TaskBuilders.TaskBuilder setApplicationKey(String applicationKey) {
-		int MAX_APPLICATION_KEY_LENGTH = 64;
 		if (locked) {
 			throw new IllegalStateException("task builder MAY BE used only once");
 		}

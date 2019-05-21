@@ -72,6 +72,16 @@ public interface ClusterTasksService {
 	 */
 	Future<Boolean> stop();
 
+	/**
+	 * counts all tasks in the given data provider with a given application key found in given execution status
+	 *
+	 * @param dataProviderType data provider to lookup tasks from, MUST NOT be NULL
+	 * @param applicationKey   application key to count by; MAY be NULL; if NULL, ONLY tasks with NULL application key will be counted
+	 * @param status           execution status to take into account; MAY be NULL; if NULL is provided - all tasks of this application key will be counted
+	 * @return total number of said tasks
+	 */
+	int countTasksByApplicationKey(ClusterTasksDataProviderType dataProviderType, String applicationKey, ClusterTaskStatus status);
+
 	@Deprecated
 	int countTasks(ClusterTasksDataProviderType dataProviderType, String processorType, ClusterTaskStatus... statuses);
 }
