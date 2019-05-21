@@ -65,6 +65,11 @@ class ClusterTaskImpl implements ClusterTask {
 	}
 
 	@Override
+	public String getApplicationKey() {
+		return applicationKey;
+	}
+
+	@Override
 	public Long getOrderingFactor() {
 		return orderingFactor;
 	}

@@ -354,6 +354,7 @@ public class ClusterTasksServiceImpl implements ClusterTasksService {
 			preprocessConcurrencyKey(source, target, targetProcessorType);
 
 			target.processorType = targetProcessorType;
+			target.applicationKey = source.getApplicationKey();
 			target.orderingFactor = null;
 			target.delayByMillis = source.getDelayByMillis() == null ? (Long) 0L : source.getDelayByMillis();
 			target.body = source.getBody() == null || source.getBody().isEmpty() ? null : source.getBody();
