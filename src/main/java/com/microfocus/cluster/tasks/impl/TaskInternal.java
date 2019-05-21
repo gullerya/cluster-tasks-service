@@ -22,6 +22,7 @@ class TaskInternal {
 	String processorType;
 	String uniquenessKey;
 	String concurrencyKey;
+	String applicationKey;
 	Long orderingFactor;
 	Long delayByMillis;
 	String body;
@@ -39,6 +40,7 @@ class TaskInternal {
 		processorType = origin.processorType;
 		uniquenessKey = origin.uniquenessKey;
 		concurrencyKey = origin.concurrencyKey;
+		applicationKey = origin.applicationKey;
 		orderingFactor = origin.orderingFactor;
 		delayByMillis = origin.delayByMillis;
 		body = origin.body;
@@ -53,6 +55,7 @@ class TaskInternal {
 				", processorType: " + processorType +
 				", uniquenessKey: " + uniquenessKey +
 				", concurrencyKey: " + concurrencyKey +
+				", applicationKey: " + applicationKey +
 				", orderingFactor: " + orderingFactor +
 				", delayByMillis: " + delayByMillis +
 				", bodyLength: " + (body != null && !body.isEmpty() ? body.length() : "null") +

@@ -23,6 +23,7 @@ class ClusterTaskImpl implements ClusterTask {
 	String uniquenessKey;
 	String concurrencyKey;
 	boolean concurrencyKeyUntouched;
+	String applicationKey;
 	Long orderingFactor;
 	Long delayByMillis;
 	String body;
@@ -65,6 +66,7 @@ class ClusterTaskImpl implements ClusterTask {
 		result.id = origin.id;
 		result.uniquenessKey = origin.uniquenessKey;
 		result.concurrencyKey = origin.concurrencyKey;
+		result.applicationKey = origin.applicationKey;
 		result.orderingFactor = origin.orderingFactor;
 		result.delayByMillis = origin.delayByMillis;
 		result.body = origin.body;
@@ -77,6 +79,7 @@ class ClusterTaskImpl implements ClusterTask {
 				", id: " + id +
 				", uniquenessKey: " + uniquenessKey +
 				", concurrencyKey: " + concurrencyKey +
+				", applicationKey: " + applicationKey +
 				", orderingFactor: " + orderingFactor +
 				", delayByMillis: " + delayByMillis +
 				", bodyLength: " + (body != null && !body.isEmpty() ? body.length() : "null") +

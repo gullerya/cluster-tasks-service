@@ -154,16 +154,7 @@ public class TaskBuilders {
 		 * @throws IllegalArgumentException if the key is NULL or EMPTY of bigger than allowed
 		 */
 		public TaskBuilders.TaskBuilder setConcurrencyKey(String concurrencyKey, boolean untouched) throws IllegalStateException, IllegalArgumentException {
-			if (locked) throw new IllegalStateException("task builder MAY BE used only once");
-			if (concurrencyKey == null || concurrencyKey.isEmpty()) {
-				throw new IllegalArgumentException("concurrency key MUST NOT be null nor empty");
-			}
-			if (concurrencyKey.length() > 34) {
-				throw new IllegalArgumentException("concurrency key's length MUST BE less than or equal to 34 chars");
-			}
-			this.concurrencyKey = concurrencyKey;
-			this.concurrencyKeyUntouched = untouched;
-			return this;
+			return setConcurrencyKeyInternal(concurrencyKey, untouched);
 		}
 	}
 
@@ -193,15 +184,7 @@ public class TaskBuilders {
 		 * @throws IllegalArgumentException if the key is NULL or EMPTY of bigger than allowed
 		 */
 		public TaskBuilder setUniquenessKey(String uniquenessKey) throws IllegalStateException, IllegalArgumentException {
-			if (locked) throw new IllegalStateException("task builder MAY BE used only once");
-			if (uniquenessKey == null || uniquenessKey.isEmpty()) {
-				throw new IllegalArgumentException("uniqueness key MUST NOT be null nor empty");
-			}
-			if (uniquenessKey.length() > 34) {
-				throw new IllegalArgumentException("uniqueness key's length MUST BE less than or equal to 34 chars");
-			}
-			this.uniquenessKey = uniquenessKey;
-			return this;
+			return setUniquenessKeyInternal(uniquenessKey);
 		}
 	}
 }
