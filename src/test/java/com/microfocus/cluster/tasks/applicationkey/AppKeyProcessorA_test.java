@@ -14,7 +14,7 @@ import java.util.Objects;
 
 public class AppKeyProcessorA_test extends ClusterTasksProcessorSimple {
 	static final Map<String, Long> tasksProcessed = new LinkedHashMap<>();
-	static String conditionToRun = null;
+	static volatile String conditionToRun = null;
 
 	protected AppKeyProcessorA_test() {
 		super(ClusterTasksDataProviderType.DB, 1);

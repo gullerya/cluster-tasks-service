@@ -210,10 +210,7 @@ public class ClusterTasksServiceImpl implements ClusterTasksService {
 		if (!dataProvidersMap.containsKey(dataProviderType)) {
 			throw new IllegalStateException("no data providers of type " + dataProviderType + " registered");
 		}
-		if (applicationKey == null || applicationKey.isEmpty()) {
-			throw new IllegalArgumentException("application key MUST NOT be NULL nor EMPTY");
-		}
-		if (applicationKey.length() > TaskBuilderBase.MAX_APPLICATION_KEY_LENGTH) {
+		if (applicationKey != null && applicationKey.length() > TaskBuilderBase.MAX_APPLICATION_KEY_LENGTH) {
 			throw new IllegalArgumentException("application key MAY NOT exceed " + TaskBuilderBase.MAX_APPLICATION_KEY_LENGTH + " chars length");
 		}
 
