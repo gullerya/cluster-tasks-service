@@ -113,7 +113,7 @@ final class MsSqlDbDataProvider extends ClusterTasksDbDataProvider {
 		}
 		updateTasksStartedSQL = "UPDATE " + META_TABLE_NAME + " SET " + STATUS + " = " + ClusterTaskStatus.RUNNING.value + ", " + STARTED + " = GETDATE(), " + RUNTIME_INSTANCE + " = ?" +
 				" WHERE " + META_ID + " = ?";
-		releaseLockForSelectForRunTasksSQL = "EXEC sp_releaseapplock @Resource = 'LOCK_FOR_TASKS_DISPATCH'; COMMIT TRAN";
+		releaseLockForSelectForRunTasksSQL = "EXEC sp_releaseapplock @Resource = 'LOCK_FOR_TASKS_DISPATCH', @LockOwner = 'Transaction'; COMMIT TRAN";
 
 		//  clean up tasks flow
 		takeLockForSelectForCleanTasksSQL = "BEGIN TRAN; EXEC sp_getapplock @Resource = 'LOCK_FOR_TASKS_GC', @LockMode = 'Exclusive', @LockOwner = 'Transaction'";
@@ -122,7 +122,7 @@ final class MsSqlDbDataProvider extends ClusterTasksDbDataProvider {
 				" WHERE " + TASK_TYPE + " = " + ClusterTaskType.SCHEDULED.value +
 				"   AND " + RUNTIME_INSTANCE + " IS NOT NULL" +
 				"   AND NOT EXISTS (SELECT 1 FROM " + ACTIVE_NODES_TABLE_NAME + " WHERE " + ACTIVE_NODE_ID + " = " + RUNTIME_INSTANCE + ")";
-		releaseLockForSelectForCleanTasksSQL = "EXEC sp_releaseapplock @Resource = 'LOCK_FOR_TASKS_GC'; COMMIT TRAN";
+		releaseLockForSelectForCleanTasksSQL = "EXEC sp_releaseapplock @Resource = 'LOCK_FOR_TASKS_GC', @LockOwner = 'Transaction'; COMMIT TRAN";
 	}
 
 	@Override
