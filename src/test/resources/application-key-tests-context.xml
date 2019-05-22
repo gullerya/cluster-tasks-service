@@ -9,5 +9,6 @@
 	<bean class="com.microfocus.cluster.tasks.CTSConfigurerForTestsSPI"/>
 
 	<bean class="com.microfocus.cluster.tasks.applicationkey.AppKeyProcessorA_test"/>
+	<bean class="com.microfocus.cluster.tasks.applicationkey.AppKeyProcessorB_test"/>
 
 </beans>
