@@ -9,8 +9,6 @@ import com.microfocus.cluster.tasks.processors.ClusterTasksProcessorCount_test;
 import org.junit.Assert;
 import org.junit.Test;
 import org.junit.runner.RunWith;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.test.context.ContextConfiguration;
 import org.springframework.test.context.junit4.SpringJUnit4ClassRunner;
@@ -29,7 +27,6 @@ import java.util.UUID;
 		"/cluster-tasks-service-context-test.xml"
 })
 public class CountTasksTest extends CTSTestsBase {
-	private static final Logger logger = LoggerFactory.getLogger(CountTasksTest.class);
 
 	@Autowired
 	private ClusterTasksProcessorCount_test clusterTasksProcessorCount_test;
