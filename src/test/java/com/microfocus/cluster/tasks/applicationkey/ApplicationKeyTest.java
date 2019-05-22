@@ -59,8 +59,8 @@ public class ApplicationKeyTest extends CTSTestsBase {
 		Assert.assertTrue(AppKeyProcessorA_test.tasksProcessed.containsKey("1"));
 		Assert.assertTrue(AppKeyProcessorA_test.tasksProcessed.containsKey("2"));
 		Assert.assertTrue(AppKeyProcessorA_test.tasksProcessed.containsKey("3"));
-		Assert.assertTrue(AppKeyProcessorA_test.tasksProcessed.get("2") > AppKeyProcessorA_test.tasksProcessed.get("1"));
-		Assert.assertTrue(AppKeyProcessorA_test.tasksProcessed.get("3") > AppKeyProcessorA_test.tasksProcessed.get("2"));
+		Assert.assertTrue("expected positive diff, but got: " + (AppKeyProcessorA_test.tasksProcessed.get("2") - AppKeyProcessorA_test.tasksProcessed.get("1")), AppKeyProcessorA_test.tasksProcessed.get("2") > AppKeyProcessorA_test.tasksProcessed.get("1"));
+		Assert.assertTrue("expected positive diff, but got: " + (AppKeyProcessorA_test.tasksProcessed.get("3") - AppKeyProcessorA_test.tasksProcessed.get("2")), AppKeyProcessorA_test.tasksProcessed.get("3") > AppKeyProcessorA_test.tasksProcessed.get("2"));
 	}
 
 	@Test
@@ -106,12 +106,12 @@ public class ApplicationKeyTest extends CTSTestsBase {
 		Assert.assertTrue(AppKeyProcessorA_test.tasksProcessed.containsKey("4"));
 		Assert.assertTrue(AppKeyProcessorA_test.tasksProcessed.containsKey("5"));
 		Assert.assertTrue(AppKeyProcessorA_test.tasksProcessed.containsKey("6"));
-		Assert.assertTrue(AppKeyProcessorA_test.tasksProcessed.get("2") > AppKeyProcessorA_test.tasksProcessed.get("1"));
-		Assert.assertTrue(AppKeyProcessorA_test.tasksProcessed.get("3") > AppKeyProcessorA_test.tasksProcessed.get("2"));
+		Assert.assertTrue("expected positive diff, but got: " + (AppKeyProcessorA_test.tasksProcessed.get("2") - AppKeyProcessorA_test.tasksProcessed.get("1")),AppKeyProcessorA_test.tasksProcessed.get("2") > AppKeyProcessorA_test.tasksProcessed.get("1"));
+		Assert.assertTrue("expected positive diff, but got: " + (AppKeyProcessorA_test.tasksProcessed.get("3") - AppKeyProcessorA_test.tasksProcessed.get("2")),AppKeyProcessorA_test.tasksProcessed.get("3") > AppKeyProcessorA_test.tasksProcessed.get("2"));
 		//  ensure that held tasks ran after the non-held
-		Assert.assertTrue(AppKeyProcessorA_test.tasksProcessed.get("1") > AppKeyProcessorA_test.tasksProcessed.get("4"));
-		Assert.assertTrue(AppKeyProcessorA_test.tasksProcessed.get("1") > AppKeyProcessorA_test.tasksProcessed.get("5"));
-		Assert.assertTrue(AppKeyProcessorA_test.tasksProcessed.get("1") > AppKeyProcessorA_test.tasksProcessed.get("6"));
+		Assert.assertTrue("expected positive diff, but got: " + (AppKeyProcessorA_test.tasksProcessed.get("1") - AppKeyProcessorA_test.tasksProcessed.get("4")),AppKeyProcessorA_test.tasksProcessed.get("1") > AppKeyProcessorA_test.tasksProcessed.get("4"));
+		Assert.assertTrue("expected positive diff, but got: " + (AppKeyProcessorA_test.tasksProcessed.get("1") - AppKeyProcessorA_test.tasksProcessed.get("5")),AppKeyProcessorA_test.tasksProcessed.get("1") > AppKeyProcessorA_test.tasksProcessed.get("5"));
+		Assert.assertTrue("expected positive diff, but got: " + (AppKeyProcessorA_test.tasksProcessed.get("1") - AppKeyProcessorA_test.tasksProcessed.get("6")),AppKeyProcessorA_test.tasksProcessed.get("1") > AppKeyProcessorA_test.tasksProcessed.get("6"));
 	}
 
 	@Test
