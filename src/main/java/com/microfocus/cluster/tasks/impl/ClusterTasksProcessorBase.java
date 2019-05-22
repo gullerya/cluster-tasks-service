@@ -189,14 +189,16 @@ public abstract class ClusterTasksProcessorBase {
 		int availableWorkersTmp = availableWorkers.get();
 
 		//  filter out tasks rejected on applicative per-task validation
-		candidates = candidates.stream()
-				.filter(candidate -> {
-					Histogram.Timer foreignCallTimer = foreignIsTaskAbleToRunCallDuration.labels(clusterTasksService.getInstanceID()).startTimer();
-					boolean keepTaskToRun = isTaskAbleToRun(candidate.applicationKey);
-					foreignCallTimer.close();
-					return keepTaskToRun;
-				})
-				.collect(Collectors.toList());
+		List<ClusterTaskImpl> filteredCandidates = new ArrayList<>();
+		for (ClusterTaskImpl candidate : candidates) {
+			Histogram.Timer foreignCallTimer = foreignIsTaskAbleToRunCallDuration.labels(clusterTasksService.getInstanceID()).startTimer();
+			boolean keepTaskToRun = isTaskAbleToRun(candidate.applicationKey);
+			foreignCallTimer.close();
+			if (keepTaskToRun) {
+				filteredCandidates.add(candidate);
+			}
+		}
+		candidates = filteredCandidates;
 
 		if (!candidates.isEmpty()) {
 			//  group tasks by concurrency key
