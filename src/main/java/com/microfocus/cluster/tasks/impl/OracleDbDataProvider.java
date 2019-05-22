@@ -80,7 +80,7 @@ final class OracleDbDataProvider extends ClusterTasksDbDataProvider {
 		//  insert / update tasks
 		String insertFields = String.join(",", META_ID, TASK_TYPE, PROCESSOR_TYPE, UNIQUENESS_KEY, CONCURRENCY_KEY, APPLICATION_KEY, DELAY_BY_MILLIS, BODY_PARTITION, ORDERING_FACTOR, CREATED, STATUS);
 		insertTaskWithoutBodySQL = "INSERT INTO " + META_TABLE_NAME + " (" + insertFields + ")" +
-				" VALUES (" + CLUSTER_TASK_ID_SEQUENCE + ".NEXTVAL, ?, ?, ?, ?, ?, ?, ?, COALESCE(?, TO_NUMBER(TO_CHAR(SYSTIMESTAMP,'yyyymmddhh24missff3')) + ?), SYSDATE, " + ClusterTaskStatus.PENDING.value + ")";
+				" VALUES (" + CLUSTER_TASK_ID_SEQUENCE + ".NEXTVAL, ?, ?, ?, ?, ?, ?, ?, COALESCE(?, TO_NUMBER(TO_CHAR(SYSTIMESTAMP,'yymmddhh24missff6')) + ?), SYSDATE, " + ClusterTaskStatus.PENDING.value + ")";
 		updateScheduledTaskIntervalSQL = "UPDATE " + META_TABLE_NAME +
 				" SET " + CREATED + " = SYSDATE, " + DELAY_BY_MILLIS + " = ?" +
 				" WHERE " + PROCESSOR_TYPE + " = ? AND " + TASK_TYPE + " = " + ClusterTaskType.SCHEDULED.value + " AND " + STATUS + " = " + ClusterTaskStatus.PENDING.value;
@@ -108,7 +108,7 @@ final class OracleDbDataProvider extends ClusterTasksDbDataProvider {
 					" BEGIN" +
 					"   INSERT INTO " + BODY_TABLE_NAME + partition + " (" + String.join(",", BODY_ID, BODY) + ") VALUES (taskId, ?);" +
 					"   INSERT INTO " + META_TABLE_NAME + " (" + insertFields + ")" +
-					"       VALUES (taskId, ?, ?, ?, ?, ?, ?, ?, COALESCE(?, TO_NUMBER(TO_CHAR(SYSTIMESTAMP,'yyyymmddhh24missff3')) + ?), SYSDATE, " + ClusterTaskStatus.PENDING.value + ");" +
+					"       VALUES (taskId, ?, ?, ?, ?, ?, ?, ?, COALESCE(?, TO_NUMBER(TO_CHAR(SYSTIMESTAMP,'yymmddhh24missff6')) + ?), SYSDATE, " + ClusterTaskStatus.PENDING.value + ");" +
 					" END;");
 		}
 		updateTasksStartedSQL = "UPDATE " + META_TABLE_NAME + " SET " + STATUS + " = " + ClusterTaskStatus.RUNNING.value + ", " + STARTED + " = SYSDATE, " + RUNTIME_INSTANCE + " = ?" +
