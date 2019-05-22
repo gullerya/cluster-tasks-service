@@ -296,13 +296,6 @@ final class PostgreSqlDbDataProvider extends ClusterTasksDbDataProvider {
 
 	@Override
 	public String retrieveTaskBody(Long taskId, Long partitionIndex) {
-		if (taskId == null) {
-			throw new IllegalArgumentException("task ID MUST NOT be null");
-		}
-		if (partitionIndex == null) {
-			throw new IllegalArgumentException("partition index MUST NOT be null");
-		}
-
 		try {
 			JdbcTemplate jdbcTemplate = getJdbcTemplate();
 			String sql = selectTaskBodyByPartitionSQLs.get(partitionIndex);

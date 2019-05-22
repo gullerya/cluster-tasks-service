@@ -398,14 +398,6 @@ abstract class ClusterTasksDbDataProvider implements ClusterTasksDataProvider {
 		return result != null ? result : 0;
 	}
 
-	@Deprecated
-	@Override
-	public int countTasks(String processorType, String concurrencyKey, Set<ClusterTaskStatus> statuses) {
-		String countTasksSQL = buildCountTasksSQL(processorType, concurrencyKey, statuses);
-		Integer result = getJdbcTemplate().queryForObject(countTasksSQL, Integer.class);
-		return result != null ? result : 0;
-	}
-
 	JdbcTemplate getJdbcTemplate() {
 		if (jdbcTemplate == null) {
 			try {
@@ -590,23 +582,6 @@ abstract class ClusterTasksDbDataProvider implements ClusterTasksDataProvider {
 		List<String> queryClauses = new LinkedList<>();
 		if (processorType != null) {
 			queryClauses.add(PROCESSOR_TYPE + " = '" + processorType + "'");
-		}
-		if (statuses != null && !statuses.isEmpty()) {
-			queryClauses.add(STATUS + " IN (" + statuses.stream().map(status -> String.valueOf(status.value)).collect(Collectors.joining(",")) + ")");
-		}
-
-		return buildCountSQLByQueries(queryClauses);
-	}
-
-	private String buildCountTasksSQL(String processorType, String concurrencyKey, Set<ClusterTaskStatus> statuses) {
-		List<String> queryClauses = new LinkedList<>();
-		if (processorType != null) {
-			queryClauses.add(PROCESSOR_TYPE + " = '" + processorType + "'");
-		}
-		if (concurrencyKey != null) {
-			queryClauses.add(CONCURRENCY_KEY + " = '" + concurrencyKey + "'");
-		} else {
-			queryClauses.add(CONCURRENCY_KEY + " IS NULL");
 		}
 		if (statuses != null && !statuses.isEmpty()) {
 			queryClauses.add(STATUS + " IN (" + statuses.stream().map(status -> String.valueOf(status.value)).collect(Collectors.joining(",")) + ")");
