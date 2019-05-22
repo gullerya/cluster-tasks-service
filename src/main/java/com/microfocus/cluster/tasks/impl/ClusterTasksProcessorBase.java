@@ -11,6 +11,7 @@ package com.microfocus.cluster.tasks.impl;
 import com.microfocus.cluster.tasks.api.dto.ClusterTask;
 import com.microfocus.cluster.tasks.api.enums.ClusterTasksDataProviderType;
 import io.prometheus.client.Gauge;
+import io.prometheus.client.Histogram;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -33,6 +34,8 @@ public abstract class ClusterTasksProcessorBase {
 	private final Logger logger = LoggerFactory.getLogger(ClusterTasksProcessorBase.class);
 	private static final String NON_CONCURRENT_TASKS_GROUP_KEY = "NULL";
 	private static final Gauge threadsUtilizationGauge;
+	private static final Histogram foreignIsReadyToHandleTasksCallDuration;
+	private static final Histogram foreignIsTaskAbleToRunCallDuration;
 
 	private final String type;
 	private final ClusterTasksDataProviderType dataProviderType;
@@ -54,6 +57,16 @@ public abstract class ClusterTasksProcessorBase {
 				.name("cts_per_processor_threads_utilization_percents")
 				.help("CTS per-processor threads utilization")
 				.labelNames("processor_type")
+				.register();
+		foreignIsReadyToHandleTasksCallDuration = Histogram.build()
+				.name("cts_foreign_is_ready_to_handle_tasks_duration")
+				.help("CTS foreign 'isReadyToHandleTasks' call duration")
+				.labelNames("runtime_instance_id")
+				.register();
+		foreignIsTaskAbleToRunCallDuration = Histogram.build()
+				.name("cts_foreign_is_task_able_to_run_duration")
+				.help("CTS foreign 'isTaskAbleToRun' call duration")
+				.labelNames("runtime_instance_id")
 				.register();
 	}
 
@@ -164,12 +177,9 @@ public abstract class ClusterTasksProcessorBase {
 
 		boolean foreignResult = true;
 		if (internalResult) {
-			long foreignCallStart = System.currentTimeMillis();
+			Histogram.Timer foreignCallTimer = foreignIsReadyToHandleTasksCallDuration.labels(clusterTasksService.getInstanceID()).startTimer();
 			foreignResult = isReadyToHandleTasks();
-			long foreignCallDuration = System.currentTimeMillis() - foreignCallStart;
-			if (foreignCallDuration > FOREIGN_CHECK_DURATION_THRESHOLD) {
-				logger.warn("call to a foreign method 'isReadyToHandleTasks' took more than " + FOREIGN_CHECK_DURATION_THRESHOLD + "ms (" + foreignCallDuration + "ms)");
-			}
+			foreignCallTimer.close();
 		}
 		return internalResult && foreignResult;
 	}
@@ -181,12 +191,9 @@ public abstract class ClusterTasksProcessorBase {
 		//  filter out tasks rejected on applicative per-task validation
 		candidates = candidates.stream()
 				.filter(candidate -> {
-					long startingForeignCall = System.currentTimeMillis();
+					Histogram.Timer foreignCallTimer = foreignIsTaskAbleToRunCallDuration.labels(clusterTasksService.getInstanceID()).startTimer();
 					boolean keepTaskToRun = isTaskAbleToRun(candidate.applicationKey);
-					long foreignCallDuration = System.currentTimeMillis() - startingForeignCall;
-					if (foreignCallDuration > 5) {
-						logger.warn("call to 'isTaskAbleToRun' took more than 5 millis (" + foreignCallDuration + ")");
-					}
+					foreignCallTimer.close();
 					return keepTaskToRun;
 				})
 				.collect(Collectors.toList());

@@ -19,6 +19,7 @@ import com.microfocus.cluster.tasks.api.enums.ClusterTaskStatus;
 import com.microfocus.cluster.tasks.api.enums.ClusterTaskType;
 import com.microfocus.cluster.tasks.api.enums.ClusterTasksDataProviderType;
 import io.prometheus.client.Gauge;
+import io.prometheus.client.Histogram;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -40,6 +41,7 @@ import java.util.stream.Collectors;
 public class ClusterTasksServiceImpl implements ClusterTasksService {
 	private final Logger logger = LoggerFactory.getLogger(ClusterTasksServiceImpl.class);
 	private final static Gauge tasksInsertionAverageDuration;
+	private static final Histogram foreignIsEnabledCallDuration;
 
 	private final String RUNTIME_INSTANCE_ID = UUID.randomUUID().toString();
 	private final CompletableFuture<Boolean> readyPromise = new CompletableFuture<>();
@@ -58,6 +60,11 @@ public class ClusterTasksServiceImpl implements ClusterTasksService {
 		tasksInsertionAverageDuration = Gauge.build()
 				.name("cts_task_insert_average_time")
 				.help("CTS task insert average time (in millis)")
+				.labelNames("runtime_instance_id")
+				.register();
+		foreignIsEnabledCallDuration = Histogram.build()
+				.name("cts_foreign_is_enabled_duration")
+				.help("CTS foreign 'isEnabled' call duration")
 				.labelNames("runtime_instance_id")
 				.register();
 	}
@@ -417,13 +424,9 @@ public class ClusterTasksServiceImpl implements ClusterTasksService {
 		}
 
 		boolean isCTSServiceEnabled() {
-			long DURATION_THRESHOLD = 5;
-			long foreignCallStart = System.currentTimeMillis();
+			Histogram.Timer foreignCallTimer = foreignIsEnabledCallDuration.labels(RUNTIME_INSTANCE_ID).startTimer();
 			boolean isEnabled = serviceConfigurer.isEnabled();
-			long foreignCallDuration = System.currentTimeMillis() - foreignCallStart;
-			if (foreignCallDuration > DURATION_THRESHOLD) {
-				logger.warn("call to a foreign method 'isEnabled' took more than " + DURATION_THRESHOLD + "ms (" + foreignCallDuration + "ms)");
-			}
+			foreignCallTimer.close();
 			return isEnabled;
 		}
 
