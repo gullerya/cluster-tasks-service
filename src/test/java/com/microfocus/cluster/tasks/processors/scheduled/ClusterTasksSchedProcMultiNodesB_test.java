@@ -4,8 +4,7 @@ import com.microfocus.cluster.tasks.api.ClusterTasksProcessorScheduled;
 import com.microfocus.cluster.tasks.api.dto.ClusterTask;
 import com.microfocus.cluster.tasks.api.enums.ClusterTasksDataProviderType;
 
-import java.util.LinkedList;
-import java.util.List;
+import java.util.concurrent.atomic.AtomicInteger;
 
 /**
  * Created by gullery on 03/03/2019
@@ -15,7 +14,7 @@ import java.util.List;
 
 public class ClusterTasksSchedProcMultiNodesB_test extends ClusterTasksProcessorScheduled {
 	public static volatile boolean suspended = true;
-	public static int executionsCounter = 0;
+	public static final AtomicInteger executionsCounter = new AtomicInteger();
 
 	protected ClusterTasksSchedProcMultiNodesB_test() {
 		super(ClusterTasksDataProviderType.DB);
@@ -24,7 +23,7 @@ public class ClusterTasksSchedProcMultiNodesB_test extends ClusterTasksProcessor
 	@Override
 	public void processTask(ClusterTask task) {
 		if (!suspended) {
-			executionsCounter++;
+			executionsCounter.incrementAndGet();
 		}
 	}
 }

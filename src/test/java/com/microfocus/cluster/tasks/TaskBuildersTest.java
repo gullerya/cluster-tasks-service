@@ -6,8 +6,6 @@ import com.microfocus.cluster.tasks.api.enums.ClusterTaskType;
 import org.junit.Assert;
 import org.junit.Test;
 import org.junit.runner.RunWith;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 import org.springframework.test.context.ContextConfiguration;
 import org.springframework.test.context.junit4.SpringJUnit4ClassRunner;
 
@@ -24,7 +22,6 @@ import java.util.Collections;
 		"/cluster-tasks-service-context-test.xml"
 })
 public class TaskBuildersTest extends CTSTestsBase {
-	private static final Logger logger = LoggerFactory.getLogger(TaskBuildersTest.class);
 
 	//	channelled tasks
 
@@ -113,6 +110,7 @@ public class TaskBuildersTest extends CTSTestsBase {
 	}
 
 	//  simple tasks
+
 	@Test(expected = IllegalArgumentException.class)
 	public void testStA() {
 		TaskBuilders.simpleTask()
@@ -139,6 +137,32 @@ public class TaskBuildersTest extends CTSTestsBase {
 		taskBuilder.setDelayByMillis(1000);
 		taskBuilder.build();
 		taskBuilder.setDelayByMillis(900);
+	}
+
+	@Test(expected = IllegalArgumentException.class)
+	public void testStE1() {
+		TaskBuilders.TaskBuilder taskBuilder = TaskBuilders.simpleTask();
+		taskBuilder.setApplicationKey(null);
+	}
+
+	@Test(expected = IllegalArgumentException.class)
+	public void testStE2() {
+		TaskBuilders.TaskBuilder taskBuilder = TaskBuilders.simpleTask();
+		taskBuilder.setApplicationKey("");
+	}
+
+	@Test(expected = IllegalArgumentException.class)
+	public void testStE3() {
+		TaskBuilders.TaskBuilder taskBuilder = TaskBuilders.simpleTask();
+		taskBuilder.setApplicationKey(String.join("", Collections.nCopies(65, "a")));
+	}
+
+	@Test(expected = IllegalStateException.class)
+	public void testStE4() {
+		TaskBuilders.TaskBuilder taskBuilder = TaskBuilders.simpleTask();
+		taskBuilder.setApplicationKey("some");
+		taskBuilder.build();
+		taskBuilder.setApplicationKey("else");
 	}
 
 	//  enums
