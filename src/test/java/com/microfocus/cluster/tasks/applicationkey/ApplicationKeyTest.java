@@ -27,9 +27,11 @@ public class ApplicationKeyTest extends CTSTestsBase {
 
 	@Test
 	public void testA_simple_app_key_chain() {
-		AppKeyProcessorA_test.conditionToRun = "run";
-		CTSTestsUtils.waitUntil(10000, () -> clusterTasksService.countTasksByApplicationKey(ClusterTasksDataProviderType.DB, "run", null) == 0 ? true : null);
+		AppKeyProcessorA_test.any = true;
+		CTSTestsUtils.waitSafely(5000);
 
+		AppKeyProcessorA_test.any = false;
+		AppKeyProcessorA_test.conditionToRun = null;
 		AppKeyProcessorA_test.tasksProcessed.clear();
 		Assert.assertTrue(AppKeyProcessorA_test.tasksProcessed.isEmpty());
 
@@ -114,10 +116,13 @@ public class ApplicationKeyTest extends CTSTestsBase {
 
 	@Test
 	public void testC_channeled_app_key_chain() {
-		AppKeyProcessorB_test.conditionToRun = null;
-		CTSTestsUtils.waitSafely(4000);
+		AppKeyProcessorB_test.any = true;
+		CTSTestsUtils.waitSafely(5000);
+
+		AppKeyProcessorB_test.any = false;
 		AppKeyProcessorB_test.tasksProcessed.clear();
 		Assert.assertTrue(AppKeyProcessorB_test.tasksProcessed.isEmpty());
+		AppKeyProcessorB_test.conditionToRun = null;
 
 		String concurrencyKey = UUID.randomUUID().toString().replaceAll("-", "");
 		String appKey = UUID.randomUUID().toString();
@@ -154,6 +159,10 @@ public class ApplicationKeyTest extends CTSTestsBase {
 
 	@Test
 	public void testD_channeled_app_key_chain_with_other_tasks() {
+		AppKeyProcessorB_test.any = true;
+		CTSTestsUtils.waitSafely(5000);
+
+		AppKeyProcessorB_test.any = false;
 		AppKeyProcessorB_test.tasksProcessed.clear();
 		Assert.assertTrue(AppKeyProcessorB_test.tasksProcessed.isEmpty());
 		AppKeyProcessorB_test.conditionToRun = null;

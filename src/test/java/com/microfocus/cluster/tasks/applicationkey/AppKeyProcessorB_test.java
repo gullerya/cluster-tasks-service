@@ -14,6 +14,7 @@ import java.util.Objects;
 
 public class AppKeyProcessorB_test extends ClusterTasksProcessorSimple {
 	static final Map<String, Long> tasksProcessed = new LinkedHashMap<>();
+	static volatile boolean any = true;
 	static volatile String conditionToRun = null;
 
 	protected AppKeyProcessorB_test() {
@@ -22,7 +23,7 @@ public class AppKeyProcessorB_test extends ClusterTasksProcessorSimple {
 
 	@Override
 	protected boolean isTaskAbleToRun(String applicationKey) {
-		return Objects.equals(conditionToRun, applicationKey);
+		return any || Objects.equals(conditionToRun, applicationKey);
 	}
 
 	@Override
