@@ -113,6 +113,14 @@ public class TaskBuilders {
 	private static class SimpleTaskBuilder extends TaskBuilderBase {
 		private SimpleTaskBuilder() {
 		}
+
+		private TaskBuilder setCKProxy(String concurrencyKey, boolean untouched) throws IllegalStateException, IllegalArgumentException {
+			return setConcurrencyKeyInternal(concurrencyKey, untouched);
+		}
+
+		private TaskBuilder setUKProxy(String uniquenessKey) throws IllegalStateException, IllegalArgumentException {
+			return setUniquenessKeyInternal(uniquenessKey);
+		}
 	}
 
 	/**
@@ -122,7 +130,9 @@ public class TaskBuilders {
 	 * - tuning the number of resources (treads) per processor from one side, and a well-thought concurrency key from the other - those two provide
 	 * good means to tune CTS throughput and resources utilization
 	 */
-	public static class ChanneledTaskBuilder extends TaskBuilderBase {
+	public static class ChanneledTaskBuilder {
+		private SimpleTaskBuilder taskBuilder = new SimpleTaskBuilder();
+
 		private ChanneledTaskBuilder() {
 		}
 
@@ -137,7 +147,7 @@ public class TaskBuilders {
 		 * @throws IllegalStateException    if the {@link com.microfocus.cluster.tasks.api.builders.TaskBuilders.TaskBuilder#build() build} method has already been called on this builder instance
 		 * @throws IllegalArgumentException if the key is NULL or EMPTY of bigger than allowed
 		 */
-		public TaskBuilders.TaskBuilder setConcurrencyKey(String concurrencyKey) throws IllegalStateException, IllegalArgumentException {
+		public TaskBuilder setConcurrencyKey(String concurrencyKey) throws IllegalStateException, IllegalArgumentException {
 			return setConcurrencyKey(concurrencyKey, false);
 		}
 
@@ -153,8 +163,8 @@ public class TaskBuilders {
 		 * @throws IllegalStateException    if the {@link com.microfocus.cluster.tasks.api.builders.TaskBuilders.TaskBuilder#build() build} method has already been called on this builder instance
 		 * @throws IllegalArgumentException if the key is NULL or EMPTY of bigger than allowed
 		 */
-		public TaskBuilders.TaskBuilder setConcurrencyKey(String concurrencyKey, boolean untouched) throws IllegalStateException, IllegalArgumentException {
-			return setConcurrencyKeyInternal(concurrencyKey, untouched);
+		public TaskBuilder setConcurrencyKey(String concurrencyKey, boolean untouched) throws IllegalStateException, IllegalArgumentException {
+			return taskBuilder.setCKProxy(concurrencyKey, untouched);
 		}
 	}
 
@@ -167,7 +177,9 @@ public class TaskBuilders {
 	 * while there is no danger of accidentally breaking the chain from one side, and multiplying the tasks from another
 	 * - if the desired flow is to have a single unique task running each specific (yet even adjustable) period of time - scheduled tasks mechanism should be checked
 	 */
-	public static class UniqueTaskBuilder extends TaskBuilderBase {
+	public static class UniqueTaskBuilder {
+		private SimpleTaskBuilder taskBuilder = new SimpleTaskBuilder();
+
 		private UniqueTaskBuilder() {
 		}
 
@@ -184,7 +196,7 @@ public class TaskBuilders {
 		 * @throws IllegalArgumentException if the key is NULL or EMPTY of bigger than allowed
 		 */
 		public TaskBuilder setUniquenessKey(String uniquenessKey) throws IllegalStateException, IllegalArgumentException {
-			return setUniquenessKeyInternal(uniquenessKey);
+			return taskBuilder.setUKProxy(uniquenessKey);
 		}
 	}
 }

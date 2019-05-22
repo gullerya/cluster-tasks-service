@@ -46,8 +46,8 @@ public class TaskBuildersTest extends CTSTestsBase {
 	@Test(expected = IllegalStateException.class)
 	public void testChD() {
 		TaskBuilders.ChanneledTaskBuilder chBuilder = TaskBuilders.channeledTask();
-		chBuilder.setConcurrencyKey("something");
-		chBuilder.build();
+		chBuilder.setConcurrencyKey("something")
+				.build();
 		chBuilder.setConcurrencyKey("some");
 	}
 
@@ -89,8 +89,8 @@ public class TaskBuildersTest extends CTSTestsBase {
 	@Test(expected = IllegalStateException.class)
 	public void testUnD() {
 		TaskBuilders.UniqueTaskBuilder chBuilder = TaskBuilders.uniqueTask();
-		chBuilder.setUniquenessKey("something");
-		chBuilder.build();
+		chBuilder.setUniquenessKey("something")
+				.build();
 		chBuilder.setUniquenessKey("some");
 	}
 
