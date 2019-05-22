@@ -45,7 +45,7 @@ interface ClusterTasksDataProvider {
 	 * @param tasks one or more tasks content to be pushed into the queue
 	 * @return an array of Optionals, corresponding to the array of the tasks, having either the task ID in case of successful push or an exception in case of failure
 	 */
-	ClusterTaskPersistenceResult[] storeTasks(TaskInternal... tasks);
+	ClusterTaskPersistenceResult[] storeTasks(ClusterTaskImpl... tasks);
 
 	/**
 	 * Updates single scheduled task with new task run interval
@@ -114,7 +114,7 @@ interface ClusterTasksDataProvider {
 	 * @param candidatesToReschedule list of tasks of type SCHEDULE that should be re-run
 	 * @return actual number of rescheduled tasks
 	 */
-	int reinsertScheduledTasks(Collection<TaskInternal> candidatesToReschedule);
+	int reinsertScheduledTasks(Collection<ClusterTaskImpl> candidatesToReschedule);
 
 	/**
 	 * Implementation should provide a counter for all tasks in the specified status existing in the storage grouped be PROCESSOR TYPE
@@ -150,6 +150,15 @@ interface ClusterTasksDataProvider {
 	int removeLongTimeNoSeeNodes(long maxTimeNoSeeMillis);
 
 	/**
+	 * Implementation should count tasks by the given application key and status
+	 *
+	 * @param applicationKey application key; MAY be NULL
+	 * @param status         status; MAY be NULL; if is NULL - count all tasks of the given application key
+	 * @return number of counted tasks
+	 */
+	int countTasksByApplicationKey(String applicationKey, ClusterTaskStatus status);
+
+	/**
 	 * Implementation should provide a counter of all tasks existing in the Storage right to the moment of query
 	 * Counter always works within boundaries of a specific processor's tasks type
 	 * Counter should take into consideration OPTIONAL concurrency key parameter
@@ -161,18 +170,4 @@ interface ClusterTasksDataProvider {
 	 */
 	@Deprecated
 	int countTasks(String processorType, Set<ClusterTaskStatus> statuses);
-
-	/**
-	 * Implementation should provide a counter of all tasks existing in the Storage right to the moment of query
-	 * Counter always works within boundaries of a specific processor's tasks type
-	 * Counter should take into consideration OPTIONAL concurrency key parameter
-	 * Counter should take into consideration OPTIONAL statuses list parameter
-	 *
-	 * @param processorType  type of the processor, that it's tasks are looked up; MUST NOT be null nor empty
-	 * @param concurrencyKey concurrency narrower, OPTIONAL; when equals to null or empty will not be taken into consideration
-	 * @param statuses       statuses list to take into consideration, OPTIONAL; MUST NOT be null, MAY be an empty set
-	 * @return number of tasks of the specified type [AND, optionally, concurrencyKey] found in DB
-	 */
-	@Deprecated
-	int countTasks(String processorType, String concurrencyKey, Set<ClusterTaskStatus> statuses);
 }

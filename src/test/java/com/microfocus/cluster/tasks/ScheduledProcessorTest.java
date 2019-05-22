@@ -1,6 +1,5 @@
 package com.microfocus.cluster.tasks;
 
-import com.microfocus.cluster.tasks.api.ClusterTasksService;
 import com.microfocus.cluster.tasks.processors.scheduled.ClusterTasksSchedProcA_test;
 import com.microfocus.cluster.tasks.processors.scheduled.ClusterTasksSchedProcB_test;
 import com.microfocus.cluster.tasks.processors.scheduled.ClusterTasksSchedProcC_test;
@@ -29,8 +28,6 @@ import static org.junit.Assert.assertTrue;
 public class ScheduledProcessorTest extends CTSTestsBase {
 	private static final Logger logger = LoggerFactory.getLogger(ScheduledProcessorTest.class);
 
-	@Autowired
-	private ClusterTasksService clusterTasksService;
 	@Autowired
 	private ClusterTasksSchedProcD_test clusterTasksSchedProcD_test;
 

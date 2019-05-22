@@ -3,7 +3,6 @@ package com.microfocus.cluster.tasks;
 import com.microfocus.cluster.tasks.api.builders.TaskBuilders;
 import com.microfocus.cluster.tasks.api.dto.ClusterTask;
 import com.microfocus.cluster.tasks.api.enums.ClusterTaskStatus;
-import com.microfocus.cluster.tasks.api.ClusterTasksService;
 import com.microfocus.cluster.tasks.api.dto.ClusterTaskPersistenceResult;
 import com.microfocus.cluster.tasks.api.enums.ClusterTaskInsertStatus;
 import com.microfocus.cluster.tasks.api.enums.ClusterTasksDataProviderType;
@@ -12,7 +11,6 @@ import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.test.context.ContextConfiguration;
 import org.springframework.test.context.junit4.SpringJUnit4ClassRunner;
 
@@ -32,9 +30,6 @@ import static org.junit.Assert.fail;
 })
 public class UniquenessTest extends CTSTestsBase {
 	private static final Logger logger = LoggerFactory.getLogger(UniquenessTest.class);
-
-	@Autowired
-	private ClusterTasksService clusterTasksService;
 
 	@Test
 	public void uniquenessTest_A_no_concurrency_keys() {

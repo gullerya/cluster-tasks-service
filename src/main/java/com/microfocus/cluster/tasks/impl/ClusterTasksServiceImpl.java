@@ -19,6 +19,7 @@ import com.microfocus.cluster.tasks.api.enums.ClusterTaskStatus;
 import com.microfocus.cluster.tasks.api.enums.ClusterTaskType;
 import com.microfocus.cluster.tasks.api.enums.ClusterTasksDataProviderType;
 import io.prometheus.client.Gauge;
+import io.prometheus.client.Histogram;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -40,6 +41,7 @@ import java.util.stream.Collectors;
 public class ClusterTasksServiceImpl implements ClusterTasksService {
 	private final Logger logger = LoggerFactory.getLogger(ClusterTasksServiceImpl.class);
 	private final static Gauge tasksInsertionAverageDuration;
+	private static final Histogram foreignIsEnabledCallDuration;
 
 	private final String RUNTIME_INSTANCE_ID = UUID.randomUUID().toString();
 	private final CompletableFuture<Boolean> readyPromise = new CompletableFuture<>();
@@ -58,6 +60,11 @@ public class ClusterTasksServiceImpl implements ClusterTasksService {
 		tasksInsertionAverageDuration = Gauge.build()
 				.name("cts_task_insert_average_time")
 				.help("CTS task insert average time (in millis)")
+				.labelNames("runtime_instance_id")
+				.register();
+		foreignIsEnabledCallDuration = Histogram.build()
+				.name("cts_foreign_is_enabled_duration")
+				.help("CTS foreign 'isEnabled' call duration")
 				.labelNames("runtime_instance_id")
 				.register();
 	}
@@ -161,7 +168,7 @@ public class ClusterTasksServiceImpl implements ClusterTasksService {
 		ClusterTasksDataProvider dataProvider = dataProvidersMap.get(dataProviderType);
 		if (dataProvider != null) {
 			long startStore = System.currentTimeMillis();
-			TaskInternal[] taskInternals = convertTasks(tasks, processorType);
+			ClusterTaskImpl[] taskInternals = convertTasks(tasks, processorType);
 			ClusterTaskPersistenceResult[] result = dataProvidersMap.get(dataProviderType).storeTasks(taskInternals);
 			long timeForAll = System.currentTimeMillis() - startStore;
 			tasksInsertionAverageDuration.labels(RUNTIME_INSTANCE_ID).set((double) timeForAll / tasks.length);
@@ -200,6 +207,22 @@ public class ClusterTasksServiceImpl implements ClusterTasksService {
 				dispatcher.halt(),
 				maintainer.halt()
 		).handleAsync((e, r) -> true);
+	}
+
+	@Override
+	public int countTasksByApplicationKey(ClusterTasksDataProviderType dataProviderType, String applicationKey, ClusterTaskStatus status) {
+		if (dataProviderType == null) {
+			throw new IllegalArgumentException("data provider type MUST NOT be NULL");
+		}
+		if (!dataProvidersMap.containsKey(dataProviderType)) {
+			throw new IllegalStateException("no data providers of type " + dataProviderType + " registered");
+		}
+		if (applicationKey != null && applicationKey.length() > TaskBuilderBase.MAX_APPLICATION_KEY_LENGTH) {
+			throw new IllegalArgumentException("application key MAY NOT exceed " + TaskBuilderBase.MAX_APPLICATION_KEY_LENGTH + " chars length");
+		}
+
+		ClusterTasksDataProvider dataProvider = dataProvidersMap.get(dataProviderType);
+		return dataProvider.countTasksByApplicationKey(applicationKey, status);
 	}
 
 	@Deprecated
@@ -285,7 +308,7 @@ public class ClusterTasksServiceImpl implements ClusterTasksService {
 										: type)
 								.setDelayByMillis(processor.scheduledTaskRunInterval)
 								.build();
-						TaskInternal[] scheduledTasks = convertTasks(new ClusterTask[]{clusterTask}, type);
+						ClusterTaskImpl[] scheduledTasks = convertTasks(new ClusterTask[]{clusterTask}, type);
 						scheduledTasks[0].taskType = ClusterTaskType.SCHEDULED;
 						do {
 							enqueueAttemptsCount++;
@@ -316,15 +339,15 @@ public class ClusterTasksServiceImpl implements ClusterTasksService {
 				});
 	}
 
-	private TaskInternal[] convertTasks(ClusterTask[] sourceTasks, String targetProcessorType) {
-		TaskInternal[] result = new TaskInternal[sourceTasks.length];
+	private ClusterTaskImpl[] convertTasks(ClusterTask[] sourceTasks, String targetProcessorType) {
+		ClusterTaskImpl[] result = new ClusterTaskImpl[sourceTasks.length];
 		for (int i = 0; i < sourceTasks.length; i++) {
 			ClusterTask source = sourceTasks[i];
 			if (source == null) {
 				throw new IllegalArgumentException("of the submitted tasks NONE SHOULD BE NULL");
 			}
 
-			TaskInternal target = new TaskInternal();
+			ClusterTaskImpl target = new ClusterTaskImpl();
 
 			//  uniqueness key
 			target.uniquenessKey = source.getUniquenessKey() != null
@@ -335,6 +358,7 @@ public class ClusterTasksServiceImpl implements ClusterTasksService {
 			preprocessConcurrencyKey(source, target, targetProcessorType);
 
 			target.processorType = targetProcessorType;
+			target.applicationKey = source.getApplicationKey();
 			target.orderingFactor = null;
 			target.delayByMillis = source.getDelayByMillis() == null ? (Long) 0L : source.getDelayByMillis();
 			target.body = source.getBody() == null || source.getBody().isEmpty() ? null : source.getBody();
@@ -346,7 +370,7 @@ public class ClusterTasksServiceImpl implements ClusterTasksService {
 		return result;
 	}
 
-	private void preprocessConcurrencyKey(ClusterTask source, TaskInternal target, String processorType) {
+	private void preprocessConcurrencyKey(ClusterTask source, ClusterTaskImpl target, String processorType) {
 		String cKey;
 		if (source.getUniquenessKey() != null) {
 			cKey = source.getUniquenessKey();
@@ -400,13 +424,9 @@ public class ClusterTasksServiceImpl implements ClusterTasksService {
 		}
 
 		boolean isCTSServiceEnabled() {
-			long DURATION_THRESHOLD = 5;
-			long foreignCallStart = System.currentTimeMillis();
+			Histogram.Timer foreignCallTimer = foreignIsEnabledCallDuration.labels(RUNTIME_INSTANCE_ID).startTimer();
 			boolean isEnabled = serviceConfigurer.isEnabled();
-			long foreignCallDuration = System.currentTimeMillis() - foreignCallStart;
-			if (foreignCallDuration > DURATION_THRESHOLD) {
-				logger.warn("call to a foreign method 'isEnabled' took more than " + DURATION_THRESHOLD + "ms (" + foreignCallDuration + "ms)");
-			}
+			foreignCallTimer.close();
 			return isEnabled;
 		}
 

@@ -11,18 +11,13 @@ package com.microfocus.cluster.tasks.impl;
 import com.microfocus.cluster.tasks.api.dto.ClusterTask;
 import com.microfocus.cluster.tasks.api.enums.ClusterTasksDataProviderType;
 import io.prometheus.client.Gauge;
+import io.prometheus.client.Histogram;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 
 import javax.annotation.PostConstruct;
-import java.util.ArrayList;
-import java.util.Collection;
-import java.util.Collections;
-import java.util.Comparator;
-import java.util.LinkedHashMap;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ThreadFactory;
@@ -39,6 +34,8 @@ public abstract class ClusterTasksProcessorBase {
 	private final Logger logger = LoggerFactory.getLogger(ClusterTasksProcessorBase.class);
 	private static final String NON_CONCURRENT_TASKS_GROUP_KEY = "NULL";
 	private static final Gauge threadsUtilizationGauge;
+	private static final Histogram foreignIsReadyToHandleTasksCallDuration;
+	private static final Histogram foreignIsTaskAbleToRunCallDuration;
 
 	private final String type;
 	private final ClusterTasksDataProviderType dataProviderType;
@@ -60,6 +57,16 @@ public abstract class ClusterTasksProcessorBase {
 				.name("cts_per_processor_threads_utilization_percents")
 				.help("CTS per-processor threads utilization")
 				.labelNames("processor_type")
+				.register();
+		foreignIsReadyToHandleTasksCallDuration = Histogram.build()
+				.name("cts_foreign_is_ready_to_handle_tasks_duration")
+				.help("CTS foreign 'isReadyToHandleTasks' call duration")
+				.labelNames("runtime_instance_id")
+				.register();
+		foreignIsTaskAbleToRunCallDuration = Histogram.build()
+				.name("cts_foreign_is_task_able_to_run_duration")
+				.help("CTS foreign 'isTaskAbleToRun' call duration")
+				.labelNames("runtime_instance_id")
 				.register();
 	}
 
@@ -128,12 +135,27 @@ public abstract class ClusterTasksProcessorBase {
 	}
 
 	/**
-	 * gets a processor's status as of ability to handle another task
+	 * gets a processor's status as of ability to handle tasks in general (not specific one)
+	 * - call to this API performed each dispatch cycle BEFORE even going to DB
 	 * - delayed tasks MAY are expected to run withing the following span of time: delay - delay + tasksTakeInterval
 	 *
-	 * @return current condition of the processor as of readiness to take [any] task
+	 * @return current condition of the processor as of readiness to take [any] task, if FALSE returned tasks of this processor won't be even pulled from the DB
 	 */
-	protected boolean isReadyToHandleTask() {
+	protected boolean isReadyToHandleTasks() {
+		return true;
+	}
+
+	/**
+	 * allows implementations to check application readiness state per each specific task by custom application key
+	 * - this API will be called each dispatch cycle AFTER the tasks were pulled from the DB, for each and every task 'in hand'
+	 * - denying task will effectively leave it in queue without switching to RUNNING state
+	 * - denying channeled task will effectively hold the whole channel (even if later tasks in the channel have different application key)
+	 * - denying simple task will not have effect on other tasks beside the fact, that the order of execution will change, naturally
+	 *
+	 * @param applicationKey application key provided by consumer at enqueue time
+	 * @return true if the application can run the task [default] or false to keep the task pending in queue
+	 */
+	protected boolean isTaskAbleToRun(String applicationKey) {
 		return true;
 	}
 
@@ -155,62 +177,71 @@ public abstract class ClusterTasksProcessorBase {
 
 		boolean foreignResult = true;
 		if (internalResult) {
-			long foreignCallStart = System.currentTimeMillis();
-			foreignResult = isReadyToHandleTask();
-			long foreignCallDuration = System.currentTimeMillis() - foreignCallStart;
-			if (foreignCallDuration > FOREIGN_CHECK_DURATION_THRESHOLD) {
-				logger.warn("call to a foreign method 'isReadyToHandleTask' took more than " + FOREIGN_CHECK_DURATION_THRESHOLD + "ms (" + foreignCallDuration + "ms)");
-			}
+			Histogram.Timer foreignCallTimer = foreignIsReadyToHandleTasksCallDuration.labels(clusterTasksService.getInstanceID()).startTimer();
+			foreignResult = isReadyToHandleTasks();
+			foreignCallTimer.close();
 		}
 		return internalResult && foreignResult;
 	}
 
-	final Collection<TaskInternal> selectTasksToRun(List<TaskInternal> candidates) {
-		Map<Long, TaskInternal> tasksToRunByID = new LinkedHashMap<>();
+	final Collection<ClusterTaskImpl> selectTasksToRun(List<ClusterTaskImpl> candidates) {
+		Map<Long, ClusterTaskImpl> tasksToRunByID = new LinkedHashMap<>();
 		int availableWorkersTmp = availableWorkers.get();
 
-		//  group tasks by concurrency key
-		Map<String, List<TaskInternal>> tasksGroupedByConcurrencyKeys = candidates.stream()
-				.collect(Collectors.groupingBy(t -> t.concurrencyKey != null ? t.concurrencyKey : NON_CONCURRENT_TASKS_GROUP_KEY));
+		//  filter out tasks rejected on applicative per-task validation
+		candidates = candidates.stream()
+				.filter(candidate -> {
+					Histogram.Timer foreignCallTimer = foreignIsTaskAbleToRunCallDuration.labels(clusterTasksService.getInstanceID()).startTimer();
+					boolean keepTaskToRun = isTaskAbleToRun(candidate.applicationKey);
+					foreignCallTimer.close();
+					return keepTaskToRun;
+				})
+				.collect(Collectors.toList());
 
-		//  order tasks within the groups
-		tasksGroupedByConcurrencyKeys.values().forEach(tasksList -> tasksList.sort(Comparator.comparing(t -> t.orderingFactor)));
+		if (!candidates.isEmpty()) {
+			//  group tasks by concurrency key
+			Map<String, List<ClusterTaskImpl>> tasksGroupedByConcurrencyKeys = candidates.stream()
+					.collect(Collectors.groupingBy(t -> t.concurrencyKey != null ? t.concurrencyKey : NON_CONCURRENT_TASKS_GROUP_KEY));
 
-		//  order relevant concurrency keys by fairness logic
-		List<String> orderedRelevantKeys = new ArrayList<>(tasksGroupedByConcurrencyKeys.keySet());
-		orderedRelevantKeys.sort((keyA, keyB) -> {
-			Long keyALastTouch = concurrencyKeysFairnessMap.getOrDefault(keyA, 0L);
-			Long keyBLastTouch = concurrencyKeysFairnessMap.getOrDefault(keyB, 0L);
-			if (!keyALastTouch.equals(keyBLastTouch)) {
-				return Long.compare(keyALastTouch, keyBLastTouch);
-			} else {
-				return Long.compare(tasksGroupedByConcurrencyKeys.get(keyA).get(0).orderingFactor, tasksGroupedByConcurrencyKeys.get(keyB).get(0).orderingFactor);
-			}
-		});
+			//  order tasks within the groups
+			tasksGroupedByConcurrencyKeys.values().forEach(tasksList -> tasksList.sort(Comparator.comparing(t -> t.orderingFactor)));
 
-		//  first - select tasks fairly - including NON_CONCURRENT_TASKS_GROUP to let them chance to run as well
-		//  here we taking a single (first) task from each CONCURRENT CHANNEL
-		for (String concurrencyKey : orderedRelevantKeys) {
-			if (availableWorkersTmp <= 0) break;
-			List<TaskInternal> channeledTasksGroup = tasksGroupedByConcurrencyKeys.get(concurrencyKey);
-			tasksToRunByID.put(channeledTasksGroup.get(0).id, channeledTasksGroup.get(0));
-			availableWorkersTmp--;
-		}
+			//  order relevant concurrency keys by fairness logic
+			List<String> orderedRelevantKeys = new ArrayList<>(tasksGroupedByConcurrencyKeys.keySet());
+			orderedRelevantKeys.sort((keyA, keyB) -> {
+				Long keyALastTouch = concurrencyKeysFairnessMap.getOrDefault(keyA, 0L);
+				Long keyBLastTouch = concurrencyKeysFairnessMap.getOrDefault(keyB, 0L);
+				if (!keyALastTouch.equals(keyBLastTouch)) {
+					return Long.compare(keyALastTouch, keyBLastTouch);
+				} else {
+					return Long.compare(tasksGroupedByConcurrencyKeys.get(keyA).get(0).orderingFactor, tasksGroupedByConcurrencyKeys.get(keyB).get(0).orderingFactor);
+				}
+			});
 
-		//  second - if there are still available threads, give'em to the rest of the NON_CONCURRENT_TASKS_GROUP
-		List<TaskInternal> nonConcurrentTasks = tasksGroupedByConcurrencyKeys.getOrDefault(NON_CONCURRENT_TASKS_GROUP_KEY, Collections.emptyList());
-		for (TaskInternal task : nonConcurrentTasks) {
-			if (availableWorkersTmp <= 0) break;
-			if (!tasksToRunByID.containsKey(task.id)) {
-				tasksToRunByID.put(task.id, task);
+			//  first - select tasks fairly - including NON_CONCURRENT_TASKS_GROUP to let them chance to run as well
+			//  here we taking a single (first) task from each CONCURRENT CHANNEL
+			for (String concurrencyKey : orderedRelevantKeys) {
+				if (availableWorkersTmp <= 0) break;
+				List<ClusterTaskImpl> channeledTasksGroup = tasksGroupedByConcurrencyKeys.get(concurrencyKey);
+				tasksToRunByID.put(channeledTasksGroup.get(0).id, channeledTasksGroup.get(0));
 				availableWorkersTmp--;
+			}
+
+			//  second - if there are still available threads, give'em to the rest of the NON_CONCURRENT_TASKS_GROUP
+			List<ClusterTaskImpl> nonConcurrentTasks = tasksGroupedByConcurrencyKeys.getOrDefault(NON_CONCURRENT_TASKS_GROUP_KEY, Collections.emptyList());
+			for (ClusterTaskImpl task : nonConcurrentTasks) {
+				if (availableWorkersTmp <= 0) break;
+				if (!tasksToRunByID.containsKey(task.id)) {
+					tasksToRunByID.put(task.id, task);
+					availableWorkersTmp--;
+				}
 			}
 		}
 
 		return tasksToRunByID.values();
 	}
 
-	final void handleTasks(Collection<TaskInternal> tasks, ClusterTasksDataProvider dataProvider) {
+	final void handleTasks(Collection<ClusterTaskImpl> tasks, ClusterTasksDataProvider dataProvider) {
 		tasks.forEach(task -> {
 			if (handoutTaskToWorker(dataProvider, task)) {
 				concurrencyKeysFairnessMap.put(
@@ -226,7 +257,7 @@ public abstract class ClusterTasksProcessorBase {
 				.set(((double) (numberOfWorkersPerNode - availableWorkers.get())) / ((double) numberOfWorkersPerNode));
 	}
 
-	final void notifyTaskWorkerFinished(ClusterTasksDataProvider dataProvider, TaskInternal task) {
+	final void notifyTaskWorkerFinished(ClusterTasksDataProvider dataProvider, ClusterTaskImpl task) {
 		int aWorkers = availableWorkers.incrementAndGet();
 		lastTaskHandledLocalTime = System.currentTimeMillis();
 		logger.debug(type + " available workers " + aWorkers);
@@ -235,7 +266,7 @@ public abstract class ClusterTasksProcessorBase {
 		clusterTasksService.getMaintainer().submitTaskToRemove(dataProvider, task);
 	}
 
-	private boolean handoutTaskToWorker(ClusterTasksDataProvider dataProvider, TaskInternal task) {
+	private boolean handoutTaskToWorker(ClusterTasksDataProvider dataProvider, ClusterTaskImpl task) {
 		try {
 			ClusterTasksProcessorWorker worker = new ClusterTasksProcessorWorker(dataProvider, this, task);
 			workersThreadPool.execute(worker);

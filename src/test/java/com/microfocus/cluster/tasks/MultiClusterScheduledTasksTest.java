@@ -110,10 +110,10 @@ public class MultiClusterScheduledTasksTest {
 		Assert.assertTrue(clusterTasksService.getReadyPromise().get());
 		clusterTasksSchedProcMultiNodes_B_test.reschedule(5000);
 		ClusterTasksSchedProcMultiNodesB_test.suspended = true;
-		ClusterTasksSchedProcMultiNodesB_test.executionsCounter = 0;
+		ClusterTasksSchedProcMultiNodesB_test.executionsCounter.set(0);
 		ClusterTasksSchedProcMultiNodesB_test.suspended = false;
 		CTSTestsUtils.waitSafely(7000);
-		assertTrue(ClusterTasksSchedProcMultiNodesB_test.executionsCounter == 1 || ClusterTasksSchedProcMultiNodesB_test.executionsCounter == 2);
+		assertTrue("unexpected number of executions " + ClusterTasksSchedProcMultiNodesB_test.executionsCounter, ClusterTasksSchedProcMultiNodesB_test.executionsCounter.get() == 1 || ClusterTasksSchedProcMultiNodesB_test.executionsCounter.get() == 2);
 
 		//  stop all CTS instances
 		contexts.forEach(c -> {

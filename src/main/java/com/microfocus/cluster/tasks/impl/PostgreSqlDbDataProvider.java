@@ -76,20 +76,20 @@ final class PostgreSqlDbDataProvider extends ClusterTasksDbDataProvider {
 		removeLongTimeNoSeeSQL = "DELETE FROM " + ACTIVE_NODES_TABLE_NAME + " WHERE " + ACTIVE_NODE_LAST_SEEN + " < LOCALTIMESTAMP - MAKE_INTERVAL(SECS := ? / 1000)";
 
 		//  insert / update tasks
-		insertTaskSQL = "SELECT insert_task(" + String.join(",", Collections.nCopies(8, "?")) + ")";
+		insertTaskSQL = "SELECT insert_task(" + String.join(",", Collections.nCopies(9, "?")) + ")";
 		updateScheduledTaskIntervalSQL = "UPDATE " + META_TABLE_NAME +
 				" SET " + CREATED + " = LOCALTIMESTAMP, " + DELAY_BY_MILLIS + " = ?" +
 				" WHERE " + PROCESSOR_TYPE + " = ? AND " + TASK_TYPE + " = " + ClusterTaskType.SCHEDULED.value + " AND " + STATUS + " = " + ClusterTaskStatus.PENDING.value;
 
 		//  select and run tasks flow
 		lockForSelectForRunTasksSQL = "SELECT pg_advisory_xact_lock(1, 1)";
-		String selectForRunFields = String.join(",", META_ID, TASK_TYPE, PROCESSOR_TYPE, UNIQUENESS_KEY, CONCURRENCY_KEY, ORDERING_FACTOR, DELAY_BY_MILLIS, BODY_PARTITION, STATUS);
+		String selectForRunFields = String.join(",", META_ID, TASK_TYPE, PROCESSOR_TYPE, UNIQUENESS_KEY, CONCURRENCY_KEY, APPLICATION_KEY, ORDERING_FACTOR, DELAY_BY_MILLIS, BODY_PARTITION, STATUS);
 		for (int maxProcessorTypes : new Integer[]{20, 50, 100, 500}) {
 			String processorTypesInParameter = String.join(",", Collections.nCopies(maxProcessorTypes, "?"));
 			selectForUpdateTasksSQLs.put(maxProcessorTypes,
 					"SELECT * FROM" +
 							"   (SELECT " + selectForRunFields + "," +
-							"       ROW_NUMBER() OVER (PARTITION BY COALESCE(" + CONCURRENCY_KEY + ",MD5(RANDOM()::TEXT || CLOCK_TIMESTAMP()::TEXT)) ORDER BY " + ORDERING_FACTOR + "," + CREATED + "," + META_ID + " ASC) AS row_index," +
+							"       ROW_NUMBER() OVER (PARTITION BY COALESCE(" + CONCURRENCY_KEY + ",MD5(RANDOM()::TEXT || CLOCK_TIMESTAMP()::TEXT)) ORDER BY " + ORDERING_FACTOR + "," + META_ID + " ASC) AS row_index," +
 							"       COUNT(CASE WHEN " + STATUS + " = " + ClusterTaskStatus.RUNNING.value + " THEN 1 ELSE NULL END) OVER (PARTITION BY COALESCE(" + CONCURRENCY_KEY + ",MD5(RANDOM()::TEXT || CLOCK_TIMESTAMP()::TEXT))) AS running_count" +
 							"   FROM " + META_TABLE_NAME +
 							"   WHERE " + PROCESSOR_TYPE + " IN(" + processorTypesInParameter + ")" +
@@ -156,10 +156,10 @@ final class PostgreSqlDbDataProvider extends ClusterTasksDbDataProvider {
 	}
 
 	@Override
-	public ClusterTaskPersistenceResult[] storeTasks(TaskInternal... tasks) {
+	public ClusterTaskPersistenceResult[] storeTasks(ClusterTaskImpl... tasks) {
 		List<ClusterTaskPersistenceResult> result = new ArrayList<>(tasks.length);
 
-		for (TaskInternal task : tasks) {
+		for (ClusterTaskImpl task : tasks) {
 			getTransactionTemplate().execute(transactionStatus -> {
 				try {
 					JdbcTemplate jdbcTemplate = getJdbcTemplate();
@@ -173,6 +173,7 @@ final class PostgreSqlDbDataProvider extends ClusterTasksDbDataProvider {
 							task.processorType,
 							task.uniquenessKey,
 							task.concurrencyKey,
+							task.applicationKey,
 							task.delayByMillis,
 							task.partitionIndex,
 							task.orderingFactor,
@@ -183,6 +184,7 @@ final class PostgreSqlDbDataProvider extends ClusterTasksDbDataProvider {
 							Types.VARCHAR,              //  processor type
 							Types.VARCHAR,              //  uniqueness key
 							Types.VARCHAR,              //  concurrency key
+							Types.VARCHAR,              //  application key
 							Types.BIGINT,               //  delay by millis
 							Types.INTEGER,              //  partition index
 							Types.BIGINT,               //  ordering factor
@@ -217,7 +219,7 @@ final class PostgreSqlDbDataProvider extends ClusterTasksDbDataProvider {
 
 	@Override
 	public void retrieveAndDispatchTasks(Map<String, ClusterTasksProcessorBase> availableProcessors) {
-		Map<ClusterTasksProcessorBase, Collection<TaskInternal>> tasksToRun = new HashMap<>();
+		Map<ClusterTasksProcessorBase, Collection<ClusterTaskImpl>> tasksToRun = new HashMap<>();
 
 		//  within the same transaction do:
 		//  - SELECT candidate tasks to be run
@@ -248,17 +250,17 @@ final class PostgreSqlDbDataProvider extends ClusterTasksDbDataProvider {
 				int[] paramTypes = new int[paramsTotal];
 				for (int i = 0; i < paramsTotal; i++) paramTypes[i] = Types.VARCHAR;
 
-				List<TaskInternal> tasks;
+				List<ClusterTaskImpl> tasks;
 				jdbcTemplate.execute(lockForSelectForRunTasksSQL);
 				tasks = jdbcTemplate.query(sql, params, paramTypes, this::tasksMetadataReader);
 				if (tasks != null && !tasks.isEmpty()) {
-					Map<String, List<TaskInternal>> tasksByProcessor = tasks.stream().collect(Collectors.groupingBy(ti -> ti.processorType));
+					Map<String, List<ClusterTaskImpl>> tasksByProcessor = tasks.stream().collect(Collectors.groupingBy(ti -> ti.processorType));
 					Set<Long> tasksToRunIDs = new HashSet<>();
 
 					//  let processors decide which tasks will be processed from all available
 					tasksByProcessor.forEach((processorType, processorTasks) -> {
 						ClusterTasksProcessorBase processor = availableProcessors.get(processorType);
-						Collection<TaskInternal> tmpTasks = processor.selectTasksToRun(processorTasks);
+						Collection<ClusterTaskImpl> tmpTasks = processor.selectTasksToRun(processorTasks);
 						tasksToRun.put(processor, tmpTasks);
 						tasksToRunIDs.addAll(tmpTasks.stream().map(task -> task.id).collect(Collectors.toList()));
 					});
@@ -294,13 +296,6 @@ final class PostgreSqlDbDataProvider extends ClusterTasksDbDataProvider {
 
 	@Override
 	public String retrieveTaskBody(Long taskId, Long partitionIndex) {
-		if (taskId == null) {
-			throw new IllegalArgumentException("task ID MUST NOT be null");
-		}
-		if (partitionIndex == null) {
-			throw new IllegalArgumentException("partition index MUST NOT be null");
-		}
-
 		try {
 			JdbcTemplate jdbcTemplate = getJdbcTemplate();
 			String sql = selectTaskBodyByPartitionSQLs.get(partitionIndex);

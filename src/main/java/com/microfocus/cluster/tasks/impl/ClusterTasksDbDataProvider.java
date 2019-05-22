@@ -74,6 +74,7 @@ abstract class ClusterTasksDbDataProvider implements ClusterTasksDataProvider {
 	static final String PROCESSOR_TYPE = META_COLUMNS_PREFIX.concat("PROCESSOR_TYPE");
 	static final String UNIQUENESS_KEY = META_COLUMNS_PREFIX.concat("UNIQUENESS_KEY");
 	static final String CONCURRENCY_KEY = META_COLUMNS_PREFIX.concat("CONCURRENCY_KEY");
+	static final String APPLICATION_KEY = META_COLUMNS_PREFIX.concat("APPLICATION_KEY");
 	static final String ORDERING_FACTOR = META_COLUMNS_PREFIX.concat("ORDERING_FACTOR");
 	static final String STATUS = META_COLUMNS_PREFIX.concat("STATUS");
 	static final String CREATED = META_COLUMNS_PREFIX.concat("CREATED");
@@ -263,12 +264,12 @@ abstract class ClusterTasksDbDataProvider implements ClusterTasksDataProvider {
 				} else {
 					selectStaledSQL = sqls[0];
 				}
-				List<TaskInternal> gcCandidates = jdbcTemplate.query(selectStaledSQL, this::gcCandidatesReader);
+				List<ClusterTaskImpl> gcCandidates = jdbcTemplate.query(selectStaledSQL, this::gcCandidatesReader);
 				if (gcCandidates != null && !gcCandidates.isEmpty()) {
 					logger.info("found " + gcCandidates.size() + " re-runnable tasks as staled, processing...");
 
 					//  collect tasks valid for re-enqueue
-					Collection<TaskInternal> tasksToReschedule = gcCandidates.stream()
+					Collection<ClusterTaskImpl> tasksToReschedule = gcCandidates.stream()
 							.collect(Collectors.toMap(task -> task.processorType, Function.identity(), (t1, t2) -> t2))
 							.values();
 
@@ -298,10 +299,10 @@ abstract class ClusterTasksDbDataProvider implements ClusterTasksDataProvider {
 	}
 
 	@Override
-	public int reinsertScheduledTasks(Collection<TaskInternal> candidatesToReschedule) {
+	public int reinsertScheduledTasks(Collection<ClusterTaskImpl> candidatesToReschedule) {
 		int result = 0;
 		Map<String, Integer> pendingCount = getJdbcTemplate().query(countScheduledPendingTasksSQL, this::scheduledPendingReader);
-		List<TaskInternal> tasksToReschedule = new ArrayList<>();
+		List<ClusterTaskImpl> tasksToReschedule = new ArrayList<>();
 		candidatesToReschedule.forEach(task -> {
 			if (pendingCount != null && (!pendingCount.containsKey(task.processorType) || pendingCount.get(task.processorType) == 0)) {
 				task.uniquenessKey = task.processorType;
@@ -310,7 +311,7 @@ abstract class ClusterTasksDbDataProvider implements ClusterTasksDataProvider {
 			}
 		});
 		if (!tasksToReschedule.isEmpty()) {
-			ClusterTaskPersistenceResult[] results = storeTasks(tasksToReschedule.toArray(new TaskInternal[0]));
+			ClusterTaskPersistenceResult[] results = storeTasks(tasksToReschedule.toArray(new ClusterTaskImpl[0]));
 			for (ClusterTaskPersistenceResult r : results) {
 				if (r.getStatus() == ClusterTaskInsertStatus.SUCCESS) {
 					result++;
@@ -365,18 +366,34 @@ abstract class ClusterTasksDbDataProvider implements ClusterTasksDataProvider {
 		return result;
 	}
 
-	@Deprecated
 	@Override
-	public int countTasks(String processorType, Set<ClusterTaskStatus> statuses) {
-		String countTasksSQL = buildCountTasksSQL(processorType, statuses);
-		Integer result = getJdbcTemplate().queryForObject(countTasksSQL, Integer.class);
+	public int countTasksByApplicationKey(String applicationKey, ClusterTaskStatus status) {
+		String sql = "SELECT COUNT(*) FROM " + META_TABLE_NAME +
+				"   WHERE " + APPLICATION_KEY + (applicationKey == null ? " IS NULL" : " = ?") +
+				(status == null ? "" : ("    AND " + STATUS + " = ?"));
+		Integer result;
+		if (applicationKey == null && status == null) {
+			result = getJdbcTemplate().queryForObject(sql, Integer.class);
+		} else {
+			List<Object> values = new ArrayList<>();
+			List<Integer> types = new ArrayList<>();
+			if (applicationKey != null) {
+				values.add(applicationKey);
+				types.add(Types.VARCHAR);
+			}
+			if (status != null) {
+				values.add(status.value);
+				types.add(Types.BIGINT);
+			}
+			result = getJdbcTemplate().queryForObject(sql, values.toArray(new Object[0]), types.stream().mapToInt(Integer::intValue).toArray(), Integer.class);
+		}
 		return result != null ? result : 0;
 	}
 
 	@Deprecated
 	@Override
-	public int countTasks(String processorType, String concurrencyKey, Set<ClusterTaskStatus> statuses) {
-		String countTasksSQL = buildCountTasksSQL(processorType, concurrencyKey, statuses);
+	public int countTasks(String processorType, Set<ClusterTaskStatus> statuses) {
+		String countTasksSQL = buildCountTasksSQL(processorType, statuses);
 		Integer result = getJdbcTemplate().queryForObject(countTasksSQL, Integer.class);
 		return result != null ? result : 0;
 	}
@@ -413,22 +430,19 @@ abstract class ClusterTasksDbDataProvider implements ClusterTasksDataProvider {
 		return transactionTemplate;
 	}
 
-	List<TaskInternal> tasksMetadataReader(ResultSet resultSet) throws SQLException {
-		List<TaskInternal> result = new LinkedList<>();
-		TaskInternal tmpTask;
+	List<ClusterTaskImpl> tasksMetadataReader(ResultSet resultSet) throws SQLException {
+		List<ClusterTaskImpl> result = new LinkedList<>();
+		ClusterTaskImpl tmpTask;
 		Long tmpLong;
-		String tmpString;
 		while (resultSet.next()) {
 			try {
-				tmpTask = new TaskInternal();
+				tmpTask = new ClusterTaskImpl();
 				tmpTask.id = resultSet.getLong(META_ID);
 				tmpTask.taskType = ClusterTaskType.byValue(resultSet.getLong(TASK_TYPE));
 				tmpTask.processorType = resultSet.getString(PROCESSOR_TYPE);
 				tmpTask.uniquenessKey = resultSet.getString(UNIQUENESS_KEY);
-				tmpString = resultSet.getString(CONCURRENCY_KEY);
-				if (!resultSet.wasNull()) {
-					tmpTask.concurrencyKey = tmpString;
-				}
+				tmpTask.concurrencyKey = resultSet.getString(CONCURRENCY_KEY);
+				tmpTask.applicationKey = resultSet.getString(APPLICATION_KEY);
 				tmpLong = resultSet.getLong(ORDERING_FACTOR);
 				if (!resultSet.wasNull()) {
 					tmpTask.orderingFactor = tmpLong;
@@ -483,11 +497,11 @@ abstract class ClusterTasksDbDataProvider implements ClusterTasksDataProvider {
 		return result;
 	}
 
-	private List<TaskInternal> gcCandidatesReader(ResultSet resultSet) throws SQLException {
-		List<TaskInternal> result = new LinkedList<>();
+	private List<ClusterTaskImpl> gcCandidatesReader(ResultSet resultSet) throws SQLException {
+		List<ClusterTaskImpl> result = new LinkedList<>();
 		while (resultSet.next()) {
 			try {
-				TaskInternal task = new TaskInternal();
+				ClusterTaskImpl task = new ClusterTaskImpl();
 				task.id = resultSet.getLong(META_ID);
 				task.taskType = ClusterTaskType.byValue(resultSet.getLong(TASK_TYPE));
 				Long tmpLong = resultSet.getLong(BODY_PARTITION);
@@ -568,23 +582,6 @@ abstract class ClusterTasksDbDataProvider implements ClusterTasksDataProvider {
 		List<String> queryClauses = new LinkedList<>();
 		if (processorType != null) {
 			queryClauses.add(PROCESSOR_TYPE + " = '" + processorType + "'");
-		}
-		if (statuses != null && !statuses.isEmpty()) {
-			queryClauses.add(STATUS + " IN (" + statuses.stream().map(status -> String.valueOf(status.value)).collect(Collectors.joining(",")) + ")");
-		}
-
-		return buildCountSQLByQueries(queryClauses);
-	}
-
-	private String buildCountTasksSQL(String processorType, String concurrencyKey, Set<ClusterTaskStatus> statuses) {
-		List<String> queryClauses = new LinkedList<>();
-		if (processorType != null) {
-			queryClauses.add(PROCESSOR_TYPE + " = '" + processorType + "'");
-		}
-		if (concurrencyKey != null) {
-			queryClauses.add(CONCURRENCY_KEY + " = '" + concurrencyKey + "'");
-		} else {
-			queryClauses.add(CONCURRENCY_KEY + " IS NULL");
 		}
 		if (statuses != null && !statuses.isEmpty()) {
 			queryClauses.add(STATUS + " IN (" + statuses.stream().map(status -> String.valueOf(status.value)).collect(Collectors.joining(",")) + ")");

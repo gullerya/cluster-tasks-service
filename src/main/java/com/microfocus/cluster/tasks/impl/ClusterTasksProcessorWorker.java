@@ -34,7 +34,7 @@ class ClusterTasksProcessorWorker implements Runnable {
 
 	private final ClusterTasksDataProvider dataProvider;
 	private final ClusterTasksProcessorBase processor;
-	private final TaskInternal task;
+	private final ClusterTaskImpl task;
 
 	static {
 		ctsOwnErrorsCounter = Counter.build()
@@ -54,7 +54,7 @@ class ClusterTasksProcessorWorker implements Runnable {
 				.register();
 	}
 
-	ClusterTasksProcessorWorker(ClusterTasksDataProvider dataProvider, ClusterTasksProcessorBase processor, TaskInternal task) {
+	ClusterTasksProcessorWorker(ClusterTasksDataProvider dataProvider, ClusterTasksProcessorBase processor, ClusterTaskImpl task) {
 		if (processor == null) {
 			throw new IllegalArgumentException("processor MUST NOT be null");
 		}
@@ -76,7 +76,7 @@ class ClusterTasksProcessorWorker implements Runnable {
 		Summary.Timer taskSelfDurationTimer = tasksPerProcessorDuration.labels(processor.getType()).startTimer();           //  metric
 		try {
 			if (enrichTaskWithBodyIfRelevant(task)) {
-				ClusterTaskImpl clusterTask = ClusterTaskImpl.from(task);
+				ClusterTaskImpl clusterTask = new ClusterTaskImpl(task);
 				String weakHash = CTSUtils.get6CharsChecksum(processor.getType());
 				if (clusterTask.concurrencyKey != null && clusterTask.concurrencyKey.endsWith(weakHash)) {
 					clusterTask.concurrencyKey = clusterTask.concurrencyKey.substring(0, clusterTask.concurrencyKey.length() - 6);
@@ -102,8 +102,8 @@ class ClusterTasksProcessorWorker implements Runnable {
 	}
 
 	//  scheduled task reinsert is mission critical part of functionality - MUST be handled and validated
-	private void reinsertScheduledTask(TaskInternal originalTask) {
-		TaskInternal newTask = new TaskInternal(originalTask);
+	private void reinsertScheduledTask(ClusterTaskImpl originalTask) {
+		ClusterTaskImpl newTask = new ClusterTaskImpl(originalTask);
 		boolean reinserted = CTSUtils.retry(6, () -> {
 			int reinsertResult = dataProvider.reinsertScheduledTasks(Collections.singletonList(newTask));
 			if (reinsertResult == 1) {
@@ -118,7 +118,7 @@ class ClusterTasksProcessorWorker implements Runnable {
 		}
 	}
 
-	private boolean enrichTaskWithBodyIfRelevant(TaskInternal task) {
+	private boolean enrichTaskWithBodyIfRelevant(ClusterTaskImpl task) {
 		if (task.partitionIndex != null) {
 			return CTSUtils.retry(3, () -> {
 				try {

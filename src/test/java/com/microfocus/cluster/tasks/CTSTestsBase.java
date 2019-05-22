@@ -4,9 +4,9 @@ import com.microfocus.cluster.tasks.api.ClusterTasksService;
 import org.junit.Before;
 import org.springframework.beans.factory.annotation.Autowired;
 
-abstract class CTSTestsBase {
+public abstract class CTSTestsBase {
 	@Autowired
-	ClusterTasksService clusterTasksService;
+	public ClusterTasksService clusterTasksService;
 
 	@Before
 	public void ensurePrerequisites() {

@@ -42,7 +42,7 @@ public class ClusterTasksStaledTest_A extends ClusterTasksProcessorSimple {
 	}
 
 	@Override
-	protected boolean isReadyToHandleTask() {
+	protected boolean isReadyToHandleTasks() {
 		return !suspended;
 	}
 }

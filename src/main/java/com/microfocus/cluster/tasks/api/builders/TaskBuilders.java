@@ -65,6 +65,18 @@ public class TaskBuilders {
 	public interface TaskBuilder {
 
 		/**
+		 * Sets application key
+		 * - this is an arbitrary parameter for the hosting application use only
+		 * - it is used in the pre-execution APIs (see ClusterTasksProcessorBase#isTaskAbleToRun(java.lang.String) for example)
+		 *
+		 * @param applicationKey application key of max 64 characters
+		 * @return task builder instance
+		 * @throws IllegalStateException    if the {@link #build() build} method has already been called on this builder instance
+		 * @throws IllegalArgumentException if applicationKey parameter is NULL, EMPTY or exceeds 64 chars length
+		 */
+		TaskBuilder setApplicationKey(String applicationKey) throws IllegalStateException, IllegalArgumentException;
+
+		/**
 		 * Sets delay for the task execution
 		 * - delay will be counted from the point of tasks enqueue
 		 * - delay promised to occur in N to (N + tasks dispatch interval), which normally is ~1 second
@@ -72,9 +84,10 @@ public class TaskBuilders {
 		 *
 		 * @param delayByMillis delay for task execution, in milliseconds
 		 * @return task builder instance
-		 * @throws IllegalStateException if the {@link #build() build} method has already been called on this builder instance
+		 * @throws IllegalStateException    if the {@link #build() build} method has already been called on this builder instance
+		 * @throws IllegalArgumentException if delayByMillis parameter is negative
 		 */
-		TaskBuilder setDelayByMillis(long delayByMillis) throws IllegalStateException;
+		TaskBuilder setDelayByMillis(long delayByMillis) throws IllegalStateException, IllegalArgumentException;
 
 		/**
 		 * Sets task's body
@@ -83,9 +96,10 @@ public class TaskBuilders {
 		 *
 		 * @param body task's body
 		 * @return task builder instance
-		 * @throws IllegalStateException if the {@link #build() build} method has already been called on this builder instance
+		 * @throws IllegalStateException    if the {@link #build() build} method has already been called on this builder instance
+		 * @throws IllegalArgumentException if body parameter is NULL or EMPTY
 		 */
-		TaskBuilder setBody(String body) throws IllegalStateException;
+		TaskBuilder setBody(String body) throws IllegalStateException, IllegalArgumentException;
 
 		/**
 		 * Finalizes the build task process and locks the builder instance for further changes
@@ -99,6 +113,14 @@ public class TaskBuilders {
 	private static class SimpleTaskBuilder extends TaskBuilderBase {
 		private SimpleTaskBuilder() {
 		}
+
+		private TaskBuilder setCKProxy(String concurrencyKey, boolean untouched) throws IllegalStateException, IllegalArgumentException {
+			return setConcurrencyKeyInternal(concurrencyKey, untouched);
+		}
+
+		private TaskBuilder setUKProxy(String uniquenessKey) throws IllegalStateException, IllegalArgumentException {
+			return setUniquenessKeyInternal(uniquenessKey);
+		}
 	}
 
 	/**
@@ -108,7 +130,9 @@ public class TaskBuilders {
 	 * - tuning the number of resources (treads) per processor from one side, and a well-thought concurrency key from the other - those two provide
 	 * good means to tune CTS throughput and resources utilization
 	 */
-	public static class ChanneledTaskBuilder extends TaskBuilderBase {
+	public static class ChanneledTaskBuilder {
+		private SimpleTaskBuilder taskBuilder = new SimpleTaskBuilder();
+
 		private ChanneledTaskBuilder() {
 		}
 
@@ -123,7 +147,7 @@ public class TaskBuilders {
 		 * @throws IllegalStateException    if the {@link com.microfocus.cluster.tasks.api.builders.TaskBuilders.TaskBuilder#build() build} method has already been called on this builder instance
 		 * @throws IllegalArgumentException if the key is NULL or EMPTY of bigger than allowed
 		 */
-		public TaskBuilders.TaskBuilder setConcurrencyKey(String concurrencyKey) throws IllegalStateException, IllegalArgumentException {
+		public TaskBuilder setConcurrencyKey(String concurrencyKey) throws IllegalStateException, IllegalArgumentException {
 			return setConcurrencyKey(concurrencyKey, false);
 		}
 
@@ -139,17 +163,8 @@ public class TaskBuilders {
 		 * @throws IllegalStateException    if the {@link com.microfocus.cluster.tasks.api.builders.TaskBuilders.TaskBuilder#build() build} method has already been called on this builder instance
 		 * @throws IllegalArgumentException if the key is NULL or EMPTY of bigger than allowed
 		 */
-		public TaskBuilders.TaskBuilder setConcurrencyKey(String concurrencyKey, boolean untouched) throws IllegalStateException, IllegalArgumentException {
-			if (locked) throw new IllegalStateException("task builder MAY BE used only once");
-			if (concurrencyKey == null || concurrencyKey.isEmpty()) {
-				throw new IllegalArgumentException("concurrency key MUST NOT be null nor empty");
-			}
-			if (concurrencyKey.length() > 34) {
-				throw new IllegalArgumentException("concurrency key's length MUST BE less than or equal to 34 chars");
-			}
-			this.concurrencyKey = concurrencyKey;
-			this.concurrencyKeyUntouched = untouched;
-			return this;
+		public TaskBuilder setConcurrencyKey(String concurrencyKey, boolean untouched) throws IllegalStateException, IllegalArgumentException {
+			return taskBuilder.setCKProxy(concurrencyKey, untouched);
 		}
 	}
 
@@ -162,7 +177,9 @@ public class TaskBuilders {
 	 * while there is no danger of accidentally breaking the chain from one side, and multiplying the tasks from another
 	 * - if the desired flow is to have a single unique task running each specific (yet even adjustable) period of time - scheduled tasks mechanism should be checked
 	 */
-	public static class UniqueTaskBuilder extends TaskBuilderBase {
+	public static class UniqueTaskBuilder {
+		private SimpleTaskBuilder taskBuilder = new SimpleTaskBuilder();
+
 		private UniqueTaskBuilder() {
 		}
 
@@ -179,15 +196,7 @@ public class TaskBuilders {
 		 * @throws IllegalArgumentException if the key is NULL or EMPTY of bigger than allowed
 		 */
 		public TaskBuilder setUniquenessKey(String uniquenessKey) throws IllegalStateException, IllegalArgumentException {
-			if (locked) throw new IllegalStateException("task builder MAY BE used only once");
-			if (uniquenessKey == null || uniquenessKey.isEmpty()) {
-				throw new IllegalArgumentException("uniqueness key MUST NOT be null nor empty");
-			}
-			if (uniquenessKey.length() > 34) {
-				throw new IllegalArgumentException("uniqueness key's length MUST BE less than or equal to 34 chars");
-			}
-			this.uniquenessKey = uniquenessKey;
-			return this;
+			return taskBuilder.setUKProxy(uniquenessKey);
 		}
 	}
 }

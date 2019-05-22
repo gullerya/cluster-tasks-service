@@ -96,7 +96,7 @@ final class ClusterTasksMaintainer extends ClusterTasksInternalWorker {
 		customMaintenanceInterval = maintenanceInterval;
 	}
 
-	void submitTaskToRemove(ClusterTasksDataProvider dataProvider, TaskInternal task) {
+	void submitTaskToRemove(ClusterTasksDataProvider dataProvider, ClusterTaskImpl task) {
 		//  store data to remove task's body
 		if (task.partitionIndex != null) {
 			synchronized (taskBodiesToRemove) {

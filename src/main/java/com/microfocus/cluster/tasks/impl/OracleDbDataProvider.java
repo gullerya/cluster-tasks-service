@@ -78,22 +78,22 @@ final class OracleDbDataProvider extends ClusterTasksDbDataProvider {
 		removeLongTimeNoSeeSQL = "DELETE FROM " + ACTIVE_NODES_TABLE_NAME + " WHERE " + ACTIVE_NODE_LAST_SEEN + " < (SYSDATE - NUMTODSINTERVAL(? / 1000, 'SECOND'))";
 
 		//  insert / update tasks
-		String insertFields = String.join(",", META_ID, TASK_TYPE, PROCESSOR_TYPE, UNIQUENESS_KEY, CONCURRENCY_KEY, DELAY_BY_MILLIS, BODY_PARTITION, ORDERING_FACTOR, CREATED, STATUS);
+		String insertFields = String.join(",", META_ID, TASK_TYPE, PROCESSOR_TYPE, UNIQUENESS_KEY, CONCURRENCY_KEY, APPLICATION_KEY, DELAY_BY_MILLIS, BODY_PARTITION, ORDERING_FACTOR, CREATED, STATUS);
 		insertTaskWithoutBodySQL = "INSERT INTO " + META_TABLE_NAME + " (" + insertFields + ")" +
-				" VALUES (" + CLUSTER_TASK_ID_SEQUENCE + ".NEXTVAL, ?, ?, ?, ?, ?, ?, COALESCE(?, TO_NUMBER(TO_CHAR(SYSTIMESTAMP,'yyyymmddhh24missff3')) + ?), SYSDATE, " + ClusterTaskStatus.PENDING.value + ")";
+				" VALUES (" + CLUSTER_TASK_ID_SEQUENCE + ".NEXTVAL, ?, ?, ?, ?, ?, ?, ?, COALESCE(?, TO_NUMBER(TO_CHAR(SYSTIMESTAMP,'yymmddhh24missff6')) + ?), SYSDATE, " + ClusterTaskStatus.PENDING.value + ")";
 		updateScheduledTaskIntervalSQL = "UPDATE " + META_TABLE_NAME +
 				" SET " + CREATED + " = SYSDATE, " + DELAY_BY_MILLIS + " = ?" +
 				" WHERE " + PROCESSOR_TYPE + " = ? AND " + TASK_TYPE + " = " + ClusterTaskType.SCHEDULED.value + " AND " + STATUS + " = " + ClusterTaskStatus.PENDING.value;
 
 		//  select and run tasks flow
 		lockMetadataTable = "LOCK TABLE " + META_TABLE_NAME + " IN EXCLUSIVE MODE";
-		String selectForRunFields = String.join(",", META_ID, TASK_TYPE, PROCESSOR_TYPE, UNIQUENESS_KEY, CONCURRENCY_KEY, ORDERING_FACTOR, DELAY_BY_MILLIS, BODY_PARTITION, STATUS);
+		String selectForRunFields = String.join(",", META_ID, TASK_TYPE, PROCESSOR_TYPE, UNIQUENESS_KEY, CONCURRENCY_KEY, APPLICATION_KEY, ORDERING_FACTOR, DELAY_BY_MILLIS, BODY_PARTITION, STATUS);
 		for (int maxProcessorTypes : new Integer[]{20, 50, 100, 500}) {
 			String processorTypesInParameter = String.join(",", Collections.nCopies(maxProcessorTypes, "?"));
 			selectForUpdateTasksSQLs.put(maxProcessorTypes,
 					"SELECT * FROM" +
 							"   (SELECT " + selectForRunFields + "," +
-							"       ROW_NUMBER() OVER (PARTITION BY COALESCE(" + CONCURRENCY_KEY + ",RAWTOHEX(SYS_GUID())) ORDER BY " + ORDERING_FACTOR + "," + CREATED + "," + META_ID + " ASC) AS row_index," +
+							"       ROW_NUMBER() OVER (PARTITION BY COALESCE(" + CONCURRENCY_KEY + ",RAWTOHEX(SYS_GUID())) ORDER BY " + ORDERING_FACTOR + "," + META_ID + " ASC) AS row_index," +
 							"       COUNT(CASE WHEN " + STATUS + " = " + ClusterTaskStatus.RUNNING.value + " THEN 1 ELSE NULL END) OVER (PARTITION BY COALESCE(" + CONCURRENCY_KEY + ",RAWTOHEX(SYS_GUID()))) AS running_count" +
 							"   FROM /*+ INDEX(CTSKM_IDX_5) */ " + META_TABLE_NAME +
 							"   WHERE " + PROCESSOR_TYPE + " IN(" + processorTypesInParameter + ")" +
@@ -108,7 +108,7 @@ final class OracleDbDataProvider extends ClusterTasksDbDataProvider {
 					" BEGIN" +
 					"   INSERT INTO " + BODY_TABLE_NAME + partition + " (" + String.join(",", BODY_ID, BODY) + ") VALUES (taskId, ?);" +
 					"   INSERT INTO " + META_TABLE_NAME + " (" + insertFields + ")" +
-					"       VALUES (taskId, ?, ?, ?, ?, ?, ?, COALESCE(?, TO_NUMBER(TO_CHAR(SYSTIMESTAMP,'yyyymmddhh24missff3')) + ?), SYSDATE, " + ClusterTaskStatus.PENDING.value + ");" +
+					"       VALUES (taskId, ?, ?, ?, ?, ?, ?, ?, COALESCE(?, TO_NUMBER(TO_CHAR(SYSTIMESTAMP,'yymmddhh24missff6')) + ?), SYSDATE, " + ClusterTaskStatus.PENDING.value + ");" +
 					" END;");
 		}
 		updateTasksStartedSQL = "UPDATE " + META_TABLE_NAME + " SET " + STATUS + " = " + ClusterTaskStatus.RUNNING.value + ", " + STARTED + " = SYSDATE, " + RUNTIME_INSTANCE + " = ?" +
@@ -175,10 +175,10 @@ final class OracleDbDataProvider extends ClusterTasksDbDataProvider {
 	}
 
 	@Override
-	public ClusterTaskPersistenceResult[] storeTasks(TaskInternal... tasks) {
+	public ClusterTaskPersistenceResult[] storeTasks(ClusterTaskImpl... tasks) {
 		List<ClusterTaskPersistenceResult> result = new ArrayList<>(tasks.length);
 
-		for (TaskInternal task : tasks) {
+		for (ClusterTaskImpl task : tasks) {
 			getTransactionTemplate().execute(transactionStatus -> {
 				try {
 					JdbcTemplate jdbcTemplate = getJdbcTemplate();
@@ -195,6 +195,7 @@ final class OracleDbDataProvider extends ClusterTasksDbDataProvider {
 								task.processorType,
 								task.uniquenessKey,
 								task.concurrencyKey,
+								task.applicationKey,
 								task.delayByMillis,
 								task.partitionIndex,
 								task.orderingFactor,
@@ -206,6 +207,7 @@ final class OracleDbDataProvider extends ClusterTasksDbDataProvider {
 								Types.NVARCHAR,             //  processor type
 								Types.NVARCHAR,             //  uniqueness key
 								Types.NVARCHAR,             //  concurrency key
+								Types.NVARCHAR,             //  application key
 								Types.BIGINT,               //  delay by millis
 								Types.BIGINT,               //  partition index
 								Types.BIGINT,               //  ordering factor
@@ -218,6 +220,7 @@ final class OracleDbDataProvider extends ClusterTasksDbDataProvider {
 								task.processorType,
 								task.uniquenessKey,
 								task.concurrencyKey,
+								task.applicationKey,
 								task.delayByMillis,
 								task.partitionIndex,
 								task.orderingFactor,
@@ -228,6 +231,7 @@ final class OracleDbDataProvider extends ClusterTasksDbDataProvider {
 								Types.NVARCHAR,             //  processor type
 								Types.NVARCHAR,             //  uniqueness key
 								Types.NVARCHAR,             //  concurrency key
+								Types.NVARCHAR,             //  application key
 								Types.BIGINT,               //  delay by millis
 								Types.BIGINT,               //  partition index
 								Types.BIGINT,               //  ordering factor
@@ -262,7 +266,7 @@ final class OracleDbDataProvider extends ClusterTasksDbDataProvider {
 
 	@Override
 	public void retrieveAndDispatchTasks(Map<String, ClusterTasksProcessorBase> availableProcessors) {
-		Map<ClusterTasksProcessorBase, Collection<TaskInternal>> tasksToRun = new LinkedHashMap<>();
+		Map<ClusterTasksProcessorBase, Collection<ClusterTaskImpl>> tasksToRun = new LinkedHashMap<>();
 
 		//  within the same transaction do:
 		//  - SELECT candidate tasks to be run
@@ -293,17 +297,17 @@ final class OracleDbDataProvider extends ClusterTasksDbDataProvider {
 				int[] paramTypes = new int[paramsTotal];
 				for (int i = 0; i < paramsTotal; i++) paramTypes[i] = Types.NVARCHAR;
 
-				List<TaskInternal> tasks;
+				List<ClusterTaskImpl> tasks;
 				jdbcTemplate.execute(lockMetadataTable);
 				tasks = jdbcTemplate.query(sql, params, paramTypes, this::tasksMetadataReader);
 				if (tasks != null && !tasks.isEmpty()) {
-					Map<String, List<TaskInternal>> tasksByProcessor = tasks.stream().collect(Collectors.groupingBy(ti -> ti.processorType));
+					Map<String, List<ClusterTaskImpl>> tasksByProcessor = tasks.stream().collect(Collectors.groupingBy(ti -> ti.processorType));
 					Set<Long> tasksToRunIDs = new LinkedHashSet<>();
 
 					//  let processors decide which tasks will be processed from all available
 					tasksByProcessor.forEach((processorType, processorTasks) -> {
 						ClusterTasksProcessorBase processor = availableProcessors.get(processorType);
-						Collection<TaskInternal> tmpTasks = processor.selectTasksToRun(processorTasks);
+						Collection<ClusterTaskImpl> tmpTasks = processor.selectTasksToRun(processorTasks);
 						tasksToRun.put(processor, tmpTasks);
 						tasksToRunIDs.addAll(tmpTasks.stream().map(task -> task.id).collect(Collectors.toList()));
 					});
@@ -339,13 +343,6 @@ final class OracleDbDataProvider extends ClusterTasksDbDataProvider {
 
 	@Override
 	public String retrieveTaskBody(Long taskId, Long partitionIndex) {
-		if (taskId == null) {
-			throw new IllegalArgumentException("task ID MUST NOT be null");
-		}
-		if (partitionIndex == null) {
-			throw new IllegalArgumentException("partition index MUST NOT be null");
-		}
-
 		try {
 			JdbcTemplate jdbcTemplate = getJdbcTemplate();
 			String sql = selectTaskBodyByPartitionSQLs.get(partitionIndex);

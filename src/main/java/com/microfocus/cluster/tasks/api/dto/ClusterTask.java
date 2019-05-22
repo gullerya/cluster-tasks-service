@@ -23,6 +23,8 @@ public interface ClusterTask {
 
 	String getConcurrencyKey();
 
+	String getApplicationKey();
+
 	Long getOrderingFactor();
 
 	Long getDelayByMillis();
