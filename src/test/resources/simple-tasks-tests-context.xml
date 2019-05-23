@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<beans xmlns="http://www.springframework.org/schema/beans"
+       xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+       xsi:schemaLocation="http://www.springframework.org/schema/beans
+            http://www.springframework.org/schema/beans/spring-beans.xsd">
+
+	<import resource="cluster-tasks-service-context.xml"/>
+
+	<bean class="com.microfocus.cluster.tasks.CTSConfigurerForTestsSPI"/>
+
+	<bean class="com.microfocus.cluster.tasks.simple.SimpleProcessorA_test"/>
+
+</beans>
