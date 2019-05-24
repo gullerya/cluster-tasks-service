@@ -95,7 +95,7 @@ public class FairnessTest extends CTSTestsBase {
 		}
 
 		List<String> eventsLog = ClusterTasksProcessorFairness_test_st.keysProcessingEventsLog;
-		CTSTestsUtils.waitUntil(3000, () -> eventsLog.size() == tasks.size() ? true : null);
+		CTSTestsUtils.waitUntil(5000, () -> eventsLog.size() == tasks.size() ? true : null);
 
 		assertEquals(tasks.size(), eventsLog.size());
 		assertEquals("1", eventsLog.get(0));
