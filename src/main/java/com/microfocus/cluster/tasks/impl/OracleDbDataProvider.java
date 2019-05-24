@@ -93,13 +93,15 @@ final class OracleDbDataProvider extends ClusterTasksDbDataProvider {
 			selectForUpdateTasksSQLs.put(maxProcessorTypes,
 					"SELECT * FROM" +
 							"   (SELECT " + selectForRunFields + "," +
-							"       ROW_NUMBER() OVER (PARTITION BY COALESCE(" + CONCURRENCY_KEY + ",RAWTOHEX(SYS_GUID())) ORDER BY " + ORDERING_FACTOR + "," + META_ID + " ASC) AS row_index," +
-							"       COUNT(CASE WHEN " + STATUS + " = " + ClusterTaskStatus.RUNNING.value + " THEN 1 ELSE NULL END) OVER (PARTITION BY COALESCE(" + CONCURRENCY_KEY + ",RAWTOHEX(SYS_GUID()))) AS running_count" +
+							"       ROW_NUMBER() OVER (PARTITION BY " + CONCURRENCY_KEY + " ORDER BY " + ORDERING_FACTOR + "," + META_ID + " ASC) AS row_index," +
+							"       COUNT(CASE WHEN " + STATUS + " = " + ClusterTaskStatus.RUNNING.value + " THEN 1 ELSE NULL END) OVER (PARTITION BY " + CONCURRENCY_KEY + " ORDER BY " + ORDERING_FACTOR + "," + META_ID + " ASC) AS running_count" +
 							"   FROM /*+ INDEX(CTSKM_IDX_5) */ " + META_TABLE_NAME +
 							"   WHERE " + PROCESSOR_TYPE + " IN(" + processorTypesInParameter + ")" +
 							"       AND " + STATUS + " < " + ClusterTaskStatus.FINISHED.value +
 							"       AND " + CREATED + " < SYSDATE - NUMTODSINTERVAL(" + DELAY_BY_MILLIS + " / 1000, 'SECOND')) meta" +
-							" WHERE meta.row_index <= 1 AND meta.running_count = 0");
+							" WHERE ((meta." + CONCURRENCY_KEY + " IS NOT NULL AND meta.row_index <= 1 AND meta.running_count = 0)" +
+							"       OR (meta." + CONCURRENCY_KEY + " IS NULL AND meta." + STATUS + " = " + ClusterTaskStatus.PENDING.value + "))"
+			);
 		}
 		for (long partition = 0; partition < PARTITIONS_NUMBER; partition++) {
 			selectTaskBodyByPartitionSQLs.put(partition, "SELECT " + BODY + " FROM " + BODY_TABLE_NAME + partition +
