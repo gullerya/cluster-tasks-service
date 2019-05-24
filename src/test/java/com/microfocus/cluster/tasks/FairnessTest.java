@@ -34,7 +34,6 @@ import static org.junit.Assert.assertTrue;
 		"/cluster-tasks-service-context-test.xml"
 })
 public class FairnessTest extends CTSTestsBase {
-	private static final Logger logger = LoggerFactory.getLogger(FairnessTest.class);
 
 	@Test
 	public void TestA_fairness_limited_resource() {
@@ -96,7 +95,7 @@ public class FairnessTest extends CTSTestsBase {
 		}
 
 		List<String> eventsLog = ClusterTasksProcessorFairness_test_st.keysProcessingEventsLog;
-		waitForEndCondition(eventsLog, tasks.size(), tasks.size() * 1000 * 3);
+		CTSTestsUtils.waitUntil(3000, () -> eventsLog.size() == tasks.size() ? true : null);
 
 		assertEquals(tasks.size(), eventsLog.size());
 		assertEquals("1", eventsLog.get(0));
@@ -148,21 +147,6 @@ public class FairnessTest extends CTSTestsBase {
 			Assert.assertEquals(ClusterTaskInsertStatus.SUCCESS, result.getStatus());
 		}
 
-		List<String> eventsLog = ClusterTasksProcessorFairness_test_mt.keysProcessingEventsLog;
-		waitForEndCondition(eventsLog, tasks.size(), 1000 * 2);
-
-		assertEquals(tasks.size(), eventsLog.size());
-	}
-
-	private void waitForEndCondition(List<String> eventStore, int expectedSize, long maxTimeToWait) {
-		long timePassed = 0;
-		long pauseInterval = 100;
-		while (eventStore.size() < expectedSize && timePassed < maxTimeToWait) {
-			CTSTestsUtils.waitSafely(pauseInterval);
-			timePassed += pauseInterval;
-		}
-		if (eventStore.size() == expectedSize) {
-			logger.info("expectation fulfilled in " + timePassed + "ms");
-		}
+		CTSTestsUtils.waitUntil(3000, () -> ClusterTasksProcessorFairness_test_mt.keysProcessingEventsLog.size() == tasks.size() ? true : null);
 	}
 }

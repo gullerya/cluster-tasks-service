@@ -29,7 +29,9 @@ public interface ClusterTasksServiceConfigurerSPI {
 	 *
 	 * @return promise on configuration readiness; if NULL is returned - CLusterTasksService will continue as if it was resolved to TRUE
 	 */
-	CompletableFuture<Boolean> getConfigReadyLatch();
+	default CompletableFuture<Boolean> getConfigReadyLatch() {
+		return null;
+	}
 
 	/**
 	 * MUST provide data source to the DB, that the ClusterTasksService's tables reside in
@@ -44,7 +46,9 @@ public interface ClusterTasksServiceConfigurerSPI {
 	 *
 	 * @return admin data source; if returns NULL - this specific instance will NOT perform schema management
 	 */
-	DataSource getAdministrativeDataSource();
+	default DataSource getAdministrativeDataSource() {
+		return null;
+	}
 
 	/**
 	 * MUST provide DB type, that ClusterTasksService will work with
@@ -58,5 +62,7 @@ public interface ClusterTasksServiceConfigurerSPI {
 	 *
 	 * @return false if cluster-tasks-service should be suspended
 	 */
-	boolean isEnabled();
+	default boolean isEnabled() {
+		return true;
+	}
 }

@@ -9,30 +9,32 @@
 `cluster-tasks-service` library is built to provide distribution of tasks across a clustered environment.
 Beside providing basic queue functionality in a clustered environment, `cluster-tasks-service` (henceforth `CTS`) employs several advanced distribution features.
 
-Most significant feature, the one that `CTS` was originally written for, is an ability to control tasks processing in a _channelled_ fashion, where only a single task from a specific _channel_ will run at any given moment in the whole cluster.
+Most significant feature, the one that `CTS` was originally written for, is an ability to control tasks processing in a __channelled__ fashion, where only a single task from a specific __channel__ will run at any given moment in the whole cluster.
 
 
 ### Importing and initialization of the service (done once per application instance)
 
-`CTS` is Spring oriented. Please follow the steps below to start hacking around with it:
+`CTS` is Spring based. Please follow the steps below to plug the library into your application lifecycle:
 
-1. Setup the dependency in your `pom.xml` (as in example below) or other compatible build tool configuration (you may review the [Changelog](docs/changelog.md) for that):
-```
-<dependency>
-	<artifactId>cluster-tasks-service</artifactId>
-	<groupId>com.microfocus.octane</groupId>
-	<version>${relevant.cts.version}</version>
-</dependency>
-```
+1. Setup the dependency in your `pom.xml` (as in example below) or other compatible build tool configuration (you may review the [Changelog](docs/changelog.md) for an available versions):
+    ```
+    <dependency>
+        <artifactId>cluster-tasks-service</artifactId>
+        <groupId>com.microfocus</groupId>
+        <version>${relevant.cts.version}</version>
+    </dependency>
+    ```
 
-2. Make `CTS`'s Spring beans available to your application.
-This could be done by either adding `cluster-tasks-service-context.xml` file to the list of your context path's in Java driven context initialization, or importing it from one of your own Spring's XML.
+2. Make `CTS`'s Spring beans available to your application. This could be done by either adding `cluster-tasks-service-context.xml` file to the list of your context path's in Java driven context initialization, or importing it from one of your own Spring XMLs, like in example below:
+    ```
+    <import resource="classpath:cluster-tasks-service-context.xml"/>
+    ```
 
 3. Implement `ClusterTasksServiceConfigurerSPI` interface and define your implementation as a __Spring__ bean (singleton).
 Upon application start, `CTS` will wire this bean and take everything it needs from it (DataSource object, for example).
 See [CTS configuration SPI overview](docs/cts-configurer-spi.md) for more details.
   
-If all gone smooth, `CTS` will kick in upon the application start and be available for submitting and processing tasks.
+If these steps done right, `CTS` will kick in upon the application start and be available for submitting and processing tasks.
 Let's review a simple example of usage.
 
 ### Basic concepts and usage example
