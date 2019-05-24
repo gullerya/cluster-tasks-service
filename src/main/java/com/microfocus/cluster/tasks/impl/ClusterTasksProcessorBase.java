@@ -213,7 +213,13 @@ public abstract class ClusterTasksProcessorBase {
 				if (keyALastTouch != keyBLastTouch) {
 					return Long.compare(keyALastTouch, keyBLastTouch);
 				} else {
-					return Long.compare(tasksGroupedByConcurrencyKeys.get(keyA).get(0).orderingFactor, tasksGroupedByConcurrencyKeys.get(keyB).get(0).orderingFactor);
+					ClusterTaskImpl headA = tasksGroupedByConcurrencyKeys.get(keyA).get(0);
+					ClusterTaskImpl headB = tasksGroupedByConcurrencyKeys.get(keyB).get(0);
+					if (!Objects.equals(headA.orderingFactor, headB.orderingFactor)) {
+						return Long.compare(headA.orderingFactor, headB.orderingFactor);
+					} else {
+						return Long.compare(headA.id, headB.id);
+					}
 				}
 			});
 
