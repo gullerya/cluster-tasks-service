@@ -3,7 +3,7 @@
 `CTS` configuration design pattern is the SPI pattern.
 Consuming/hosting application is expected to implement `ClusterTasksServiceConfigurerSPI` and add this implementation to the Spring context.
 
-`CTS` will wire the configurer, validate it and use it to get any required information provider by consuming application.
+`CTS` will wire the configurer, validate it and use it to get any required information provided by consuming application.
 
 If configurer is not available or some of essential data is missing `CTS` will fail-fast (failing Spring context loading).
 
