@@ -38,4 +38,5 @@ If configurer is not available or some of essential data is missing `CTS` will f
     `CTS` calls this SPI each dispatch and maintenance cycle, meaning effective, that consumer may stop or resume the queue within at most 1 second.
     Pay attention to the following details:
     > - only the current `CTS` instance is stopped, other instances (running on other `JVM`s or even in another Spring context on the same `JVM`) will not be affected
+    > - this SPI is expected to run as fast as possible, it is called on the thread of the main event loops (dispatch, maintenance), thus directly affecting the speed of the queue; `CTS` will measure this call duration among other 'foreign' calls
     
