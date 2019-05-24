@@ -215,11 +215,8 @@ public abstract class ClusterTasksProcessorBase {
 				} else {
 					ClusterTaskImpl headA = tasksGroupedByConcurrencyKeys.get(keyA).get(0);
 					ClusterTaskImpl headB = tasksGroupedByConcurrencyKeys.get(keyB).get(0);
-					if (!Objects.equals(headA.orderingFactor, headB.orderingFactor)) {
-						return Long.compare(headA.orderingFactor, headB.orderingFactor);
-					} else {
-						return Long.compare(headA.id, headB.id);
-					}
+					int comp = Long.compare(headA.orderingFactor, headB.orderingFactor);
+					return comp != 0 ? comp : Long.compare(headA.id, headB.id);
 				}
 			});
 
