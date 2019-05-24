@@ -208,9 +208,9 @@ public abstract class ClusterTasksProcessorBase {
 			//  - when two keys are equal, give priority to the channel with less ordered first item
 			List<String> orderedRelevantKeys = new ArrayList<>(tasksGroupedByConcurrencyKeys.keySet());
 			orderedRelevantKeys.sort((keyA, keyB) -> {
-				Long keyALastTouch = concurrencyKeysFairnessMap.getOrDefault(keyA, 0L);
-				Long keyBLastTouch = concurrencyKeysFairnessMap.getOrDefault(keyB, 0L);
-				if (!keyALastTouch.equals(keyBLastTouch)) {
+				long keyALastTouch = concurrencyKeysFairnessMap.getOrDefault(keyA, 0L);
+				long keyBLastTouch = concurrencyKeysFairnessMap.getOrDefault(keyB, 0L);
+				if (keyALastTouch != keyBLastTouch) {
 					return Long.compare(keyALastTouch, keyBLastTouch);
 				} else {
 					return Long.compare(tasksGroupedByConcurrencyKeys.get(keyA).get(0).orderingFactor, tasksGroupedByConcurrencyKeys.get(keyB).get(0).orderingFactor);
