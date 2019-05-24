@@ -1,5 +1,9 @@
 ### Changelog
 
+##### current snapshot
+- several performance improvements in queries
+- several performance and algo improvements in fair tasks distribution logic
+
 ##### 2.0
 - implemented [Issue #15](https://github.com/MicroFocus/cluster-tasks-service/issues/15) - added application context (`application-key`) as an optional attribute of the tasks
 - implemented [Issue #16](https://github.com/MicroFocus/cluster-tasks-service/issues/16) - allowed conditional task dispatch based on consumer application logic (provided with `application-key`)

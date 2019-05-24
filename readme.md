@@ -4,13 +4,20 @@
 [![AppVeyor branch](https://img.shields.io/appveyor/ci/gullerya/cluster-tasks-service/master.svg?logo=appveyor)](https://ci.appveyor.com/project/gullerya/cluster-tasks-service/branch/master)
 [![codecov](https://codecov.io/gh/MicroFocus/cluster-tasks-service/branch/master/graph/badge.svg)](https://codecov.io/gh/MicroFocus/cluster-tasks-service)
 
-### Summary
+## Summary
 
 `cluster-tasks-service` library is built to provide distribution of tasks across a clustered environment.
 Beside providing basic queue functionality in a clustered environment, `cluster-tasks-service` (henceforth `CTS`) employs several advanced distribution features.
 
 Most significant feature, the one that `CTS` was originally written for, is an ability to control tasks processing in a __channelled__ fashion, where only a single task from a specific __channel__ will run at any given moment in the whole cluster.
 
+##### Documentation TOC:
+- [Configurer SPI](docs/cts-configurer-spi.md) - wiring library into consuming application
+- [CTS service](docs/cts-service-api.md) - main library entry point
+- [Task processors](docs/cts-task-processors.md) - types and extensibility points
+- [Tasks](docs/cts-tasks-overview.md) - types, attributes, behaviors
+- [Monitoring](docs/monitoring.md) - metrics and logs
+- [Changelog](docs/changelog.md) 
 
 ### Importing and initialization of the service (done once per application instance)
 
