@@ -35,67 +35,67 @@ public class FairnessTest extends CTSTestsBase {
 
 	@Test
 	public void TestA_fairness_limited_resource() {
-		List<ClusterTask> tasks = new LinkedList<>();
+		ClusterTask[] tasks = new ClusterTask[12];
 		ClusterTask task;
 
 		//  5 tasks of key '1'
 		task = TaskBuilders.channeledTask()
 				.setConcurrencyKey("1")
 				.build();
-		tasks.add(task);
+		tasks[0] = task;
 		task = TaskBuilders.channeledTask()
 				.setConcurrencyKey("1")
 				.build();
-		tasks.add(task);
+		tasks[1] = task;
 		task = TaskBuilders.channeledTask()
 				.setConcurrencyKey("1")
 				.build();
-		tasks.add(task);
+		tasks[2] = task;
 		task = TaskBuilders.channeledTask()
 				.setConcurrencyKey("1")
 				.build();
-		tasks.add(task);
+		tasks[3] = task;
 		task = TaskBuilders.channeledTask()
 				.setConcurrencyKey("1")
 				.build();
-		tasks.add(task);
+		tasks[4] = task;
 
 		//  3 tasks of key '2'
 		task = TaskBuilders.channeledTask()
 				.setConcurrencyKey("2")
 				.build();
-		tasks.add(task);
+		tasks[5] = task;
 		task = TaskBuilders.channeledTask()
 				.setConcurrencyKey("2")
 				.build();
-		tasks.add(task);
+		tasks[6] = task;
 		task = TaskBuilders.channeledTask()
 				.setConcurrencyKey("2")
 				.build();
-		tasks.add(task);
+		tasks[7] = task;
 
 		//  4 tasks without key
 		task = TaskBuilders.simpleTask().build();
-		tasks.add(task);
+		tasks[8] = task;
 		task = TaskBuilders.simpleTask().build();
-		tasks.add(task);
+		tasks[9] = task;
 		task = TaskBuilders.simpleTask().build();
-		tasks.add(task);
+		tasks[10] = task;
 		task = TaskBuilders.simpleTask().build();
-		tasks.add(task);
+		tasks[11] = task;
 
 		ClusterTaskPersistenceResult[] enqueueResults = clusterTasksService.enqueueTasks(
 				ClusterTasksDataProviderType.DB,
 				ClusterTasksProcessorFairness_test_st.class.getSimpleName(),
-				tasks.toArray(new ClusterTask[0]));
+				tasks);
 		for (ClusterTaskPersistenceResult result : enqueueResults) {
 			Assert.assertEquals(ClusterTaskInsertStatus.SUCCESS, result.getStatus());
 		}
 
 		List<String> eventsLog = ClusterTasksProcessorFairness_test_st.keysProcessingEventsLog;
-		CTSTestsUtils.waitUntil(tasks.size() * 2000, () -> eventsLog.size() == tasks.size() ? true : null);
+		CTSTestsUtils.waitUntil(tasks.length * 2000, () -> eventsLog.size() == tasks.length ? true : null);
 
-		assertEquals(tasks.size(), eventsLog.size());
+		assertEquals(tasks.length, eventsLog.size());
 		assertEquals("1", eventsLog.get(0));
 		assertEquals("2", eventsLog.get(1));
 		assertEquals("null", eventsLog.get(2));
