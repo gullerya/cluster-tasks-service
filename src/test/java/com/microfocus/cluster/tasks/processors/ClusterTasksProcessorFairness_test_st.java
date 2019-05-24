@@ -21,6 +21,7 @@ public class ClusterTasksProcessorFairness_test_st extends ClusterTasksProcessor
 
 	@Override
 	public void processTask(ClusterTask task) {
+		System.out.println(task.getConcurrencyKey() + " - " + task.getOrderingFactor());
 		keysProcessingEventsLog.add(String.valueOf(task.getConcurrencyKey()));
 		if (task.getConcurrencyKey() == null) {
 			nonConcurrentEventsLog.add(task.getOrderingFactor());
