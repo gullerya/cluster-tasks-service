@@ -95,7 +95,7 @@ class ClusterTaskImpl implements ClusterTask {
 				", applicationKey: " + applicationKey +
 				", orderingFactor: " + orderingFactor +
 				", delayByMillis: " + delayByMillis +
-				", bodyLength: " + (body != null && !body.isEmpty() ? body.length() : "null") +
+				", bodyLength: " + (body != null ? body.length() : "null") +
 				", partitionIndex: " + partitionIndex + "}";
 	}
 }

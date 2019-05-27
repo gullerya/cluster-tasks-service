@@ -43,7 +43,26 @@ public class ClusterTaskImplTest {
 		task.applicationKey = "app";
 		task.orderingFactor = 1000L;
 		task.delayByMillis = 10000L;
-		task.body = "body";
+		task.partitionIndex = 0L;
+		String stringifyTask = task.toString();
+
+		ClusterTaskImpl next = new ClusterTaskImpl(task);
+		String stringifyNext = next.toString();
+
+		Assert.assertEquals(stringifyTask, stringifyNext);
+	}
+
+	@Test
+	public void testC() {
+		ClusterTaskImpl task = new ClusterTaskImpl();
+		task.taskType = ClusterTaskType.REGULAR;
+		task.processorType = "proc";
+		task.uniquenessKey = "uniq";
+		task.concurrencyKey = "con";
+		task.applicationKey = "app";
+		task.orderingFactor = 1000L;
+		task.delayByMillis = 10000L;
+		task.body = "";
 		task.partitionIndex = 0L;
 		String stringifyTask = task.toString();
 
