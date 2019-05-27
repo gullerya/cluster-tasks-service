@@ -14,6 +14,7 @@ import org.junit.runner.RunWith;
 import org.springframework.test.context.ContextConfiguration;
 import org.springframework.test.context.junit4.SpringJUnit4ClassRunner;
 
+import java.util.Collections;
 import java.util.UUID;
 
 /**
@@ -27,6 +28,16 @@ import java.util.UUID;
 		"/application-key-count-tests-context.xml"
 })
 public class ApplicationKeyCountTest extends CTSTestsBase {
+
+	@Test(expected = IllegalArgumentException.class)
+	public void negA() {
+		clusterTasksService.countTasksByApplicationKey(null, null, null);
+	}
+
+	@Test(expected = IllegalArgumentException.class)
+	public void negB() {
+		clusterTasksService.countTasksByApplicationKey(ClusterTasksDataProviderType.DB, String.join("", Collections.nCopies(3, UUID.randomUUID().toString())), null);
+	}
 
 	@Test
 	public void testA_simple_app_key_count() {
