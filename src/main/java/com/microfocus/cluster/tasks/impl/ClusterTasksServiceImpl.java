@@ -423,9 +423,14 @@ public class ClusterTasksServiceImpl implements ClusterTasksService {
 			return RUNTIME_INSTANCE_ID;
 		}
 
-		boolean isCTSServiceEnabled() {
+		boolean isServiceEnabled() {
 			Histogram.Timer foreignCallTimer = foreignIsEnabledCallDuration.labels(RUNTIME_INSTANCE_ID).startTimer();
-			boolean isEnabled = serviceConfigurer.isEnabled();
+			boolean isEnabled = true;
+			try {
+				isEnabled = serviceConfigurer.isEnabled();
+			} catch (Throwable t) {
+				logger.error("failed to check 'isEnabled' by consuming application ('foreign' call)", t);
+			}
 			foreignCallTimer.close();
 			return isEnabled;
 		}
@@ -436,10 +441,6 @@ public class ClusterTasksServiceImpl implements ClusterTasksService {
 
 		Map<String, ClusterTasksProcessorBase> getProcessorsMap() {
 			return processorsMap;
-		}
-
-		ClusterTasksServiceConfigurerSPI getCTSServiceConfigurer() {
-			return serviceConfigurer;
 		}
 	}
 }

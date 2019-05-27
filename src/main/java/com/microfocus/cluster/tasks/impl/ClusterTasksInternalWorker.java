@@ -27,10 +27,17 @@ abstract class ClusterTasksInternalWorker implements Runnable {
 	@Override
 	public void run() {
 		haltPromise = null;
+
+		//  non-fallible event loop
 		while (haltPromise == null) {
-			if (configurer.isCTSServiceEnabled()) {
+			//  errors handled by configurer
+			boolean isEnabled = configurer.isServiceEnabled();
+
+			if (isEnabled) {
+				//  errors handled by concrete workers
 				performWorkCycle();
 			}
+
 			breathe();
 		}
 		haltPromise.complete(null);
