@@ -2,6 +2,9 @@
 
 ##### current snapshot
 
+##### 2.2
+- fixed [Issue #18](https://github.com/MicroFocus/cluster-tasks-service/issues/18) - added robustness to the queue working cycle
+
 ##### 2.1
 - several performance improvements in queries
 - several performance and algorithm improvements in fair tasks distribution logic
