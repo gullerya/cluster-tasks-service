@@ -36,7 +36,7 @@ public interface ClusterTasksServiceConfigurerSPI {
 	/**
 	 * MUST provide data source to the DB, that the ClusterTasksService's tables reside in
 	 *
-	 * @return working data source
+	 * @return working data source; MUST NOT be NULL
 	 */
 	DataSource getDataSource();
 
