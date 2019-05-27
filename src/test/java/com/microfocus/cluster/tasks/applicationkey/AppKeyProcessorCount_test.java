@@ -16,6 +16,7 @@ import java.util.Objects;
 public class AppKeyProcessorCount_test extends ClusterTasksProcessorSimple {
 	static final Map<Long, Long> tasksProcessed = new LinkedHashMap<>();
 	static volatile boolean any = false;
+	static volatile boolean holdRunning = false;
 	static volatile String conditionToRun = null;
 
 	protected AppKeyProcessorCount_test() {
@@ -29,7 +30,7 @@ public class AppKeyProcessorCount_test extends ClusterTasksProcessorSimple {
 
 	@Override
 	public void processTask(ClusterTask task) {
-		CTSTestsUtils.waitSafely(3000);
+		CTSTestsUtils.waitUntil(10000, () -> holdRunning ? null : true);
 		tasksProcessed.put(task.getId(), System.currentTimeMillis());
 	}
 }
