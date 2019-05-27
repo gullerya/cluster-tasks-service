@@ -1,4 +1,4 @@
-### CTS - configurer SPI general overview
+## CTS - configurer SPI general overview
 
 `CTS` configuration design pattern is the SPI pattern.
 Consuming/hosting application is expected to implement `ClusterTasksServiceConfigurerSPI` and add this implementation to the Spring context.

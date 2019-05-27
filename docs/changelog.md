@@ -1,6 +1,4 @@
-### Changelog
-
-##### current snapshot
+## Changelog
 
 ##### 2.2
 - fixed [Issue #18](https://github.com/MicroFocus/cluster-tasks-service/issues/18) - added robustness to the queue working cycle
