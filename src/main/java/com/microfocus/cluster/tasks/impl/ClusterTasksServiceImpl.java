@@ -25,11 +25,7 @@ import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 
 import java.util.*;
-import java.util.concurrent.CompletableFuture;
-import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
-import java.util.concurrent.Future;
-import java.util.concurrent.ThreadFactory;
+import java.util.concurrent.*;
 import java.util.stream.Collectors;
 
 /**
@@ -143,10 +139,10 @@ public class ClusterTasksServiceImpl implements ClusterTasksService {
 	@Override
 	public ClusterTaskPersistenceResult[] enqueueTasks(ClusterTasksDataProviderType dataProviderType, String processorType, ClusterTask... tasks) {
 		if (!readyPromise.isDone()) {
-			throw new IllegalStateException("cluster tasks service has not yet been initialized; either postpone tasks submission or listen to completion of [clusterTasksService].getReadyPromise()");
+			throw new IllegalStateException("CTS has not yet been initialized; either postpone tasks submission or listen to completion of [clusterTasksService].getReadyPromise()");
 		}
 		if (readyPromise.isCompletedExceptionally()) {
-			throw new IllegalStateException("cluster tasks service failed to initialize; check previous logs for a root cause");
+			throw new IllegalStateException("CTS failed to initialize; check previous logs for a root cause");
 		}
 
 		if (dataProviderType == null) {
@@ -181,10 +177,10 @@ public class ClusterTasksServiceImpl implements ClusterTasksService {
 	@Override
 	public void updateScheduledTaskInterval(ClusterTasksDataProviderType dataProviderType, String processorType, long newTaskRunIntervalMillis) {
 		if (!readyPromise.isDone()) {
-			throw new IllegalStateException("cluster tasks service has not yet been initialized; either postpone tasks submission or listen to completion of [clusterTasksService].getReadyPromise()");
+			throw new IllegalStateException("CTS has not yet been initialized; either postpone tasks submission or listen to completion of [clusterTasksService].getReadyPromise()");
 		}
 		if (readyPromise.isCompletedExceptionally()) {
-			throw new IllegalStateException("cluster tasks service failed to initialize; check previous logs for a root cause");
+			throw new IllegalStateException("CTS failed to initialize; check previous logs for a root cause");
 		}
 
 		if (dataProviderType == null) {
@@ -238,6 +234,13 @@ public class ClusterTasksServiceImpl implements ClusterTasksService {
 
 	private void initService() {
 		logger.info("starting initialization");
+		if (serviceConfigurer.getDbType() == null) {
+			throw new IllegalStateException("DB type MUST NOT be NULL");
+		}
+		if (serviceConfigurer.getDataSource() == null) {
+			throw new IllegalStateException("DataSource MUST NOT be NULL");
+		}
+
 		if (serviceConfigurer.getAdministrativeDataSource() != null) {
 			logger.info("performing schema maintenance");
 			schemaManager.executeSchemaMaintenance(serviceConfigurer.getDbType(), serviceConfigurer.getAdministrativeDataSource());
@@ -262,24 +265,19 @@ public class ClusterTasksServiceImpl implements ClusterTasksService {
 
 	private void setupDataProviders() {
 		//  DB
-		if (serviceConfigurer.getDbType() != null) {
-			if (serviceConfigurer.getDataSource() == null) {
-				throw new IllegalStateException("DataSource is not provided, while DBType declared to be '" + serviceConfigurer.getDbType() + "'");
-			}
-			switch (serviceConfigurer.getDbType()) {
-				case MSSQL:
-					dataProvidersMap.put(ClusterTasksDataProviderType.DB, new MsSqlDbDataProvider(this, serviceConfigurer));
-					break;
-				case ORACLE:
-					dataProvidersMap.put(ClusterTasksDataProviderType.DB, new OracleDbDataProvider(this, serviceConfigurer));
-					break;
-				case POSTGRESQL:
-					dataProvidersMap.put(ClusterTasksDataProviderType.DB, new PostgreSqlDbDataProvider(this, serviceConfigurer));
-					break;
-				default:
-					logger.error("DB type '" + serviceConfigurer.getDbType() + "' has no data provider, DB oriented tasking won't be available");
-					break;
-			}
+		switch (serviceConfigurer.getDbType()) {
+			case MSSQL:
+				dataProvidersMap.put(ClusterTasksDataProviderType.DB, new MsSqlDbDataProvider(this, serviceConfigurer));
+				break;
+			case ORACLE:
+				dataProvidersMap.put(ClusterTasksDataProviderType.DB, new OracleDbDataProvider(this, serviceConfigurer));
+				break;
+			case POSTGRESQL:
+				dataProvidersMap.put(ClusterTasksDataProviderType.DB, new PostgreSqlDbDataProvider(this, serviceConfigurer));
+				break;
+			default:
+				logger.error("DB type '" + serviceConfigurer.getDbType() + "' has no data provider, DB oriented tasking won't be available");
+				break;
 		}
 
 		//  summary

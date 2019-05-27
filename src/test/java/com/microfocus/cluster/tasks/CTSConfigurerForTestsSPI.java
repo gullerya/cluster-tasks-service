@@ -71,11 +71,6 @@ public class CTSConfigurerForTestsSPI implements ClusterTasksServiceConfigurerSP
 		return dbType;
 	}
 
-	@Override
-	public boolean isEnabled() {
-		return true;
-	}
-
 	private Properties resolveConfigProperties() throws IOException {
 		Properties result = new Properties();
 		String dbConfigLocation;

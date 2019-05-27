@@ -113,12 +113,6 @@ abstract class ClusterTasksDbDataProvider implements ClusterTasksDataProvider {
 	private TransactionTemplate transactionTemplate;
 
 	ClusterTasksDbDataProvider(ClusterTasksService clusterTasksService, ClusterTasksServiceConfigurerSPI serviceConfigurer) {
-		if (clusterTasksService == null) {
-			throw new IllegalArgumentException("cluster tasks service MUST NOT be null");
-		}
-		if (serviceConfigurer == null) {
-			throw new IllegalArgumentException("service configurer MUST NOT be null");
-		}
 		this.clusterTasksService = clusterTasksService;
 		this.serviceConfigurer = serviceConfigurer;
 
