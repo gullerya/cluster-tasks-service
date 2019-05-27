@@ -69,8 +69,8 @@ public class ApplicationKeyCountTest extends CTSTestsBase {
 		Assert.assertEquals(tasks.length, count);
 
 		//  release tasks to run and assert running count is correct
-		AppKeyProcessorCount_test.conditionToRun = appKey;
 		AppKeyProcessorCount_test.holdRunning = true;
+		AppKeyProcessorCount_test.conditionToRun = appKey;
 		CTSTestsUtils.waitSafely(2000);
 		count = clusterTasksService.countTasksByApplicationKey(ClusterTasksDataProviderType.DB, appKey, ClusterTaskStatus.RUNNING);
 		Assert.assertEquals(tasks.length, count);
