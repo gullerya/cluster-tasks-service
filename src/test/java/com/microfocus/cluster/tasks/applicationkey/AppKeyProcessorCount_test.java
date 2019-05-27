@@ -31,6 +31,8 @@ public class AppKeyProcessorCount_test extends ClusterTasksProcessorSimple {
 	@Override
 	public void processTask(ClusterTask task) {
 		CTSTestsUtils.waitUntil(10000, () -> holdRunning ? null : true);
-		tasksProcessed.put(task.getId(), System.currentTimeMillis());
+		synchronized (tasksProcessed) {
+			tasksProcessed.put(task.getId(), System.currentTimeMillis());
+		}
 	}
 }
