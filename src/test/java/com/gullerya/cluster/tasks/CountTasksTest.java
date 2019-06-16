@@ -40,17 +40,6 @@ public class CountTasksTest extends CTSTestsBase {
 	private ClusterTasksProcessorCount_test clusterTasksProcessorCount_test;
 
 	@Test
-	public void testCZeroResultsAll() {
-		drainOutOldTasks();
-		//assertEquals(0, clusterTasksProcessorCount_test.countTasks());
-	}
-
-	@Test
-	public void testDZeroResultsConcurrencyGiven() {
-		//assertEquals(0, clusterTasksProcessorCount_test.countTasksByConcurrencyKey("someNonExistingKey"));
-	}
-
-	@Test
 	public void testEWithTasks() {
 		drainOutOldTasks();
 

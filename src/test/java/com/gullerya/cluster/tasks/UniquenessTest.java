@@ -40,7 +40,7 @@ public class UniquenessTest extends CTSTestsBase {
 	private static final Logger logger = LoggerFactory.getLogger(UniquenessTest.class);
 
 	@Test
-	public void uniquenessTest_A_no_concurrency_keys() {
+	public void uniquenessTestANoConcurrencyKeys() {
 		ClusterTask task;
 		ClusterTaskPersistenceResult[] results;
 

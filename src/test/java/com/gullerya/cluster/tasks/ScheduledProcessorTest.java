@@ -94,10 +94,4 @@ public class ScheduledProcessorTest extends CTSTestsBase {
 
 		clusterTasksSchedProcD_test.reschedule(0);
 	}
-
-	@Test
-	public void testCAttemptToEnqueueScheduledTask() {
-		//  TODO: write test that tries to enqueue scheduled task bypassing the normal mechanism (should fail)
-		//  TODO: the test should do that in 2 phases, once when the scheduled task in pending state and once when the task is running
-	}
 }
