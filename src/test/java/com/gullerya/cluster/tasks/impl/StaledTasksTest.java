@@ -14,6 +14,7 @@ import com.gullerya.cluster.tasks.api.enums.ClusterTasksDataProviderType;
 import com.gullerya.cluster.tasks.CTSTestsUtils;
 import com.gullerya.cluster.tasks.api.ClusterTasksService;
 import com.gullerya.cluster.tasks.processors.ClusterTasksStaledTest_A;
+import org.junit.Assert;
 import org.junit.Test;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -102,13 +103,14 @@ public class StaledTasksTest {
 		//  wait until the pickup node will remove
 		pickupContext.getBean(ClusterTasksServiceImpl.class).getMaintainer().setMaintenanceInterval(2000);
 		pickupContext.getBean(ClusterTasksStaledTest_A.class).suspended = false;
-		CTSTestsUtils.waitUntil(20000, () -> {
+		Boolean result = CTSTestsUtils.waitUntil(20000, () -> {
 			if (pickupContext.getBean(ClusterTasksStaledTest_A.class).takenTasksCounter < 2) {
 				return null;
 			} else {
 				return true;
 			}
 		});
+		Assert.assertTrue(result != null && result);
 
 		//  clean up the pick up context
 		try {
