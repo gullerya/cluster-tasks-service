@@ -299,7 +299,8 @@ public class ClusterTasksServiceImpl implements ClusterTasksService {
 						logger.info("performing initial scheduled task upsert for the first-ever-run case on behalf of " + type);
 						ClusterTasksDataProvider dataProvider = dataProvidersMap.get(processor.getDataProviderType());
 						ClusterTaskPersistenceResult enqueueResult;
-						int maxEnqueueAttempts = 20, enqueueAttemptsCount = 0;
+						int maxEnqueueAttempts = 20;
+						int enqueueAttemptsCount = 0;
 						ClusterTask clusterTask = TaskBuilders.uniqueTask()
 								.setUniquenessKey(type.length() > 34
 										? type.substring(0, 34)

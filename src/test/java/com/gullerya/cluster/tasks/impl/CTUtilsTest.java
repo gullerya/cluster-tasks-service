@@ -64,7 +64,7 @@ public class CTUtilsTest {
 		AtomicInteger outerCount = new AtomicInteger();
 		boolean result = CTSUtils.retry(2, () -> {
 			outerCount.incrementAndGet();
-			throw new RuntimeException("to fail");
+			throw new IllegalStateException("to fail");
 		});
 		Assert.assertFalse(result);
 		Assert.assertEquals(2, outerCount.get());
@@ -75,7 +75,7 @@ public class CTUtilsTest {
 		AtomicInteger outerCount = new AtomicInteger();
 		boolean result = CTSUtils.retry(4, () -> {
 			if (outerCount.incrementAndGet() < 3) {
-				throw new RuntimeException("to fail");
+				throw new IllegalStateException("to fail");
 			} else {
 				return true;
 			}
