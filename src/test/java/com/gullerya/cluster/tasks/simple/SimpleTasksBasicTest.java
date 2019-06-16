@@ -34,7 +34,7 @@ import org.springframework.test.context.junit4.SpringJUnit4ClassRunner;
 public class SimpleTasksBasicTest extends CTSTestsBase {
 
 	@Test
-	public void testA_simple_tasks_burst() {
+	public void testASimpleTasksBurst() {
 		int numberOfTasks = 20;
 		CTSTestsUtils.waitSafely(4000);
 		SimpleProcessorA_test.tasksProcessed.clear();

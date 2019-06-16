@@ -42,7 +42,7 @@ import static org.junit.Assert.assertTrue;
 public class FairnessTest extends CTSTestsBase {
 
 	@Test
-	public void TestA_fairness_limited_resource() {
+	public void TestAFairnessLimitedResource() {
 		ClusterTask[] tasks = new ClusterTask[12];
 		ClusterTask task;
 
@@ -127,7 +127,7 @@ public class FairnessTest extends CTSTestsBase {
 	//  due to unpredictable nature of dispatch timing, this test relies only on the fact, that there will be no more than 2 dispatch rounds until for tasks
 	//  when in future tasks creation will be batched - we'll be able to test it more thoroughly
 	@Test
-	public void TestA_fairness_resource_for_multi_non_concurrent() {
+	public void TestAFairnessResourceForMultiNonConcurrent() {
 		List<ClusterTask> tasks = new LinkedList<>();
 		ClusterTask task;
 
