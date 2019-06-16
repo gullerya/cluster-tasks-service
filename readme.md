@@ -3,6 +3,7 @@
 [![Travis branch](https://img.shields.io/travis/gullerya/cluster-tasks-service/master.svg?logo=travis)](https://travis-ci.org/gullerya/cluster-tasks-service/branches)
 [![AppVeyor branch](https://img.shields.io/appveyor/ci/gullerya/cluster-tasks-service/master.svg?logo=appveyor)](https://ci.appveyor.com/project/gullerya/cluster-tasks-service/branch/master)
 [![codecov](https://codecov.io/gh/gullerya/cluster-tasks-service/branch/master/graph/badge.svg)](https://codecov.io/gh/gullerya/cluster-tasks-service)
+[![Codacy branch grade](https://img.shields.io/codacy/grade/bb93a604180e450e85dfbcca743fbea0/master.svg?logo=Codacy)](https://www.codacy.com/app/gullerya/cluster-tasks-service)
 
 ## Summary
 
