@@ -31,7 +31,7 @@
 		</Logger>
 
 		<!-- CTP -->
-		<Logger name="com.microfocus.octane.cluster.tasks" level="info" additivity="false">
+		<Logger name="com.gullerya.cluster.tasks" level="info" additivity="false">
 			<AppenderRef ref="ctsAsyncAppender"/>
 			<AppenderRef ref="console"/>
 		</Logger>
