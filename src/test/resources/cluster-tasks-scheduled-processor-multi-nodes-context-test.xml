@@ -6,9 +6,9 @@
 
 	<import resource="cluster-tasks-service-context.xml"/>
 
-	<bean class="com.microfocus.cluster.tasks.CTSConfigurerForTestsSPI"/>
+	<bean class="com.gullerya.cluster.tasks.CTSConfigurerForTestsSPI"/>
 
-	<bean class="com.microfocus.cluster.tasks.processors.scheduled.ClusterTasksSchedProcMultiNodesA_test"/>
-	<bean class="com.microfocus.cluster.tasks.processors.scheduled.ClusterTasksSchedProcMultiNodesB_test"/>
+	<bean class="com.gullerya.cluster.tasks.processors.scheduled.ClusterTasksSchedProcMultiNodesA_test"/>
+	<bean class="com.gullerya.cluster.tasks.processors.scheduled.ClusterTasksSchedProcMultiNodesB_test"/>
 
 </beans>

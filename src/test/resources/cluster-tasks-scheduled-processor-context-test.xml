@@ -6,11 +6,11 @@
 
 	<import resource="cluster-tasks-service-context.xml"/>
 
-	<bean class="com.microfocus.cluster.tasks.CTSConfigurerForTestsSPI"/>
+	<bean class="com.gullerya.cluster.tasks.CTSConfigurerForTestsSPI"/>
 
-	<bean class="com.microfocus.cluster.tasks.processors.scheduled.ClusterTasksSchedProcA_test"/>
-	<bean class="com.microfocus.cluster.tasks.processors.scheduled.ClusterTasksSchedProcB_test"/>
-	<bean class="com.microfocus.cluster.tasks.processors.scheduled.ClusterTasksSchedProcC_test"/>
-	<bean class="com.microfocus.cluster.tasks.processors.scheduled.ClusterTasksSchedProcD_test"/>
+	<bean class="com.gullerya.cluster.tasks.processors.scheduled.ClusterTasksSchedProcA_test"/>
+	<bean class="com.gullerya.cluster.tasks.processors.scheduled.ClusterTasksSchedProcB_test"/>
+	<bean class="com.gullerya.cluster.tasks.processors.scheduled.ClusterTasksSchedProcC_test"/>
+	<bean class="com.gullerya.cluster.tasks.processors.scheduled.ClusterTasksSchedProcD_test"/>
 
 </beans>
