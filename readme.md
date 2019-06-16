@@ -12,7 +12,7 @@ Beside providing basic queue functionality in a clustered environment, `cluster-
 
 Most significant feature, the one that `CTS` was originally written for, is an ability to control tasks processing in a __channelled__ fashion, where only a single task from a specific __channel__ will run at any given moment in the whole cluster.
 
-Important: this version of `CTS` is my own rebranded fork from the `MicroFocus` initial library's repository, where I've developed the library as an employee first. Present fork represents my own work since the moment I've left the company and any mention of `MicroFocus` anywhere is for historical reason. `Microfocus` is not to be held responsible for anything happening to `CTS` since version **3.0**  inclusive.
+Important: this version of `CTS` is my own re-branded fork from the `MicroFocus` initial library's repository, where I've developed the library as an employee first. Present fork represents my own work since the moment I've left the company and any mention of `MicroFocus` anywhere is for historical reason. `Microfocus` is not to be held responsible for anything happening to `CTS` since version **3.0**  inclusive.
 
 ##### Documentation TOC:
 - [Configurer SPI](docs/cts-configurer-spi.md) - wiring library into consuming application
