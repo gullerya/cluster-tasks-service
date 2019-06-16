@@ -19,7 +19,6 @@ import com.gullerya.cluster.tasks.processors.ClusterTasksProcessorD_test;
 import com.gullerya.cluster.tasks.processors.ClusterTasksProcessorE_test_na;
 import com.gullerya.cluster.tasks.processors.ClusterTasksProcessorF_test_cna;
 import com.gullerya.cluster.tasks.processors.ClusterTasksProcessorA_test;
-import org.junit.Assert;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.slf4j.Logger;
@@ -84,7 +83,7 @@ public class CTServiceTest extends CTSTestsBase {
 
 		ClusterTaskPersistenceResult[] result = clusterTasksService.enqueueTasks(ClusterTasksDataProviderType.DB, "ClusterTasksProcessorA_test", tasks.toArray(new ClusterTask[0]));
 		for (ClusterTaskPersistenceResult r : result) {
-			Assert.assertEquals(ClusterTaskInsertStatus.SUCCESS, r.getStatus());
+			assertEquals(ClusterTaskInsertStatus.SUCCESS, r.getStatus());
 		}
 
 		waitResultsContainerComplete(clusterTasksProcessorA_test.tasksProcessed, tasksNumber, 1000 * 4 * tasksNumber);
@@ -123,7 +122,7 @@ public class CTServiceTest extends CTSTestsBase {
 		results.add(clusterTasksService.enqueueTasks(ClusterTasksDataProviderType.DB, "ClusterTasksProcessorC_test", tasks.get(3))[0]);
 		results.add(clusterTasksService.enqueueTasks(ClusterTasksDataProviderType.DB, "ClusterTasksProcessorB_test", tasks.get(4))[0]);
 		for (ClusterTaskPersistenceResult r : results) {
-			Assert.assertEquals(ClusterTaskInsertStatus.SUCCESS, r.getStatus());
+			assertEquals(ClusterTaskInsertStatus.SUCCESS, r.getStatus());
 		}
 
 		waitResultsContainerComplete(clusterTasksProcessorB_test.tasksProcessed, 3, 1000 * 20);
@@ -165,7 +164,7 @@ public class CTServiceTest extends CTSTestsBase {
 		tasks.add(tmp);
 		results = clusterTasksService.enqueueTasks(ClusterTasksDataProviderType.DB, "ClusterTasksProcessorD_test", tasks.toArray(new ClusterTask[0]));
 		for (ClusterTaskPersistenceResult r : results) {
-			Assert.assertEquals(ClusterTaskInsertStatus.SUCCESS, r.getStatus());
+			assertEquals(ClusterTaskInsertStatus.SUCCESS, r.getStatus());
 		}
 		waitResultsContainerComplete(clusterTasksProcessorD_test.tasksProcessed, 2, 10000);
 		assertEquals(2, clusterTasksProcessorD_test.tasksProcessed.size());
@@ -189,8 +188,8 @@ public class CTServiceTest extends CTSTestsBase {
 		tasks.add(tmp);
 
 		results = clusterTasksService.enqueueTasks(ClusterTasksDataProviderType.DB, "NoneExistingTaskProcessor", tasks.toArray(new ClusterTask[0]));
-		Assert.assertEquals(ClusterTaskInsertStatus.SUCCESS, results[0].getStatus());
-		Assert.assertEquals(ClusterTaskInsertStatus.UNIQUE_CONSTRAINT_FAILURE, results[1].getStatus());
+		assertEquals(ClusterTaskInsertStatus.SUCCESS, results[0].getStatus());
+		assertEquals(ClusterTaskInsertStatus.UNIQUE_CONSTRAINT_FAILURE, results[1].getStatus());
 	}
 
 	@Test
@@ -208,7 +207,7 @@ public class CTServiceTest extends CTSTestsBase {
 				.setBody("delayed")
 				.build();
 		results = clusterTasksService.enqueueTasks(ClusterTasksDataProviderType.DB, "ClusterTasksProcessorA_test", tmp);
-		Assert.assertEquals(ClusterTaskInsertStatus.SUCCESS, results[0].getStatus());
+		assertEquals(ClusterTaskInsertStatus.SUCCESS, results[0].getStatus());
 
 		//  task 2 with the same concurrency key
 		tmp = TaskBuilders.channeledTask()
@@ -216,7 +215,7 @@ public class CTServiceTest extends CTSTestsBase {
 				.setBody("first_to_run")
 				.build();
 		results = clusterTasksService.enqueueTasks(ClusterTasksDataProviderType.DB, "ClusterTasksProcessorA_test", tmp);
-		Assert.assertEquals(ClusterTaskInsertStatus.SUCCESS, results[0].getStatus());
+		assertEquals(ClusterTaskInsertStatus.SUCCESS, results[0].getStatus());
 
 		long startWait = System.currentTimeMillis();
 		Long passedTime = CTSTestsUtils.waitUntil(10000, () -> {
@@ -247,7 +246,7 @@ public class CTServiceTest extends CTSTestsBase {
 		//  enqueue first task to an ever-non-available processor
 		tmp = TaskBuilders.channeledTask().setConcurrencyKey(concurrencyKey).build();
 		results = clusterTasksService.enqueueTasks(ClusterTasksDataProviderType.DB, "ClusterTasksProcessorE_test_na", tmp);
-		Assert.assertEquals(ClusterTaskInsertStatus.SUCCESS, results[0].getStatus());
+		assertEquals(ClusterTaskInsertStatus.SUCCESS, results[0].getStatus());
 
 		//  enqueue second task to an available processor with the same concurrency key
 		tmp = TaskBuilders.channeledTask()
@@ -255,7 +254,7 @@ public class CTServiceTest extends CTSTestsBase {
 				.setBody(taskBodyToCheck)
 				.build();
 		results = clusterTasksService.enqueueTasks(ClusterTasksDataProviderType.DB, "ClusterTasksProcessorF_test_cna", tmp);
-		Assert.assertEquals(ClusterTaskInsertStatus.SUCCESS, results[0].getStatus());
+		assertEquals(ClusterTaskInsertStatus.SUCCESS, results[0].getStatus());
 
 		//  ensure that the 'staled' non-available processor's task in NOT holding the whole concurrent queue
 		waitResultsContainerComplete(clusterTasksProcessorF_test_cna.tasksProcessed, 1, 3000);

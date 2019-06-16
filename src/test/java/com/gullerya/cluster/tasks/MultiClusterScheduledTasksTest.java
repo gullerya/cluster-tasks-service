@@ -115,7 +115,7 @@ public class MultiClusterScheduledTasksTest {
 		logger.info(numberOfNodes + " nodes initialized successfully - all scheduled tasks installed");
 
 		//  make sure that the execution of the scheduled tasks is at correct 'speed' regardless of the number of nodes
-		Assert.assertTrue(clusterTasksService.getReadyPromise().get());
+		assertTrue(clusterTasksService.getReadyPromise().get());
 		clusterTasksSchedProcMultiNodes_B_test.reschedule(5000);
 		ClusterTasksSchedProcMultiNodesB_test.suspended = true;
 		//  let last task to finish

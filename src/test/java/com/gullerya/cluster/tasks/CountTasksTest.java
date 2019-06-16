@@ -162,8 +162,6 @@ public class CountTasksTest extends CTSTestsBase {
 	}
 
 	private void drainOutOldTasks() {
-		int maxRoundsToWaitDrain = 20;
-		int waitDrainRounds = 0;
 		clusterTasksProcessorCount_test.holdTaskForMillis = 0;
 		clusterTasksProcessorCount_test.readyToTakeTasks = true;
 

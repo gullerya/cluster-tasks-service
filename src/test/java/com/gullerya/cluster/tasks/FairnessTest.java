@@ -97,7 +97,7 @@ public class FairnessTest extends CTSTestsBase {
 				ClusterTasksProcessorFairness_test_st.class.getSimpleName(),
 				tasks);
 		for (ClusterTaskPersistenceResult result : enqueueResults) {
-			Assert.assertEquals(ClusterTaskInsertStatus.SUCCESS, result.getStatus());
+			assertEquals(ClusterTaskInsertStatus.SUCCESS, result.getStatus());
 		}
 
 		List<String> eventsLog = ClusterTasksProcessorFairness_test_st.keysProcessingEventsLog;
@@ -150,7 +150,7 @@ public class FairnessTest extends CTSTestsBase {
 				ClusterTasksProcessorFairness_test_mt.class.getSimpleName(),
 				tasks.toArray(new ClusterTask[0]));
 		for (ClusterTaskPersistenceResult result : enqueueResults) {
-			Assert.assertEquals(ClusterTaskInsertStatus.SUCCESS, result.getStatus());
+			assertEquals(ClusterTaskInsertStatus.SUCCESS, result.getStatus());
 		}
 
 		CTSTestsUtils.waitUntil(3000, () -> ClusterTasksProcessorFairness_test_mt.keysProcessingEventsLog.size() == tasks.size() ? true : null);
