@@ -6,8 +6,8 @@
 
 	<import resource="cluster-tasks-service-context.xml"/>
 
-	<bean class="com.gullerya.cluster.tasks.CTSConfigurerForTestsSPI"/>
+	<bean class="com.microfocus.cluster.tasks.CTSConfigurerForTestsSPI"/>
 
-	<bean class="com.gullerya.cluster.tasks.applicationkey.AppKeyProcessorCount_test"/>
+	<bean class="com.microfocus.cluster.tasks.applicationkey.AppKeyProcessorCount_test"/>
 
 </beans>

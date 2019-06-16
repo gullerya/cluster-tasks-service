@@ -1,8 +1,8 @@
 [![License](https://img.shields.io/badge/License-Apache%202.0-blue.svg)](https://opensource.org/licenses/Apache-2.0)
-[![Maven Central](https://img.shields.io/maven-central/v/com.gullerya/cluster-tasks-service.svg?label=Maven%20Central)](https://search.maven.org/search?q=g:%22com.gullerya%22%20AND%20a:%22cluster-tasks-service%22)
-[![Travis branch](https://img.shields.io/travis/gullerya/cluster-tasks-service/master.svg?logo=travis)](https://travis-ci.org/gullerya/cluster-tasks-service/branches)
+[![Maven Central](https://img.shields.io/maven-central/v/com.microfocus/cluster-tasks-service.svg?label=Maven%20Central)](https://search.maven.org/search?q=g:%22com.microfocus%22%20AND%20a:%22cluster-tasks-service%22)
+[![Travis branch](https://img.shields.io/travis/MicroFocus/cluster-tasks-service/master.svg?logo=travis)](https://travis-ci.org/MicroFocus/cluster-tasks-service/branches)
 [![AppVeyor branch](https://img.shields.io/appveyor/ci/gullerya/cluster-tasks-service/master.svg?logo=appveyor)](https://ci.appveyor.com/project/gullerya/cluster-tasks-service/branch/master)
-[![codecov](https://codecov.io/gh/gullerya/cluster-tasks-service/branch/master/graph/badge.svg)](https://codecov.io/gh/gullerya/cluster-tasks-service)
+[![codecov](https://codecov.io/gh/MicroFocus/cluster-tasks-service/branch/master/graph/badge.svg)](https://codecov.io/gh/MicroFocus/cluster-tasks-service)
 
 ## Summary
 
@@ -10,8 +10,6 @@
 Beside providing basic queue functionality in a clustered environment, `cluster-tasks-service` (henceforth `CTS`) employs several advanced distribution features.
 
 Most significant feature, the one that `CTS` was originally written for, is an ability to control tasks processing in a __channelled__ fashion, where only a single task from a specific __channel__ will run at any given moment in the whole cluster.
-
-Important: this version of `CTS` is my own rebranded fork from the `MicroFocus` initial library's repository, where I've developed the library as an employee first. Present fork represents my own work since the moment I've left the company and any mention of `MicroFocus` anywhere is for historical reason. `Microfocus` is not to be held responsible for anything happening to `CTS` since version **3.0**  inclusive.
 
 ##### Documentation TOC:
 - [Configurer SPI](docs/cts-configurer-spi.md) - wiring library into consuming application
@@ -30,7 +28,7 @@ Important: this version of `CTS` is my own rebranded fork from the `MicroFocus` 
     ```
     <dependency>
         <artifactId>cluster-tasks-service</artifactId>
-        <groupId>com.gullerya</groupId>
+        <groupId>com.microfocus</groupId>
         <version>${relevant.cts.version}</version>
     </dependency>
     ```
