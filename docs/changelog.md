@@ -1,7 +1,7 @@
 ## Changelog
 
 ##### 3.0
-- rebranded version of `GullerYA` (initial developer and library's owner) due to fork from `MicroFocus` repository
+- re-branded version of `GullerYA` (initial developer and library's owner) due to fork from `MicroFocus` repository
 
 ##### 2.2
 - fixed [Issue #18](https://github.com/MicroFocus/cluster-tasks-service/issues/18) - added robustness to the queue working cycle
