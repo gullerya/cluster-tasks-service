@@ -47,7 +47,7 @@ public class MultiClusterScheduledTasksTest {
 	private ClusterTasksSchedProcMultiNodesB_test clusterTasksSchedProcMultiNodes_B_test;
 
 	@Test
-	public void testA_scheduled_in_cluster_initial_interval() throws InterruptedException {
+	public void testAScheduledInClusterInitialInterval() throws InterruptedException {
 		//  load contexts to simulate cluster of a multiple nodes
 		CountDownLatch waitForAllInit = new CountDownLatch(numberOfNodes);
 		List<ClassPathXmlApplicationContext> contexts = new LinkedList<>();
@@ -90,7 +90,7 @@ public class MultiClusterScheduledTasksTest {
 	}
 
 	@Test
-	public void testB_scheduled_in_cluster_rescheduled() throws Exception {
+	public void testBScheduledInClusterRescheduled() throws Exception {
 		//  load contexts to simulate cluster of a multiple nodes
 		CountDownLatch waitForAllInit = new CountDownLatch(numberOfNodes);
 		List<ClassPathXmlApplicationContext> contexts = new LinkedList<>();

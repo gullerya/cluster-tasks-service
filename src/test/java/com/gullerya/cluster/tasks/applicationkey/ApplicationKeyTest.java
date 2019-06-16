@@ -26,7 +26,7 @@ import java.util.UUID;
 public class ApplicationKeyTest extends CTSTestsBase {
 
 	@Test
-	public void testA_simple_app_key_chain() {
+	public void testASimpleAppKeyChain() {
 		AppKeyProcessorA_test.any = true;
 		CTSTestsUtils.waitSafely(5000);
 
@@ -64,7 +64,7 @@ public class ApplicationKeyTest extends CTSTestsBase {
 	}
 
 	@Test
-	public void testB_simple_app_key_chain_with_other_tasks() {
+	public void testBSimpleAppKeyChainWithOtherTasks() {
 		AppKeyProcessorA_test.tasksProcessed.clear();
 		Assert.assertTrue(AppKeyProcessorA_test.tasksProcessed.isEmpty());
 		AppKeyProcessorA_test.conditionToRun = null;
@@ -115,7 +115,7 @@ public class ApplicationKeyTest extends CTSTestsBase {
 	}
 
 	@Test
-	public void testC_channeled_app_key_chain() {
+	public void testCChanneledAppKeyChain() {
 		AppKeyProcessorB_test.any = true;
 		CTSTestsUtils.waitSafely(5000);
 
@@ -158,7 +158,7 @@ public class ApplicationKeyTest extends CTSTestsBase {
 	}
 
 	@Test
-	public void testD_channeled_app_key_chain_with_other_tasks() {
+	public void testDChanneledAppKeyChainWithOtherTasks() {
 		AppKeyProcessorB_test.any = true;
 		CTSTestsUtils.waitSafely(5000);
 

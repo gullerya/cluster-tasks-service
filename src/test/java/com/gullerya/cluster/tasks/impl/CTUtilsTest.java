@@ -22,13 +22,13 @@ import java.util.concurrent.atomic.AtomicInteger;
 public class CTUtilsTest {
 
 	@Test
-	public void testA_simple_retry() {
+	public void testASimpleRetry() {
 		boolean result = CTSUtils.retry(3, () -> true);
 		Assert.assertTrue(result);
 	}
 
 	@Test
-	public void testB_simple_retry_3_times_with_false() {
+	public void testBSimpleRetry3TimesWithFalse() {
 		AtomicInteger outerCount = new AtomicInteger();
 		boolean result = CTSUtils.retry(3, () -> outerCount.incrementAndGet() == 3);
 		Assert.assertTrue(result);
@@ -36,7 +36,7 @@ public class CTUtilsTest {
 	}
 
 	@Test
-	public void testC_simple_retry_2_times_with_null() {
+	public void testCSimpleRetry2TimesWithNull() {
 		AtomicInteger outerCount = new AtomicInteger();
 		boolean result = CTSUtils.retry(3, () -> outerCount.incrementAndGet() == 2 ? true : null);
 		Assert.assertTrue(result);
@@ -44,7 +44,7 @@ public class CTUtilsTest {
 	}
 
 	@Test
-	public void testD_fail_retry_3_times_with_false() {
+	public void testDFailRetry3TimesWithFalse() {
 		AtomicInteger outerCount = new AtomicInteger();
 		boolean result = CTSUtils.retry(2, () -> outerCount.incrementAndGet() == 3);
 		Assert.assertFalse(result);
@@ -52,7 +52,7 @@ public class CTUtilsTest {
 	}
 
 	@Test
-	public void testE_fail_retry_3_times_with_null() {
+	public void testEFailRetry3TimesWithNull() {
 		AtomicInteger outerCount = new AtomicInteger();
 		boolean result = CTSUtils.retry(2, () -> outerCount.incrementAndGet() == 3 ? true : null);
 		Assert.assertFalse(result);
@@ -60,7 +60,7 @@ public class CTUtilsTest {
 	}
 
 	@Test
-	public void testF_fail_retry_once_with_exception() {
+	public void testFFailRetryOnceWithException() {
 		AtomicInteger outerCount = new AtomicInteger();
 		boolean result = CTSUtils.retry(2, () -> {
 			outerCount.incrementAndGet();
@@ -71,7 +71,7 @@ public class CTUtilsTest {
 	}
 
 	@Test
-	public void testG_pass_retry_few_times_with_exception() {
+	public void testGPassRetryFewTimesWithException() {
 		AtomicInteger outerCount = new AtomicInteger();
 		boolean result = CTSUtils.retry(4, () -> {
 			if (outerCount.incrementAndGet() < 3) {

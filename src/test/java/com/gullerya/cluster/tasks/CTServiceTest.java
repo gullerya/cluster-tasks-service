@@ -66,7 +66,7 @@ public class CTServiceTest extends CTSTestsBase {
 	private ClusterTasksProcessorF_test_cna clusterTasksProcessorF_test_cna;
 
 	@Test
-	public void TestA_single_processor() {
+	public void testASingleProcessor() {
 		clusterTasksProcessorA_test.tasksProcessed.clear();
 
 		int tasksNumber = 5;
@@ -100,7 +100,7 @@ public class CTServiceTest extends CTSTestsBase {
 	}
 
 	@Test
-	public void TestB_two_processors_single_concurrency_key() {
+	public void testBTwoProcessorsSingleConcurrencyKey() {
 		clusterTasksProcessorB_test.tasksProcessed.clear();
 		clusterTasksProcessorC_test.tasksProcessed.clear();
 
@@ -144,7 +144,7 @@ public class CTServiceTest extends CTSTestsBase {
 	}
 
 	@Test
-	public void TestC_processor_custom_dispatch_interval() {
+	public void testCProcessorCustomDispatchInterval() {
 		List<ClusterTask> tasks = new LinkedList<>();
 		ClusterTask tmp;
 		String concurrencyKey = UUID.randomUUID().toString().replaceAll("-", "");
@@ -173,7 +173,7 @@ public class CTServiceTest extends CTSTestsBase {
 	}
 
 	@Test
-	public void TestD_tasks_with_uniqueness_keys() {
+	public void testDTasksWithUniquenessKeys() {
 		List<ClusterTask> tasks = new LinkedList<>();
 		ClusterTask tmp;
 		ClusterTaskPersistenceResult[] results;
@@ -194,7 +194,7 @@ public class CTServiceTest extends CTSTestsBase {
 	}
 
 	@Test
-	public void TestE_delayed_tasks() {
+	public void testEDelayedTasks() {
 		ClusterTask tmp;
 		String concurrencyKey = UUID.randomUUID().toString().replaceAll("-", "");
 		long delay = 7000L;
@@ -238,7 +238,7 @@ public class CTServiceTest extends CTSTestsBase {
 	}
 
 	@Test
-	public void TestF_non_available_task_holding_concurrency_key() {
+	public void testFNonAvailableTaskHoldingConcurrencyKey() {
 		ClusterTask tmp;
 		ClusterTaskPersistenceResult[] results;
 		String concurrencyKey = UUID.randomUUID().toString().replaceAll("-", "");

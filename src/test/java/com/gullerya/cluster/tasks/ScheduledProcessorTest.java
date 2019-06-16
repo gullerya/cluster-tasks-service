@@ -40,7 +40,7 @@ public class ScheduledProcessorTest extends CTSTestsBase {
 	private ClusterTasksSchedProcD_test clusterTasksSchedProcD_test;
 
 	@Test
-	public void testA_scheduled_tasks() {
+	public void testAScheduledTasks() {
 		//  resume processors
 		ClusterTasksSchedProcA_test.suspended = false;      // this CTP's self duration is ~1000 ms
 		ClusterTasksSchedProcB_test.suspended = false;      // this CTP's self duration is ~2000 ms
@@ -61,7 +61,7 @@ public class ScheduledProcessorTest extends CTSTestsBase {
 	}
 
 	@Test
-	public void testB_rescheduling_scheduled_task_when_pending() {
+	public void testBReschedulingScheduledTaskWhenPending() {
 		ClusterTasksSchedProcD_test.runAndHold = false;
 		ClusterTasksSchedProcD_test.suspended = true;
 		clusterTasksSchedProcD_test.reschedule(5000);
@@ -74,7 +74,7 @@ public class ScheduledProcessorTest extends CTSTestsBase {
 	}
 
 	@Test
-	public void testB_rescheduling_scheduled_task_when_running() {
+	public void testBReschedulingScheduledTaskWhenRunning() {
 		ClusterTasksSchedProcD_test.executionsCounter = 0;
 		ClusterTasksSchedProcD_test.suspended = false;
 		ClusterTasksSchedProcD_test.runAndHold = true;
@@ -96,7 +96,7 @@ public class ScheduledProcessorTest extends CTSTestsBase {
 	}
 
 	@Test
-	public void testC_attempt_to_enqueue_scheduled_task() {
+	public void testCAttemptToEnqueueScheduledTask() {
 		//  TODO: write test that tries to enqueue scheduled task bypassing the normal mechanism (should fail)
 		//  TODO: the test should do that in 2 phases, once when the scheduled task in pending state and once when the task is running
 	}

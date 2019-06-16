@@ -40,18 +40,18 @@ public class CountTasksTest extends CTSTestsBase {
 	private ClusterTasksProcessorCount_test clusterTasksProcessorCount_test;
 
 	@Test
-	public void TestC_zero_results_all() {
+	public void testCZeroResultsAll() {
 		drainOutOldTasks();
 		//assertEquals(0, clusterTasksProcessorCount_test.countTasks());
 	}
 
 	@Test
-	public void TestD_zero_results_concurrency_given() {
+	public void testDZeroResultsConcurrencyGiven() {
 		//assertEquals(0, clusterTasksProcessorCount_test.countTasksByConcurrencyKey("someNonExistingKey"));
 	}
 
 	@Test
-	public void TestE_with_tasks() {
+	public void testEWithTasks() {
 		drainOutOldTasks();
 
 		ClusterTask[] tasks;
@@ -94,7 +94,7 @@ public class CountTasksTest extends CTSTestsBase {
 	}
 
 	@Test
-	public void TestF_count_tasks_with_concurr_key() {
+	public void testFCountTasksWithConcurrKey() {
 		drainOutOldTasks();
 
 		ClusterTask[] tasks;
@@ -134,7 +134,7 @@ public class CountTasksTest extends CTSTestsBase {
 	}
 
 	@Test
-	public void TestF_count_tasks_without_concurr_key() {
+	public void testFCountTasksWithoutConcurrKey() {
 		drainOutOldTasks();
 
 		ClusterTask[] tasks;

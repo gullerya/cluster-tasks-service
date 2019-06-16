@@ -47,7 +47,7 @@ public class HeavyClusterChanneledTasksTest {
 	private int numberOfTasks = 200;
 
 	@Test
-	public void TestA_heavy_cluster() throws InterruptedException {
+	public void testAHeavyCluster() throws InterruptedException {
 		//  load contexts to simulate cluster of a multiple nodes
 		CountDownLatch waitForAllInit = new CountDownLatch(numberOfNodes);
 		List<ClassPathXmlApplicationContext> contexts = new LinkedList<>();

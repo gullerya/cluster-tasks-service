@@ -32,7 +32,7 @@ public class StaledTasksTest {
 	private static final Logger logger = LoggerFactory.getLogger(StaledTasksTest.class);
 
 	@Test
-	public void TestA_staled_tasks() throws InterruptedException {
+	public void TestAStaledTasks() throws InterruptedException {
 		//  load contexts to simulate cluster of a 2 nodes
 		CountDownLatch waitForAllInit = new CountDownLatch(2);
 		ClassPathXmlApplicationContext staleContext;
