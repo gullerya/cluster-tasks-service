@@ -86,7 +86,10 @@ class ClusterTasksProcessorWorker implements Runnable {
 				logger.error(task + " found to have body, but body retrieval failed (see previous logs), won't execute");
 			}
 		} catch (Throwable t) {
-			logger.error("failed processing " + task + ", body: " + task.body, t);
+			logger.error("failed processing " + task + ", body: " + (task.body == null
+					? null
+					: task.body.substring(0, Math.min(5000, task.body.length()))
+			), t);
 			errorsPerProcessorCounter.labels(processor.getType(), t.getClass().getSimpleName()).inc();                      //  metric
 		} finally {
 			taskSelfDurationTimer.observeDuration();                                                                        //  metric
@@ -123,7 +126,12 @@ class ClusterTasksProcessorWorker implements Runnable {
 			return CTSUtils.retry(3, () -> {
 				try {
 					task.body = dataProvider.retrieveTaskBody(task.id, task.partitionIndex);
-					logger.debug(task + " has body: " + task.body);
+					if (logger.isDebugEnabled()) {
+						logger.debug(task + " has body: " + (task.body == null
+								? null
+								: task.body.substring(0, Math.min(5000, task.body.length()))
+						));
+					}
 					return true;
 				} catch (Throwable t) {
 					ctsOwnErrorsCounter.labels(BODY_RETRIEVAL_PHASE, t.getClass().getSimpleName()).inc();                   //  metric
