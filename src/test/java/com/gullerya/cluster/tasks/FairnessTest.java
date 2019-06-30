@@ -15,7 +15,6 @@ import com.gullerya.cluster.tasks.api.enums.ClusterTasksDataProviderType;
 import com.gullerya.cluster.tasks.api.dto.ClusterTask;
 import com.gullerya.cluster.tasks.processors.ClusterTasksProcessorFairness_test_mt;
 import com.gullerya.cluster.tasks.processors.ClusterTasksProcessorFairness_test_st;
-import org.junit.Assert;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.springframework.test.context.ContextConfiguration;
@@ -30,15 +29,15 @@ import static org.junit.Assert.assertTrue;
 /**
  * Created by gullery on 02/06/2016.
  * <p>
- * Collection of integration tests for Cluster Tasks Processor Service to check specifically fairness functionality
- * CTS is expected to give a fair resources to all of the concurrency keys within any (by configuration?) processor
- * All tasks defined with NULL concurrency key should be executed orderly (in FIFO favor) between themselves
+ * Collection of integration tests for Cluster Tasks Processor Service to check
+ * specifically fairness functionality CTS is expected to give a fair resources
+ * to all of the concurrency keys within any (by configuration?) processor All
+ * tasks defined with NULL concurrency key should be executed orderly (in FIFO
+ * favor) between themselves
  */
 
 @RunWith(SpringJUnit4ClassRunner.class)
-@ContextConfiguration({
-		"/cluster-tasks-service-context-test.xml"
-})
+@ContextConfiguration({ "/cluster-tasks-service-context-test.xml" })
 public class FairnessTest extends CTSTestsBase {
 
 	@Test
@@ -46,43 +45,27 @@ public class FairnessTest extends CTSTestsBase {
 		ClusterTask[] tasks = new ClusterTask[12];
 		ClusterTask task;
 
-		//  5 tasks of key '1'
-		task = TaskBuilders.channeledTask()
-				.setConcurrencyKey("1")
-				.build();
+		// 5 tasks of key '1'
+		task = TaskBuilders.channeledTask().setConcurrencyKey("1").build();
 		tasks[0] = task;
-		task = TaskBuilders.channeledTask()
-				.setConcurrencyKey("1")
-				.build();
+		task = TaskBuilders.channeledTask().setConcurrencyKey("1").build();
 		tasks[1] = task;
-		task = TaskBuilders.channeledTask()
-				.setConcurrencyKey("1")
-				.build();
+		task = TaskBuilders.channeledTask().setConcurrencyKey("1").build();
 		tasks[2] = task;
-		task = TaskBuilders.channeledTask()
-				.setConcurrencyKey("1")
-				.build();
+		task = TaskBuilders.channeledTask().setConcurrencyKey("1").build();
 		tasks[3] = task;
-		task = TaskBuilders.channeledTask()
-				.setConcurrencyKey("1")
-				.build();
+		task = TaskBuilders.channeledTask().setConcurrencyKey("1").build();
 		tasks[4] = task;
 
-		//  3 tasks of key '2'
-		task = TaskBuilders.channeledTask()
-				.setConcurrencyKey("2")
-				.build();
+		// 3 tasks of key '2'
+		task = TaskBuilders.channeledTask().setConcurrencyKey("2").build();
 		tasks[5] = task;
-		task = TaskBuilders.channeledTask()
-				.setConcurrencyKey("2")
-				.build();
+		task = TaskBuilders.channeledTask().setConcurrencyKey("2").build();
 		tasks[6] = task;
-		task = TaskBuilders.channeledTask()
-				.setConcurrencyKey("2")
-				.build();
+		task = TaskBuilders.channeledTask().setConcurrencyKey("2").build();
 		tasks[7] = task;
 
-		//  4 tasks without key
+		// 4 tasks without key
 		task = TaskBuilders.simpleTask().build();
 		tasks[8] = task;
 		task = TaskBuilders.simpleTask().build();
@@ -93,9 +76,7 @@ public class FairnessTest extends CTSTestsBase {
 		tasks[11] = task;
 
 		ClusterTaskPersistenceResult[] enqueueResults = clusterTasksService.enqueueTasks(
-				ClusterTasksDataProviderType.DB,
-				ClusterTasksProcessorFairness_test_st.class.getSimpleName(),
-				tasks);
+				ClusterTasksDataProviderType.DB, ClusterTasksProcessorFairness_test_st.class.getSimpleName(), tasks);
 		for (ClusterTaskPersistenceResult result : enqueueResults) {
 			assertEquals(ClusterTaskInsertStatus.SUCCESS, result.getStatus());
 		}
@@ -123,21 +104,22 @@ public class FairnessTest extends CTSTestsBase {
 		}
 	}
 
-	//  this test is called to ensure, that given more threads than concurrency keys, dispatcher will occupy all available threads with non-concurrent tasks
-	//  due to unpredictable nature of dispatch timing, this test relies only on the fact, that there will be no more than 2 dispatch rounds until for tasks
-	//  when in future tasks creation will be batched - we'll be able to test it more thoroughly
+	// this test is called to ensure, that given more threads than concurrency keys,
+	// dispatcher will occupy all available threads with non-concurrent tasks
+	// due to unpredictable nature of dispatch timing, this test relies only on the
+	// fact, that there will be no more than 2 dispatch rounds until for tasks
+	// when in future tasks creation will be batched - we'll be able to test it more
+	// thoroughly
 	@Test
 	public void testAFairnessResourceForMultiNonConcurrent() {
 		List<ClusterTask> tasks = new LinkedList<>();
 		ClusterTask task;
 
-		//  1 tasks of key '1'
-		task = TaskBuilders.channeledTask()
-				.setConcurrencyKey("1")
-				.build();
+		// 1 tasks of key '1'
+		task = TaskBuilders.channeledTask().setConcurrencyKey("1").build();
 		tasks.add(task);
 
-		//  3 tasks without key
+		// 3 tasks without key
 		task = TaskBuilders.simpleTask().build();
 		tasks.add(task);
 		task = TaskBuilders.simpleTask().build();
@@ -146,13 +128,14 @@ public class FairnessTest extends CTSTestsBase {
 		tasks.add(task);
 
 		ClusterTaskPersistenceResult[] enqueueResults = clusterTasksService.enqueueTasks(
-				ClusterTasksDataProviderType.DB,
-				ClusterTasksProcessorFairness_test_mt.class.getSimpleName(),
+				ClusterTasksDataProviderType.DB, ClusterTasksProcessorFairness_test_mt.class.getSimpleName(),
 				tasks.toArray(new ClusterTask[0]));
 		for (ClusterTaskPersistenceResult result : enqueueResults) {
 			assertEquals(ClusterTaskInsertStatus.SUCCESS, result.getStatus());
 		}
 
-		CTSTestsUtils.waitUntil(3000, () -> ClusterTasksProcessorFairness_test_mt.keysProcessingEventsLog.size() == tasks.size() ? true : null);
+		CTSTestsUtils.waitUntil(3000,
+				() -> ClusterTasksProcessorFairness_test_mt.keysProcessingEventsLog.size() == tasks.size() ? true
+						: null);
 	}
 }
