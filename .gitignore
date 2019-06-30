@@ -8,3 +8,7 @@ logs/
 gpg-log
 
 devops.temp
+.settings/
+.classpath
+.project
+.vscode/
