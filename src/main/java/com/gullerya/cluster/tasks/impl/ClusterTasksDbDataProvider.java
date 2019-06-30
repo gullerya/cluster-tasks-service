@@ -602,19 +602,14 @@ abstract class ClusterTasksDbDataProvider implements ClusterTasksDataProvider {
 		try {
 			while (resultSet.next()) {
 				try {
-					Long bodyId;
 					Long metaId;
 
-					bodyId = resultSet.getLong(BODY_ID);
-					if (resultSet.wasNull()) {
-						bodyId = null;
-					}
 					metaId = resultSet.getLong(META_ID);
 					if (resultSet.wasNull()) {
 						metaId = null;
 					}
 
-					result.addEntry(metaId, bodyId);
+					result.addEntry(metaId);
 				} catch (SQLException sqle) {
 					logger.error("failed to read cluster task (body ID)", sqle);
 				}
@@ -628,8 +623,8 @@ abstract class ClusterTasksDbDataProvider implements ClusterTasksDataProvider {
 	private static class BodyTablePreTruncateVerificationResult {
 		private final List<Entry> entries = new LinkedList<>();
 
-		void addEntry(Long metaId, Long bodyId) {
-			entries.add(new Entry(metaId, bodyId));
+		void addEntry(Long metaId) {
+			entries.add(new Entry(metaId));
 		}
 
 		List<Entry> getEntries() {
@@ -638,11 +633,9 @@ abstract class ClusterTasksDbDataProvider implements ClusterTasksDataProvider {
 
 		private static class Entry {
 			final Long metaId;
-			final Long bodyId;
 
-			private Entry(Long metaId, Long bodyId) {
+			private Entry(Long metaId) {
 				this.metaId = metaId;
-				this.bodyId = bodyId;
 			}
 		}
 	}
