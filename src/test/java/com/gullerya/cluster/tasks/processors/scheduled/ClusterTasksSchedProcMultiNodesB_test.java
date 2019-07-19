@@ -21,9 +21,8 @@ import java.util.concurrent.atomic.AtomicInteger;
  */
 
 public class ClusterTasksSchedProcMultiNodesB_test extends ClusterTasksProcessorScheduled {
-	private static final Object COUNTER_LOCK = new Object();
-	private static volatile int executionsCounter = 0;
 	public static volatile boolean suspended = true;
+	public static final AtomicInteger executionsCounter = new AtomicInteger(0);
 
 	protected ClusterTasksSchedProcMultiNodesB_test() {
 		super(ClusterTasksDataProviderType.DB);
@@ -32,19 +31,7 @@ public class ClusterTasksSchedProcMultiNodesB_test extends ClusterTasksProcessor
 	@Override
 	public void processTask(ClusterTask task) {
 		if (!suspended) {
-			synchronized (COUNTER_LOCK) {
-				executionsCounter++;
-			}
+			executionsCounter.incrementAndGet();
 		}
-	}
-
-	static public void resetCounter() {
-		synchronized (COUNTER_LOCK) {
-			executionsCounter = 0;
-		}
-	}
-
-	static public int getExecutionsCounter() {
-		return executionsCounter;
 	}
 }

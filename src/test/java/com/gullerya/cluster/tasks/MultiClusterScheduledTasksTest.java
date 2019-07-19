@@ -116,12 +116,12 @@ public class MultiClusterScheduledTasksTest {
 		CTSTestsUtils.waitSafely(100);
 
 		// zeroize the counter
-		ClusterTasksSchedProcMultiNodesB_test.resetCounter();
+		ClusterTasksSchedProcMultiNodesB_test.executionsCounter.getAndSet(0);
 		ClusterTasksSchedProcMultiNodesB_test.suspended = false;
 		CTSTestsUtils.waitSafely(7000);
-		assertTrue("unexpected number of executions " + ClusterTasksSchedProcMultiNodesB_test.getExecutionsCounter(),
-				ClusterTasksSchedProcMultiNodesB_test.getExecutionsCounter() == 1
-						|| ClusterTasksSchedProcMultiNodesB_test.getExecutionsCounter() == 2);
+		assertTrue("unexpected number of executions " + ClusterTasksSchedProcMultiNodesB_test.executionsCounter.get(),
+				ClusterTasksSchedProcMultiNodesB_test.executionsCounter.get() == 1
+						|| ClusterTasksSchedProcMultiNodesB_test.executionsCounter.get() == 2);
 
 		// stop all CTS instances
 		contexts.forEach(c -> {
