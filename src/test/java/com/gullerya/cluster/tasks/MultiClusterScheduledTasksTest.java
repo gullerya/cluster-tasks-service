@@ -34,7 +34,7 @@ import static org.junit.Assert.assertTrue;
  */
 
 @RunWith(SpringJUnit4ClassRunner.class)
-@ContextConfiguration({ "/cluster-tasks-scheduled-processor-multi-nodes-context-test.xml" })
+@ContextConfiguration({"/cluster-tasks-scheduled-processor-multi-nodes-context-test.xml"})
 public class MultiClusterScheduledTasksTest {
 	private static final Logger logger = LoggerFactory.getLogger(MultiClusterScheduledTasksTest.class);
 	private int numberOfNodes = 3;
@@ -116,14 +116,12 @@ public class MultiClusterScheduledTasksTest {
 		CTSTestsUtils.waitSafely(100);
 
 		// zeroize the counter
-		synchronized (ClusterTasksSchedProcMultiNodesB_test.executionsCounter) {
-			ClusterTasksSchedProcMultiNodesB_test.executionsCounter.set(0);
-		}
+		ClusterTasksSchedProcMultiNodesB_test.resetCounter();
 		ClusterTasksSchedProcMultiNodesB_test.suspended = false;
 		CTSTestsUtils.waitSafely(7000);
-		assertTrue("unexpected number of executions " + ClusterTasksSchedProcMultiNodesB_test.executionsCounter,
-				ClusterTasksSchedProcMultiNodesB_test.executionsCounter.get() == 1
-						|| ClusterTasksSchedProcMultiNodesB_test.executionsCounter.get() == 2);
+		assertTrue("unexpected number of executions " + ClusterTasksSchedProcMultiNodesB_test.getExecutionsCounter(),
+				ClusterTasksSchedProcMultiNodesB_test.getExecutionsCounter() == 1
+						|| ClusterTasksSchedProcMultiNodesB_test.getExecutionsCounter() == 2);
 
 		// stop all CTS instances
 		contexts.forEach(c -> {
