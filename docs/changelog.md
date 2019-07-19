@@ -1,5 +1,8 @@
 ## Changelog
 
+##### 3.1
+- fixed [Issue #1](https://github.com/gullerya/cluster-tasks-service/issues/1) - prevent print out of a task bodies (might be quite big ones)
+
 ##### 3.0
 - re-branded version of `GullerYA` (initial developer and library's owner) due to fork from `MicroFocus` repository
 
