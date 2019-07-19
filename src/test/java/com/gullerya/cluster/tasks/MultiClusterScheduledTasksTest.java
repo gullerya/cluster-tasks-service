@@ -113,7 +113,7 @@ public class MultiClusterScheduledTasksTest {
 		clusterTasksSchedProcMultiNodes_B_test.reschedule(5000);
 		ClusterTasksSchedProcMultiNodesB_test.suspended = true;
 		// let last task to finish
-		CTSTestsUtils.waitSafely(100);
+		CTSTestsUtils.waitSafely(1200);
 
 		// zeroize the counter
 		ClusterTasksSchedProcMultiNodesB_test.executionsCounter.getAndSet(0);
