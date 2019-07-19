@@ -6,7 +6,7 @@
 
 	<artifactId>cluster-tasks-service</artifactId>
 	<groupId>com.gullerya</groupId>
-	<version>3.1.1-SNAPSHOT</version>
+	<version>3.2-SNAPSHOT</version>
 
 	<name>Cluster Tasks Service (CTS)</name>
 	<description>Tasks management, distribution and execution service, working in cluster aware fashion, providing
