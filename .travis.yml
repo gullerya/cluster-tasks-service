@@ -25,7 +25,7 @@ before_install:
 - sudo service postgresql restart
 
 # WAIT PostgreSQL to start
-- sleep 7
+- sleep 3
 
 before_script:
 - psql -c 'CREATE DATABASE cts_tests_schema;' -U postgres
