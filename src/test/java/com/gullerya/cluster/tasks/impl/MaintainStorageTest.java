@@ -9,10 +9,9 @@
 package com.gullerya.cluster.tasks.impl;
 
 import com.gullerya.cluster.tasks.CTSTestsUtils;
+import org.junit.Assert;
 import org.junit.Test;
 import org.junit.runner.RunWith;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.test.context.ContextConfiguration;
 import org.springframework.test.context.junit4.SpringJUnit4ClassRunner;
@@ -28,7 +27,6 @@ import org.springframework.test.context.junit4.SpringJUnit4ClassRunner;
 		"/maintain-storage-context-test.xml"
 })
 public class MaintainStorageTest {
-	private static final Logger logger = LoggerFactory.getLogger(MaintainStorageTest.class);
 
 	@Autowired
 	private ClusterTasksServiceImpl clusterTasksService;
@@ -36,12 +34,10 @@ public class MaintainStorageTest {
 	@Test
 	public void testMaintainStorage() throws Exception {
 		Boolean ready = clusterTasksService.getReadyPromise().get();
-		if (ready) {
-			CTSTestsUtils.waitSafely(1000);
-			ClusterTasksMaintainer maintainer = clusterTasksService.getMaintainer();
-			maintainer.maintainStorage(true);
-		} else  {
-			throw new IllegalStateException("CTS failed to initialize");
-		}
+		Assert.assertTrue(ready);
+
+		CTSTestsUtils.waitSafely(1000);
+		ClusterTasksMaintainer maintainer = clusterTasksService.getMaintainer();
+		maintainer.maintainStorage(true);
 	}
 }
