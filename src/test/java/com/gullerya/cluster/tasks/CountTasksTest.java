@@ -62,9 +62,9 @@ public class CountTasksTest extends CTSTestsBase {
 		tasks[5] = TaskBuilders.channeledTask().setConcurrencyKey(concurrencyKeyB).build();
 
 		ClusterTaskPersistenceResult[] results = clusterTasksService.enqueueTasks(ClusterTasksDataProviderType.DB, "ClusterTasksProcessorCount_test", tasks);
-		Arrays.stream(results).forEach(result ->
-				Assert.assertEquals(ClusterTaskInsertStatus.SUCCESS, result.getStatus())
-		);
+		for (ClusterTaskPersistenceResult result : results) {
+			Assert.assertEquals(ClusterTaskInsertStatus.SUCCESS, result.getStatus());
+		}
 
 //		assertEquals(6, clusterTasksProcessorCount_test.countTasks());
 //		assertEquals(1, clusterTasksProcessorCount_test.countTasksByConcurrencyKey(null));
@@ -96,9 +96,9 @@ public class CountTasksTest extends CTSTestsBase {
 		tasks[2] = TaskBuilders.channeledTask().setConcurrencyKey(concurrencyKey).build();
 
 		ClusterTaskPersistenceResult[] results = clusterTasksService.enqueueTasks(ClusterTasksDataProviderType.DB, "ClusterTasksProcessorCount_test", tasks);
-		Arrays.stream(results).forEach(result ->
-				Assert.assertEquals(ClusterTaskInsertStatus.SUCCESS, result.getStatus())
-		);
+		for (ClusterTaskPersistenceResult result : results) {
+			Assert.assertEquals(ClusterTaskInsertStatus.SUCCESS, result.getStatus());
+		}
 
 		//  hold tasks and check
 //		assertEquals(3, clusterTasksProcessorCount_test.countTasks());
@@ -135,9 +135,9 @@ public class CountTasksTest extends CTSTestsBase {
 		tasks[2] = TaskBuilders.simpleTask().build();
 
 		ClusterTaskPersistenceResult[] results = clusterTasksService.enqueueTasks(ClusterTasksDataProviderType.DB, "ClusterTasksProcessorCount_test", tasks);
-		Arrays.stream(results).forEach(result ->
-				Assert.assertEquals(ClusterTaskInsertStatus.SUCCESS, result.getStatus())
-		);
+		for (ClusterTaskPersistenceResult result : results) {
+			Assert.assertEquals(ClusterTaskInsertStatus.SUCCESS, result.getStatus());
+		}
 
 		//  prevent tasks from running and count
 //		assertEquals(3, clusterTasksProcessorCount_test.countTasks());
