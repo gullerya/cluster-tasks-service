@@ -23,8 +23,8 @@ before_install:
 - sudo sed -i 's/max_connections = 100/max_connections = 500/g' /etc/postgresql/10/main/postgresql.conf
 - sudo service postgresql restart
 
-# WAIT
-- sleep 2
+# WAIT PostgreSQL to start
+- sleep 7
 
 before_script:
 - psql -c 'CREATE DATABASE cts_tests_schema;' -U postgres
