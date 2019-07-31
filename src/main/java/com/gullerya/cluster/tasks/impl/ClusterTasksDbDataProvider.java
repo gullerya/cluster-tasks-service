@@ -93,8 +93,6 @@ abstract class ClusterTasksDbDataProvider implements ClusterTasksDataProvider {
 	final int PARTITIONS_NUMBER = 4;
 
 	private final String removeFinishedTaskSQL;
-	private final String removeFinishedTasksByQuerySQL;
-	private final Map<Long, String> selectDanglingBodiesSQLs = new HashMap<>();
 	private final Map<Long, String> removeDanglingBodiesSQLs = new HashMap<>();
 	private final int removeDanglingBodiesBulkSize = 50;
 
@@ -118,14 +116,11 @@ abstract class ClusterTasksDbDataProvider implements ClusterTasksDataProvider {
 
 		//  prepare SQL statements
 		removeFinishedTaskSQL = "DELETE FROM " + META_TABLE_NAME + " WHERE " + META_ID + " = ?";
-		removeFinishedTasksByQuerySQL = "DELETE FROM " + META_TABLE_NAME + " WHERE " + STATUS + " = " + ClusterTaskStatus.FINISHED.value;
 
 		for (long partition = 0; partition < PARTITIONS_NUMBER; partition++) {
 			lookupOrphansByPartitionSQLs.put(partition, "SELECT " + String.join(",", BODY_ID, META_ID) + " FROM " + BODY_TABLE_NAME + partition +
 					" LEFT OUTER JOIN " + META_TABLE_NAME + " ON " + META_ID + " = " + BODY_ID);
 
-			selectDanglingBodiesSQLs.put(partition, "SELECT " + BODY_ID + " AS bodyId FROM " + BODY_TABLE_NAME + partition +
-					" WHERE NOT EXISTS (SELECT 1 FROM " + META_TABLE_NAME + " WHERE " + META_ID + " = " + BODY_ID + ")");
 			removeDanglingBodiesSQLs.put(partition, "DELETE FROM " + BODY_TABLE_NAME + partition + " WHERE " + BODY_ID + " IN (" + String.join(",", Collections.nCopies(removeDanglingBodiesBulkSize, "?")) + ")");
 
 			truncateByPartitionSQLs.put(partition, "TRUNCATE TABLE " + BODY_TABLE_NAME + partition);
@@ -179,18 +174,6 @@ abstract class ClusterTasksDbDataProvider implements ClusterTasksDataProvider {
 	}
 
 	@Override
-	public void removeFinishedTasksByQuery() {
-		try {
-			int affected = getJdbcTemplate().update(removeFinishedTasksByQuerySQL);
-			if (affected > 0) {
-				logger.debug("removed " + affected + " finished tasks by query");
-			}
-		} catch (DataAccessException dae) {
-			logger.error("failed during removal of finished tasks by query", dae);
-		}
-	}
-
-	@Override
 	public void cleanFinishedTaskBodiesByIDs(long partitionIndex, Long[] taskBodies) {
 		try {
 			int index = 0;
@@ -202,39 +185,6 @@ abstract class ClusterTasksDbDataProvider implements ClusterTasksDataProvider {
 				int removed = getJdbcTemplate().update(removeDanglingBodiesSQLs.get(partitionIndex), params, types);
 				logger.debug("removed " + removed + " bodies from partition " + partitionIndex);
 				index += removeDanglingBodiesBulkSize;
-			}
-		} catch (DataAccessException dae) {
-			logger.error("failed during cleaning dangling task bodies", dae);
-		}
-	}
-
-	@Override
-	public void removeFinishedTaskBodiesByQuery() {
-		long partitionIndex = resolveBodyTablePartitionIndex();
-		try {
-			List<Long> toBeRemoved = getJdbcTemplate().query(selectDanglingBodiesSQLs.get(partitionIndex), resultSet -> {
-				List<Long> result = new ArrayList<>();
-				while (resultSet.next()) {
-					long bodyId = resultSet.getLong("bodyId");
-					if (!resultSet.wasNull()) {
-						result.add(bodyId);
-					}
-				}
-				resultSet.close();
-				return result;
-			});
-			if (toBeRemoved != null && !toBeRemoved.isEmpty()) {
-				logger.debug("found " + toBeRemoved.size() + " dangling bodies to be removed from partition " + partitionIndex);
-				Object[] params = new Object[removeDanglingBodiesBulkSize];
-				Integer[] types = Collections.nCopies(removeDanglingBodiesBulkSize, Types.BIGINT).toArray(new Integer[0]);
-				while (toBeRemoved.size() > 0) {
-					List<Long> bulk = toBeRemoved.subList(0, Math.min(removeDanglingBodiesBulkSize, toBeRemoved.size()));
-					Object[] bulkAsArray = bulk.toArray(new Long[0]);
-					System.arraycopy(bulkAsArray, 0, params, 0, bulkAsArray.length);
-					int removed = getJdbcTemplate().update(removeDanglingBodiesSQLs.get(partitionIndex), params, types);
-					logger.debug("removed " + removed + " dangling bodies from partition " + partitionIndex);
-					toBeRemoved.removeAll(bulk);
-				}
 			}
 		} catch (DataAccessException dae) {
 			logger.error("failed during cleaning dangling task bodies", dae);

@@ -91,16 +91,6 @@ interface ClusterTasksDataProvider {
 	void cleanFinishedTaskBodiesByIDs(long partitionIndex, Long[] taskBodies);
 
 	/**
-	 * Removes all tasks that are finished but were not cleaned for some reason
-	 */
-	void removeFinishedTasksByQuery();
-
-	/**
-	 * Removes all bodies from the CURRENT PARTITION (part of the cleanup of finished tasks)
-	 */
-	void removeFinishedTaskBodiesByQuery();
-
-	/**
 	 * Manages 'stale' tasks:
 	 * - re-runnable tasks (scheduled) should be re-enqueued
 	 * - rest of the tasks should be removed (considered to be zombies)
