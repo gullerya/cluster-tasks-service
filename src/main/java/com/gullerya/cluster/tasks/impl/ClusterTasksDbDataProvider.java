@@ -565,6 +565,10 @@ abstract class ClusterTasksDbDataProvider implements ClusterTasksDataProvider {
 					logger.info("... partition " + partitionIndex + " truncate done");
 				} else {
 					logger.warn("... partition " + partitionIndex + " found non-empty, and " + nonZombieBodies + " of it's entries are not 'zombies', will not truncate");
+					int zombieBodies = verificationResult.getEntries().size() - nonZombieBodies;
+					if (zombieBodies > 0) {
+						logger.info("TODO: clean up " + zombieBodies + " zombie bodies");
+					}
 				}
 			}
 		} catch (Exception e) {
