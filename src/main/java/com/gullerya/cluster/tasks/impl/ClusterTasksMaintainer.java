@@ -79,6 +79,8 @@ final class ClusterTasksMaintainer extends ClusterTasksInternalWorker {
 					maintainTasksCounters(provider);
 				}
 			}
+			//  maintain storage - handles all providers itself
+			maintainStorage(false);
 		} catch (Throwable t) {
 			maintenanceErrors.labels(RUNTIME_INSTANCE_ID).inc();
 			logger.error("failed to perform maintenance round; total failures: " + maintenanceErrors.labels(RUNTIME_INSTANCE_ID).get(), t);
@@ -181,6 +183,14 @@ final class ClusterTasksMaintainer extends ClusterTasksInternalWorker {
 			}
 
 			lastTasksCountTime = System.currentTimeMillis();
+		}
+	}
+
+	void maintainStorage(boolean force) {
+		for (ClusterTasksDataProvider provider : configurer.getDataProvidersMap().values()) {
+			if (provider.isReady()) {
+				provider.maintainStorage(force);
+			}
 		}
 	}
 }

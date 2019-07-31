@@ -31,6 +31,8 @@ import java.sql.Types;
 import java.time.Duration;
 import java.time.ZoneOffset;
 import java.time.ZonedDateTime;
+import java.time.temporal.ChronoUnit;
+import java.time.temporal.TemporalUnit;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
@@ -288,8 +290,6 @@ abstract class ClusterTasksDbDataProvider implements ClusterTasksDataProvider {
 
 			return null;
 		});
-
-		checkAndTruncateBodyTables();
 	}
 
 	@Override
@@ -337,6 +337,30 @@ abstract class ClusterTasksDbDataProvider implements ClusterTasksDataProvider {
 	}
 
 	@Override
+	public int countTasksByApplicationKey(String applicationKey, ClusterTaskStatus status) {
+		String sql = "SELECT COUNT(*) FROM " + META_TABLE_NAME +
+				"   WHERE " + APPLICATION_KEY + (applicationKey == null ? " IS NULL" : " = ?") +
+				(status == null ? "" : ("    AND " + STATUS + " = ?"));
+		Integer result;
+		if (applicationKey == null && status == null) {
+			result = getJdbcTemplate().queryForObject(sql, Integer.class);
+		} else {
+			List<Object> values = new ArrayList<>();
+			List<Integer> types = new ArrayList<>();
+			if (applicationKey != null) {
+				values.add(applicationKey);
+				types.add(Types.VARCHAR);
+			}
+			if (status != null) {
+				values.add(status.value);
+				types.add(Types.BIGINT);
+			}
+			result = getJdbcTemplate().queryForObject(sql, values.toArray(new Object[0]), types.stream().mapToInt(Integer::intValue).toArray(), Integer.class);
+		}
+		return result != null ? result : 0;
+	}
+
+	@Override
 	public Map<String, Integer> countBodies() {
 		Map<String, Integer> result = new LinkedHashMap<>();
 		for (Map.Entry<Long, String> sql : countTaskBodiesByPartitionSQLs.entrySet()) {
@@ -361,27 +385,28 @@ abstract class ClusterTasksDbDataProvider implements ClusterTasksDataProvider {
 	}
 
 	@Override
-	public int countTasksByApplicationKey(String applicationKey, ClusterTaskStatus status) {
-		String sql = "SELECT COUNT(*) FROM " + META_TABLE_NAME +
-				"   WHERE " + APPLICATION_KEY + (applicationKey == null ? " IS NULL" : " = ?") +
-				(status == null ? "" : ("    AND " + STATUS + " = ?"));
-		Integer result;
-		if (applicationKey == null && status == null) {
-			result = getJdbcTemplate().queryForObject(sql, Integer.class);
-		} else {
-			List<Object> values = new ArrayList<>();
-			List<Integer> types = new ArrayList<>();
-			if (applicationKey != null) {
-				values.add(applicationKey);
-				types.add(Types.VARCHAR);
+	public void maintainStorage(boolean force) {
+		ZonedDateTime now = ZonedDateTime.now(ZoneOffset.UTC);
+		int hour = now.getHour();
+		int shiftDuration = 24 / PARTITIONS_NUMBER;
+		//  run the truncation GC only:
+		//      when left 1 hour before a roll over
+		//      AND 45 minutes and above (so only 15 minutes till next roll over)
+		//      AND truncate was not yet performed OR passed at least 1 hour since last truncate
+		if (force ||
+				(hour % shiftDuration == shiftDuration - 1 && now.getMinute() > 45 && (lastTruncateTime == null || Duration.between(lastTruncateTime, now).toHours() > 1))) {
+			int currentPartition = hour / shiftDuration;
+			int prevPartition = currentPartition == 0 ? PARTITIONS_NUMBER - 1 : currentPartition - 1;
+			int nextPartition = currentPartition == PARTITIONS_NUMBER - 1 ? 0 : currentPartition + 1;
+			logger.info((force ? "forced" : "timely") +
+					" storage maintenance: current partition - " + currentPartition + ", next partition - " + nextPartition);
+			for (long partition = 0; partition < PARTITIONS_NUMBER; partition++) {
+				if (partition != currentPartition && partition != prevPartition && partition != nextPartition) {
+					tryTruncateBodyTable(partition);
+				}
 			}
-			if (status != null) {
-				values.add(status.value);
-				types.add(Types.BIGINT);
-			}
-			result = getJdbcTemplate().queryForObject(sql, values.toArray(new Object[0]), types.stream().mapToInt(Integer::intValue).toArray(), Integer.class);
+			lastTruncateTime = now;
 		}
-		return result != null ? result : 0;
 	}
 
 	@Deprecated
@@ -513,30 +538,6 @@ abstract class ClusterTasksDbDataProvider implements ClusterTasksDataProvider {
 		return result;
 	}
 
-	private void checkAndTruncateBodyTables() {
-		ZonedDateTime now = ZonedDateTime.now(ZoneOffset.UTC);
-		int hour = now.getHour();
-		int shiftDuration = 24 / PARTITIONS_NUMBER;
-		//  run the truncation GC only:
-		//      when left 1 hour before a roll over
-		//      AND 45 minutes and above (so only 15 minutes till next roll over)
-		//      AND truncate was not yet performed OR passed at least 1 hour since last truncate
-		if (hour % shiftDuration == shiftDuration - 1 &&
-				now.getMinute() > 45 &&
-				(lastTruncateTime == null || Duration.between(lastTruncateTime, now).toHours() > 1)) {
-			int currentPartition = hour / shiftDuration;
-			int prevPartition = currentPartition == 0 ? PARTITIONS_NUMBER - 1 : currentPartition - 1;
-			int nextPartition = currentPartition == PARTITIONS_NUMBER - 1 ? 0 : currentPartition + 1;
-			logger.info("timely task body tables partitions truncate maintenance: current partition - " + currentPartition + ", next partition - " + nextPartition);
-			for (long partition = 0; partition < PARTITIONS_NUMBER; partition++) {
-				if (partition != currentPartition && partition != prevPartition && partition != nextPartition) {
-					tryTruncateBodyTable(partition);
-				}
-			}
-			lastTruncateTime = now;
-		}
-	}
-
 	private void tryTruncateBodyTable(long partitionIndex) {
 		logger.info("starting truncation of partition " + partitionIndex + "...");
 		try {
@@ -551,14 +552,15 @@ abstract class ClusterTasksDbDataProvider implements ClusterTasksDataProvider {
 				logger.info("... partition " + partitionIndex + " truncate done");
 			} else {
 				int nonZombieBodies = 0;
-				logger.warn("availability check during truncate partition " + partitionIndex + " found it's not empty (" + verificationResult.getEntries().size() + " entries)");
+				logger.warn("availability check during truncate partition " + partitionIndex + " found it's not empty (total of " + verificationResult.getEntries().size() + " entries)");
+				logger.warn("bodies still having meta (non-zombie):");
 				for (BodyTablePreTruncateVerificationResult.Entry entry : verificationResult.getEntries()) {
-					logger.warn("--- " + entry);
 					if (entry.metaId != null) {
+						logger.warn("\t" + entry);
 						nonZombieBodies++;
 					}
 				}
-				logger.warn("--- total bodies still having meta (non-zombie): " + nonZombieBodies);
+				logger.warn("total of non-zombie bodies: " + nonZombieBodies);
 				if (nonZombieBodies == 0) {
 					logger.info("... partition " + partitionIndex + " found non-empty, but all of it's entries considered 'zombies', proceeding with truncate ...");
 					jdbcTemplate.execute(truncateBodyTableSQL);
@@ -636,6 +638,11 @@ abstract class ClusterTasksDbDataProvider implements ClusterTasksDataProvider {
 
 			private Entry(Long metaId) {
 				this.metaId = metaId;
+			}
+
+			@Override
+			public String toString() {
+				return "metaId: " + metaId;
 			}
 		}
 	}

@@ -125,6 +125,15 @@ interface ClusterTasksDataProvider {
 	Map<String, Integer> countTasks(ClusterTaskStatus status);
 
 	/**
+	 * Implementation should count tasks by the given application key and status
+	 *
+	 * @param applicationKey application key; MAY be NULL
+	 * @param status         status; MAY be NULL; if is NULL - count all tasks of the given application key
+	 * @return number of counted tasks
+	 */
+	int countTasksByApplicationKey(String applicationKey, ClusterTaskStatus status);
+
+	/**
 	 * Implementation should provide a counter of all the bodies in all partitions mapped by partition name
 	 *
 	 * @return map of number of bodies per partition
@@ -150,13 +159,11 @@ interface ClusterTasksDataProvider {
 	int removeLongTimeNoSeeNodes(long maxTimeNoSeeMillis);
 
 	/**
-	 * Implementation should count tasks by the given application key and status
+	 * Data providers should use this call as an opportunity to perform storage maintenance if/when relevant
 	 *
-	 * @param applicationKey application key; MAY be NULL
-	 * @param status         status; MAY be NULL; if is NULL - count all tasks of the given application key
-	 * @return number of counted tasks
+	 * @param force specify if the maintenance should be performed even out of the normal cycle
 	 */
-	int countTasksByApplicationKey(String applicationKey, ClusterTaskStatus status);
+	void maintainStorage(boolean force);
 
 	/**
 	 * Implementation should provide a counter of all tasks existing in the Storage right to the moment of query

@@ -111,6 +111,7 @@ public class StaledTasksTest {
 			}
 		});
 		Assert.assertTrue(result != null && result);
+		pickupContext.getBean(ClusterTasksServiceImpl.class).getMaintainer().setMaintenanceInterval(17000);
 
 		//  clean up the pick up context
 		try {
