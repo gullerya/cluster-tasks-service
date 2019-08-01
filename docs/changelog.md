@@ -1,5 +1,9 @@
 ## Changelog
 
+##### 3.2
+- fixed [Issue #3](https://github.com/gullerya/cluster-tasks-service/issues/3) - fix the printing of the abandoned tasks' bodies (those with no tasks metadata) during the maintenance work
+- fixed [Issue #4](https://github.com/gullerya/cluster-tasks-service/issues/4) - clean up the abandoned tasks' bodies even when the bodies partition is not being truncated due to the existence of non-abandoned bodies there
+
 ##### 3.1
 - fixed [Issue #1](https://github.com/gullerya/cluster-tasks-service/issues/1) - prevent print out of a task bodies (might be quite big ones)
 
