@@ -63,14 +63,14 @@ final class PostgreSqlDbDataProvider extends ClusterTasksDbDataProvider {
 		areIndicesReadySQL = "SELECT COUNT(*) AS cts_indices_count FROM pg_indexes WHERE indexname IN(" +
 				String.join(",", getCTSIndexNames().stream().map(in -> "'" + in + "'").collect(Collectors.toSet())) + ")";
 
-		insertSelfLastSeenSQL = "INSERT INTO " + ACTIVE_NODES_TABLE_NAME + " (" + ACTIVE_NODE_ID + "," + ACTIVE_NODE_SINCE + "," + ACTIVE_NODE_LAST_SEEN + ")" + " VALUES (?, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)";
-		updateSelfLastSeenSQL = "UPDATE " + ACTIVE_NODES_TABLE_NAME + " SET " + ACTIVE_NODE_LAST_SEEN + " = CURRENT_TIMESTAMP WHERE " + ACTIVE_NODE_ID + " = ?";
-		removeLongTimeNoSeeSQL = "DELETE FROM " + ACTIVE_NODES_TABLE_NAME + " WHERE " + ACTIVE_NODE_LAST_SEEN + " < CURRENT_TIMESTAMP - MAKE_INTERVAL(SECS := ? / 1000)";
+		insertSelfLastSeenSQL = "INSERT INTO " + ACTIVE_NODES_TABLE_NAME + " (" + ACTIVE_NODE_ID + "," + ACTIVE_NODE_SINCE + "," + ACTIVE_NODE_LAST_SEEN + ")" + " VALUES (?, TIMEZONE('UTC', CURRENT_TIMESTAMP) , TIMEZONE('UTC', CURRENT_TIMESTAMP))";
+		updateSelfLastSeenSQL = "UPDATE " + ACTIVE_NODES_TABLE_NAME + " SET " + ACTIVE_NODE_LAST_SEEN + " = TIMEZONE('UTC', CURRENT_TIMESTAMP) WHERE " + ACTIVE_NODE_ID + " = ?";
+		removeLongTimeNoSeeSQL = "DELETE FROM " + ACTIVE_NODES_TABLE_NAME + " WHERE " + ACTIVE_NODE_LAST_SEEN + " < TIMEZONE('UTC', CURRENT_TIMESTAMP) - MAKE_INTERVAL(SECS := ? / 1000)";
 
 		//  insert / update tasks
 		insertTaskSQL = "SELECT insert_task(" + String.join(",", Collections.nCopies(9, "?")) + ")";
 		updateScheduledTaskIntervalSQL = "UPDATE " + META_TABLE_NAME +
-				" SET " + CREATED + " = CURRENT_TIMESTAMP, " + DELAY_BY_MILLIS + " = ?" +
+				" SET " + CREATED + " = TIMEZONE('UTC', CURRENT_TIMESTAMP), " + DELAY_BY_MILLIS + " = ?" +
 				" WHERE " + PROCESSOR_TYPE + " = ? AND " + TASK_TYPE + " = " + ClusterTaskType.SCHEDULED.value + " AND " + STATUS + " = " + ClusterTaskStatus.PENDING.value;
 
 		//  select and run tasks flow
@@ -86,7 +86,7 @@ final class PostgreSqlDbDataProvider extends ClusterTasksDbDataProvider {
 							"   FROM " + META_TABLE_NAME +
 							"   WHERE " + PROCESSOR_TYPE + " IN(" + processorTypesInParameter + ")" +
 							"       AND " + STATUS + " < " + ClusterTaskStatus.FINISHED.value +
-							"       AND " + CREATED + " < CURRENT_TIMESTAMP - MAKE_INTERVAL(SECS := " + DELAY_BY_MILLIS + " / 1000)) meta" +
+							"       AND " + CREATED + " < TIMEZONE('UTC', CURRENT_TIMESTAMP) - MAKE_INTERVAL(SECS := " + DELAY_BY_MILLIS + " / 1000)) meta" +
 							" WHERE ((meta." + CONCURRENCY_KEY + " IS NOT NULL AND meta.row_index <= 1 AND meta.running_count = 0)" +
 							"       OR (meta." + CONCURRENCY_KEY + " IS NULL AND meta." + STATUS + " = " + ClusterTaskStatus.PENDING.value + "))"
 			);
@@ -95,7 +95,7 @@ final class PostgreSqlDbDataProvider extends ClusterTasksDbDataProvider {
 			selectTaskBodyByPartitionSQLs.put(partition, "SELECT " + BODY + " FROM " + BODY_TABLE_NAME + partition +
 					" WHERE " + BODY_ID + " = ?");
 		}
-		updateTasksStartedSQL = "UPDATE " + META_TABLE_NAME + " SET " + STATUS + " = " + ClusterTaskStatus.RUNNING.value + ", " + STARTED + " = CURRENT_TIMESTAMP, " + RUNTIME_INSTANCE + " = ?" +
+		updateTasksStartedSQL = "UPDATE " + META_TABLE_NAME + " SET " + STATUS + " = " + ClusterTaskStatus.RUNNING.value + ", " + STARTED + " = TIMEZONE('UTC', CURRENT_TIMESTAMP), " + RUNTIME_INSTANCE + " = ?" +
 				" WHERE " + META_ID + " = ?";
 
 		//  clean up tasks flow
