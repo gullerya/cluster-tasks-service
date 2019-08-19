@@ -40,7 +40,7 @@ public class ApplicationKeyCountTest extends CTSTestsBase {
 	}
 
 	@Test
-	public void testAAimpleAppKeyCount() {
+	public void testASimpleAppKeyCount() {
 		AppKeyProcessorCount_test.any = true;
 		CTSTestsUtils.waitSafely(3000);
 		AppKeyProcessorCount_test.any = false;
