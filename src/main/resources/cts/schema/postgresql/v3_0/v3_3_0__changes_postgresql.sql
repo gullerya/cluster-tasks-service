@@ -21,7 +21,7 @@ BEGIN
                                    CTSKM_ORDERING_FACTOR, CTSKM_CREATED, CTSKM_STATUS)
     VALUES (task_type, processor_type, uniqueness_key, concurrency_key,
             application_key, delay_by_millis, body_partition,
-            COALESCE(ordering_factor, (EXTRACT(EPOCH FROM LOCALTIMESTAMP) * 10E+8)::BIGINT + delay_by_millis),
+            COALESCE(ordering_factor, (EXTRACT(EPOCH FROM TIMEZONE('UTC', CURRENT_TIMESTAMP)) * 10E+8)::BIGINT + delay_by_millis),
             TIMEZONE('UTC', CURRENT_TIMESTAMP), 0) RETURNING CTSKM_ID INTO task_id;
 
     IF body_partition = 0 THEN
