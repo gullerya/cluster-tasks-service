@@ -38,10 +38,10 @@
 	</scm>
 
 	<properties>
-		<slf4j.version>1.7.26</slf4j.version>
-		<spring.version>5.1.7.RELEASE</spring.version>
-		<flyway.version>4.2.0</flyway.version>
-		<prometheus.version>0.6.0</prometheus.version>
+		<slf4j.version>1.7.28</slf4j.version>
+		<spring.version>5.2.0.RELEASE</spring.version>
+		<flyway.version>6.0.6</flyway.version>
+		<prometheus.version>0.7.0</prometheus.version>
 
 		<!--BUILD-->
 		<jdk.version>1.8</jdk.version>
@@ -50,7 +50,7 @@
 		<maven-compiler-plugin.version>3.8.1</maven-compiler-plugin.version>
 		<maven-jar-plugin.version>3.1.2</maven-jar-plugin.version>
 		<maven-source-plugin.version>3.1.0</maven-source-plugin.version>
-		<maven-javadoc-plugin.version>3.1.0</maven-javadoc-plugin.version>
+		<maven-javadoc-plugin.version>3.1.1</maven-javadoc-plugin.version>
 		<maven-install-plugin.version>3.0.0-M1</maven-install-plugin.version>
 
 		<!--DEPLOY-->
@@ -65,11 +65,9 @@
 		<jacoco-maven-plugin.version>0.8.4</jacoco-maven-plugin.version>
 		<spotbugs.version>3.1.11</spotbugs.version>
 		<sql-maven-plugin.version>1.5</sql-maven-plugin.version>
-		<mssql-jdbc.version>7.2.2.jre8</mssql-jdbc.version>
+		<mssql-jdbc.version>7.4.1.jre8</mssql-jdbc.version>
 		<ojdbc.version>11.2.0.3</ojdbc.version>
-		<postgresql.version>42.2.5</postgresql.version>
-		<hikari.version>3.3.1</hikari.version>
-		<log4j.version>2.11.2</log4j.version>
+		<postgresql.version>42.2.8</postgresql.version>
 
 		<tests.db.schema>cts_tests_schema</tests.db.schema>
 		<tests.db.driver>TO_BE_REPLACED_DYNAMICALLY_BY_PROFILE</tests.db.driver>
@@ -127,13 +125,13 @@
 		<dependency>
 			<artifactId>log4j-slf4j-impl</artifactId>
 			<groupId>org.apache.logging.log4j</groupId>
-			<version>${log4j.version}</version>
+			<version>2.12.1</version>
 			<scope>test</scope>
 		</dependency>
 		<dependency>
 			<artifactId>HikariCP</artifactId>
 			<groupId>com.zaxxer</groupId>
-			<version>${hikari.version}</version>
+			<version>3.4.1</version>
 			<scope>test</scope>
 		</dependency>
 		<dependency>

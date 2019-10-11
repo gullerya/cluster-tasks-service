@@ -14,19 +14,23 @@ class ClusterTasksServiceSchemaManager {
 	private static final String SQL_MIGRATION_PREFIX = "v";
 
 	void executeSchemaMaintenance(ClusterTasksServiceConfigurerSPI.DBType dbType, DataSource dataSource) {
-		Flyway flyway = new Flyway();
+		Flyway flyway = null;
 		try {
-			flyway.setDataSource(dataSource);
-			flyway.setTable(CTS_SCHEMA_HISTORY_TABLE_NAME);
-			flyway.setSqlMigrationPrefix(SQL_MIGRATION_PREFIX);
-			flyway.setBaselineOnMigrate(true);
-			flyway.setValidateOnMigrate(true);
-			flyway.setCleanDisabled(true);
-			flyway.setLocations(getSQLsLocation(dbType));
+			flyway = Flyway.configure()
+					.dataSource(dataSource)
+					.table(CTS_SCHEMA_HISTORY_TABLE_NAME)
+					.sqlMigrationPrefix(SQL_MIGRATION_PREFIX)
+					.baselineOnMigrate(true)
+					.validateOnMigrate(true)
+					.cleanDisabled(true)
+					.locations(getSQLsLocation(dbType))
+					.load();
 			flyway.migrate();
 		} catch (Exception e) {
 			logger.error("DB maintenance failed, attempting to repair...", e);
-			flyway.repair();
+			if (flyway != null) {
+				flyway.repair();
+			}
 			logger.info("DB repair after migration failure has SUCCEED");
 		}
 	}
