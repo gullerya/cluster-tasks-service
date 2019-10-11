@@ -1,5 +1,8 @@
 ## Changelog
 
+##### 3.4
+- updating dependencies to the latest versions
+
 ##### 3.3
 - fixed [Issue #5](https://github.com/gullerya/cluster-tasks-service/issues/5) - fixing the time zoning problem in PostgreSQL data provider
 
