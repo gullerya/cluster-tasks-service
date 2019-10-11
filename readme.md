@@ -56,3 +56,13 @@ The world of `CTS` may roughly be separated into two:
 - a __processors__ (aka Cluster Tasks Processor, aka CTP), implemented by library consumer and extending appropriate base abstract class, are an actual tasks processors with custom business logic, almost completely transparent to the framework.
  It is likely, that there will be many __processors__ (CPTs) in your application, each handling specific use-case.
  Adding processors is an ongoing effort, aligned with the application evolution.
+ 
+ ## Schema management
+ 
+ `CTS` knows to handle the schema automatically (create/upgrade) or rely on the provided one. While the second flavor looks highly fragile and non-convenient to me, I've left that option open for a special cases.
+ 
+ If you'd like `CTS` to manage it's own scheme, you should provide a relevant `DataSource` object in `getAdministrativeDataSource` API of your configurer implementation.
+ 
+ Otherwise, you may not implement that method (or return `null` from it) and then `CTS` will assume that the hosting application is managing the schema for it.
+ 
+ > While auto schema management has no limitations for Oracle and PostgreSQL, SQL Server's lowest version is SqlServer2016 (inclusive). Shall you have a version of SQL Server prior to that, unfortunately you'll need to perform the schema maintenance your self. Yet, schema management SQLs found in `CTS` sources may vastly simplify this task.

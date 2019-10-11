@@ -3,32 +3,32 @@ version: 1.5.{build}
 platform: Any CPU
 
 services:
-- mssql2014
+  - mssql2016
 
 install:
-- ps: |
-    Add-Type -AssemblyName System.IO.Compression.FileSystem
-    if (!(Test-Path -Path "C:\maven" )) {
-      (new-object System.Net.WebClient).DownloadFile(
-        'http://www.us.apache.org/dist/maven/maven-3/3.5.4/binaries/apache-maven-3.5.4-bin.zip',
-        'C:\maven-bin.zip'
-      )
-      [System.IO.Compression.ZipFile]::ExtractToDirectory("C:\maven-bin.zip", "C:\maven")
-    }
-- cmd: SET PATH=C:\maven\apache-maven-3.5.4\bin;%JAVA_HOME%\bin;%PATH%
+  - ps: |
+      Add-Type -AssemblyName System.IO.Compression.FileSystem
+      if (!(Test-Path -Path "C:\maven" )) {
+        (new-object System.Net.WebClient).DownloadFile(
+          'http://www.us.apache.org/dist/maven/maven-3/3.5.4/binaries/apache-maven-3.5.4-bin.zip',
+          'C:\maven-bin.zip'
+        )
+        [System.IO.Compression.ZipFile]::ExtractToDirectory("C:\maven-bin.zip", "C:\maven")
+      }
+  - cmd: SET PATH=C:\maven\apache-maven-3.5.4\bin;%JAVA_HOME%\bin;%PATH%
 
 build_script:
-- mvn verify spotbugs:check -T8
+  - mvn verify spotbugs:check -T8
 
 test_script:
-- mvn test -T8 -DskipTests=false -Pcreate-tests-schema,drop-tests-schema,sqlserver,jacoco-coverage -Ddb.config.location=environment -Dtests.db.type=MSSQL -Dtests.db.url=jdbc:sqlserver://localhost\\SQL2014:1433 -Dtests.db.username=sa -Dtests.db.password=Password12!
+  - mvn test -T8 -DskipTests=false -Pcreate-tests-schema,drop-tests-schema,sqlserver,jacoco-coverage -Ddb.config.location=environment -Dtests.db.type=MSSQL -Dtests.db.url=jdbc:sqlserver://localhost\\SQL2014:1433 -Dtests.db.username=sa -Dtests.db.password=Password12!
 
 after_test:
-- ps: |
-    $env:PATH = 'C:\msys64\usr\bin;' + $env:PATH
-    Invoke-WebRequest -Uri 'https://codecov.io/bash' -OutFile codecov.sh
-    bash codecov.sh -f "target\jacoco-report\jacoco.xml"
+  - ps: |
+      $env:PATH = 'C:\msys64\usr\bin;' + $env:PATH
+      Invoke-WebRequest -Uri 'https://codecov.io/bash' -OutFile codecov.sh
+      bash codecov.sh -f "target\jacoco-report\jacoco.xml"
 
 cache:
-- C:\maven\
-- C:\Users\appveyor\.m2
+  - C:\maven\
+  - C:\Users\appveyor\.m2
