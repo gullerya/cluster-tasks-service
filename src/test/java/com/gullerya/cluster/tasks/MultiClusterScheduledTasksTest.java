@@ -16,6 +16,7 @@ import java.util.LinkedList;
 import java.util.List;
 import java.util.concurrent.CountDownLatch;
 
+import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
 
 /**
@@ -33,8 +34,6 @@ public class MultiClusterScheduledTasksTest {
 
 	@Autowired
 	private ClusterTasksService clusterTasksService;
-	@Autowired
-	private ClusterTasksSchedProcMultiNodesB_test clusterTasksSchedProcMultiNodes_B_test;
 
 	@Test
 	public void testAScheduledInClusterInitialInterval() throws InterruptedException {
@@ -44,7 +43,7 @@ public class MultiClusterScheduledTasksTest {
 		ClassPathXmlApplicationContext context;
 		for (int i = 0; i < numberOfNodes; i++) {
 			context = new ClassPathXmlApplicationContext(
-					"/cluster-tasks-scheduled-processor-multi-nodes-context-test.xml");
+					"/cluster-tasks-scheduled-processor-multi-nodes-context-test-a.xml");
 			contexts.add(context);
 			context.getBean(ClusterTasksService.class).getReadyPromise().handleAsync((r, e) -> {
 				if (r != null && r) {
@@ -60,7 +59,7 @@ public class MultiClusterScheduledTasksTest {
 
 		// make sure that the execution of the scheduled tasks is at correct 'speed'
 		// regardless of the number of nodes
-		ClusterTasksSchedProcMultiNodesA_test.executionsCounter = 0;
+		assertEquals(0, ClusterTasksSchedProcMultiNodesA_test.executionsCounter);
 		ClusterTasksSchedProcMultiNodesA_test.suspended = false;
 		CTSTestsUtils.waitSafely(7000);
 		assertTrue(ClusterTasksSchedProcMultiNodesA_test.executionsCounter == 1
@@ -85,7 +84,7 @@ public class MultiClusterScheduledTasksTest {
 		ClassPathXmlApplicationContext context;
 		for (int i = 0; i < numberOfNodes; i++) {
 			context = new ClassPathXmlApplicationContext(
-					"/cluster-tasks-scheduled-processor-multi-nodes-context-test.xml");
+					"/cluster-tasks-scheduled-processor-multi-nodes-context-test-b.xml");
 			contexts.add(context);
 			context.getBean(ClusterTasksService.class).getReadyPromise().handleAsync((r, e) -> {
 				if (r != null && r) {
@@ -102,13 +101,13 @@ public class MultiClusterScheduledTasksTest {
 		// make sure that the execution of the scheduled tasks is at correct 'speed'
 		// regardless of the number of nodes
 		assertTrue(clusterTasksService.getReadyPromise().get());
-		clusterTasksSchedProcMultiNodes_B_test.reschedule(5000);
-		ClusterTasksSchedProcMultiNodesB_test.suspended = true;
+		ClusterTasksSchedProcMultiNodesB_test.instance.reschedule(5000);
 		// let last task to finish
 		CTSTestsUtils.waitSafely(1200);
 
 		// zeroize the counter
 		ClusterTasksSchedProcMultiNodesB_test.executionsCounter.getAndSet(0);
+		assertEquals(0, ClusterTasksSchedProcMultiNodesB_test.executionsCounter.get());
 		ClusterTasksSchedProcMultiNodesB_test.suspended = false;
 		CTSTestsUtils.waitSafely(7000);
 		assertTrue("unexpected number of executions " + ClusterTasksSchedProcMultiNodesB_test.executionsCounter.get(),

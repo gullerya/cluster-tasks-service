@@ -14,10 +14,12 @@ import java.util.concurrent.atomic.AtomicInteger;
 
 public class ClusterTasksSchedProcMultiNodesB_test extends ClusterTasksProcessorScheduled {
 	public static volatile boolean suspended = true;
+	public static ClusterTasksSchedProcMultiNodesB_test instance;
 	public static final AtomicInteger executionsCounter = new AtomicInteger(0);
 
 	protected ClusterTasksSchedProcMultiNodesB_test() {
 		super(ClusterTasksDataProviderType.DB);
+		instance = this;
 	}
 
 	@Override
