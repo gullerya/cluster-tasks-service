@@ -8,7 +8,6 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 
-import javax.annotation.PostConstruct;
 import java.util.*;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
@@ -40,7 +39,6 @@ public abstract class ClusterTasksProcessorBase {
 
 	private ExecutorService workersThreadPool;
 
-	@Autowired
 	private ClusterTasksServiceImpl clusterTasksService;
 
 	static {
@@ -72,8 +70,9 @@ public abstract class ClusterTasksProcessorBase {
 		this.minimalTasksTakeInterval = minimalTasksTakeInterval;
 	}
 
-	@PostConstruct
-	private void initialize() {
+	@Autowired
+	private void initialize(ClusterTasksServiceImpl clusterTasksService) {
+		this.clusterTasksService = clusterTasksService;
 		workersThreadPool = Executors.newFixedThreadPool(numberOfWorkersPerNode, new CTPWorkersThreadFactory());
 		availableWorkers.set(numberOfWorkersPerNode);
 
