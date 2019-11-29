@@ -45,13 +45,12 @@ public class MultiClusterScheduledTasksTest {
 			context = new ClassPathXmlApplicationContext(
 					"/cluster-tasks-scheduled-processor-multi-nodes-context-test-a.xml");
 			contexts.add(context);
-			context.getBean(ClusterTasksService.class).getReadyPromise().handleAsync((r, e) -> {
+			context.getBean(ClusterTasksService.class).getReadyPromise().whenComplete((r, e) -> {
 				if (r != null && r) {
 					waitForAllInit.countDown();
 				} else {
 					throw new IllegalStateException("some of the contexts failed to get initialized", e);
 				}
-				return null;
 			});
 		}
 		waitForAllInit.await();
@@ -86,13 +85,12 @@ public class MultiClusterScheduledTasksTest {
 			context = new ClassPathXmlApplicationContext(
 					"/cluster-tasks-scheduled-processor-multi-nodes-context-test-b.xml");
 			contexts.add(context);
-			context.getBean(ClusterTasksService.class).getReadyPromise().handleAsync((r, e) -> {
+			context.getBean(ClusterTasksService.class).getReadyPromise().whenComplete((r, e) -> {
 				if (r != null && r) {
 					waitForAllInit.countDown();
 				} else {
 					throw new IllegalStateException("some of the contexts failed to get initialized", e);
 				}
-				return null;
 			});
 		}
 		waitForAllInit.await();
