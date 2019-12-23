@@ -1,7 +1,6 @@
 package com.gullerya.cluster.tasks.impl;
 
 import com.gullerya.cluster.tasks.api.enums.ClusterTaskType;
-import io.prometheus.client.Counter;
 import io.prometheus.client.Summary;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -18,41 +17,16 @@ import java.util.Collections;
 
 class ClusterTasksProcessorWorker implements Runnable {
 	private static final Logger logger = LoggerFactory.getLogger(ClusterTasksProcessorWorker.class);
-	private static final Counter ctsOwnErrorsCounter;
-	private static final Summary tasksPerProcessorDuration;
-	private static final Counter errorsPerProcessorCounter;
 	private static final String BODY_RETRIEVAL_PHASE = "body_retrieve";
 	private static final String TASK_FINALIZATION_PHASE = "task_finalization";
 
+	private final ClusterTasksServiceImpl clusterTasksService;
 	private final ClusterTasksDataProvider dataProvider;
 	private final ClusterTasksProcessorBase processor;
 	private final ClusterTaskImpl task;
 
-	static {
-		ctsOwnErrorsCounter = Counter.build()
-				.name("cts_own_errors_total")
-				.help("CTS own errors counter")
-				.labelNames("phase", "error_type")
-				.register();
-		tasksPerProcessorDuration = Summary.build()
-				.name("cts_per_processor_task_duration_seconds")
-				.help("CTS task duration summary (per processor type)")
-				.labelNames("processor_type")
-				.register();
-		errorsPerProcessorCounter = Counter.build()
-				.name("cts_per_processor_errors_total")
-				.help("Tasks errors caught by CTS (per processor type)")
-				.labelNames("processor_type", "error_type")
-				.register();
-	}
-
-	ClusterTasksProcessorWorker(ClusterTasksDataProvider dataProvider, ClusterTasksProcessorBase processor, ClusterTaskImpl task) {
-		if (processor == null) {
-			throw new IllegalArgumentException("processor MUST NOT be null");
-		}
-		if (task == null) {
-			throw new IllegalArgumentException("task MUST NOT be null");
-		}
+	ClusterTasksProcessorWorker(ClusterTasksServiceImpl clusterTasksService, ClusterTasksDataProvider dataProvider, ClusterTasksProcessorBase processor, ClusterTaskImpl task) {
+		this.clusterTasksService = clusterTasksService;
 		this.dataProvider = dataProvider;
 		this.processor = processor;
 		this.task = task;
@@ -65,7 +39,7 @@ class ClusterTasksProcessorWorker implements Runnable {
 			reinsertScheduledTask(task);
 		}
 
-		Summary.Timer taskSelfDurationTimer = tasksPerProcessorDuration.labels(processor.getType()).startTimer();           //  metric
+		Summary.Timer taskSelfDurationTimer = clusterTasksService.tasksPerProcessorDuration.labels(processor.getType()).startTimer();           //  metric
 		try {
 			if (enrichTaskWithBodyIfRelevant(task)) {
 				ClusterTaskImpl clusterTask = new ClusterTaskImpl(task);
@@ -82,14 +56,14 @@ class ClusterTasksProcessorWorker implements Runnable {
 					? null
 					: task.body.substring(0, Math.min(5000, task.body.length()))
 			), t);
-			errorsPerProcessorCounter.labels(processor.getType(), t.getClass().getSimpleName()).inc();                      //  metric
+			clusterTasksService.errorsPerProcessorCounter.labels(processor.getType(), t.getClass().getSimpleName()).inc();                      //  metric
 		} finally {
 			taskSelfDurationTimer.observeDuration();                                                                        //  metric
 			try {
 				removeFinishedTask(task.id);
 			} catch (Throwable t) {
 				logger.error("failed to remove finished " + task, t);
-				ctsOwnErrorsCounter.labels(TASK_FINALIZATION_PHASE, t.getClass().getSimpleName()).inc();                    //  metric
+				clusterTasksService.ctsOwnErrorsCounter.labels(TASK_FINALIZATION_PHASE, t.getClass().getSimpleName()).inc();                    //  metric
 			} finally {
 				processor.notifyTaskWorkerFinished(dataProvider, task);
 			}
@@ -126,7 +100,7 @@ class ClusterTasksProcessorWorker implements Runnable {
 					}
 					return true;
 				} catch (Throwable t) {
-					ctsOwnErrorsCounter.labels(BODY_RETRIEVAL_PHASE, t.getClass().getSimpleName()).inc();                   //  metric
+					clusterTasksService.ctsOwnErrorsCounter.labels(BODY_RETRIEVAL_PHASE, t.getClass().getSimpleName()).inc();                   //  metric
 					return false;
 				}
 			});

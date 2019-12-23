@@ -2,7 +2,6 @@ package com.gullerya.cluster.tasks.impl;
 
 import com.gullerya.cluster.tasks.api.enums.ClusterTasksDataProviderType;
 import com.gullerya.cluster.tasks.api.dto.ClusterTask;
-import io.prometheus.client.Gauge;
 import io.prometheus.client.Histogram;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -23,9 +22,6 @@ import java.util.concurrent.atomic.AtomicInteger;
 public abstract class ClusterTasksProcessorBase {
 	private final Logger logger = LoggerFactory.getLogger(ClusterTasksProcessorBase.class);
 	private static final String NON_CONCURRENT_TASKS_GROUP_KEY = "NULL";
-	private static final Gauge threadsUtilizationGauge;
-	private static final Histogram foreignIsReadyToHandleTasksCallDuration;
-	private static final Histogram foreignIsTaskAbleToRunCallDuration;
 
 	private final String type;
 	private final ClusterTasksDataProviderType dataProviderType;
@@ -40,24 +36,6 @@ public abstract class ClusterTasksProcessorBase {
 	private ExecutorService workersThreadPool;
 
 	private ClusterTasksServiceImpl clusterTasksService;
-
-	static {
-		threadsUtilizationGauge = Gauge.build()
-				.name("cts_per_processor_threads_utilization_percents")
-				.help("CTS per-processor threads utilization")
-				.labelNames("processor_type")
-				.register();
-		foreignIsReadyToHandleTasksCallDuration = Histogram.build()
-				.name("cts_foreign_is_ready_to_handle_tasks_duration")
-				.help("CTS foreign 'isReadyToHandleTasks' call duration")
-				.labelNames("runtime_instance_id")
-				.register();
-		foreignIsTaskAbleToRunCallDuration = Histogram.build()
-				.name("cts_foreign_is_task_able_to_run_duration")
-				.help("CTS foreign 'isTaskAbleToRun' call duration")
-				.labelNames("runtime_instance_id")
-				.register();
-	}
 
 	protected ClusterTasksProcessorBase(ClusterTasksDataProviderType dataProviderType, int numberOfWorkersPerNode) {
 		this(dataProviderType, numberOfWorkersPerNode, 0);
@@ -166,7 +144,7 @@ public abstract class ClusterTasksProcessorBase {
 
 		boolean foreignResult = true;
 		if (internalResult) {
-			Histogram.Timer foreignCallTimer = foreignIsReadyToHandleTasksCallDuration.labels(clusterTasksService.getInstanceID()).startTimer();
+			Histogram.Timer foreignCallTimer = clusterTasksService.foreignIsReadyToHandleTasksCallDuration.startTimer();
 			foreignResult = isReadyToHandleTasks();
 			foreignCallTimer.close();
 		}
@@ -180,7 +158,7 @@ public abstract class ClusterTasksProcessorBase {
 		//  while filtering out tasks rejected on applicative per-task validation
 		Map<String, List<ClusterTaskImpl>> tasksGroupedByConcurrencyKeys = new LinkedHashMap<>();
 		for (ClusterTaskImpl candidate : candidates) {
-			Histogram.Timer foreignCallTimer = foreignIsTaskAbleToRunCallDuration.labels(clusterTasksService.getInstanceID()).startTimer();
+			Histogram.Timer foreignCallTimer = clusterTasksService.foreignIsTaskAbleToRunCallDuration.startTimer();
 			boolean taskAbleToRan = isTaskAbleToRun(candidate.applicationKey);
 			foreignCallTimer.close();
 			if (taskAbleToRan) {
@@ -243,7 +221,7 @@ public abstract class ClusterTasksProcessorBase {
 			}
 		});
 
-		threadsUtilizationGauge
+		clusterTasksService.threadsUtilizationGauge
 				.labels(getType())
 				.set(((double) (numberOfWorkersPerNode - availableWorkers.get())) / ((double) numberOfWorkersPerNode));
 	}
@@ -259,7 +237,7 @@ public abstract class ClusterTasksProcessorBase {
 
 	private boolean handoutTaskToWorker(ClusterTasksDataProvider dataProvider, ClusterTaskImpl task) {
 		try {
-			ClusterTasksProcessorWorker worker = new ClusterTasksProcessorWorker(dataProvider, this, task);
+			ClusterTasksProcessorWorker worker = new ClusterTasksProcessorWorker(clusterTasksService, dataProvider, this, task);
 			workersThreadPool.execute(worker);
 			int aWorkers = availableWorkers.decrementAndGet();
 			if (logger.isDebugEnabled()) {

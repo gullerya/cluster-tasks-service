@@ -10,8 +10,10 @@ import com.gullerya.cluster.tasks.api.ClusterTasksService;
 import com.gullerya.cluster.tasks.api.ClusterTasksServiceConfigurerSPI;
 import com.gullerya.cluster.tasks.api.builders.TaskBuilders;
 import com.gullerya.cluster.tasks.api.dto.ClusterTask;
+import io.prometheus.client.Counter;
 import io.prometheus.client.Gauge;
 import io.prometheus.client.Histogram;
+import io.prometheus.client.Summary;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -28,10 +30,8 @@ import java.util.stream.Collectors;
 
 public class ClusterTasksServiceImpl implements ClusterTasksService {
 	private final Logger logger = LoggerFactory.getLogger(ClusterTasksServiceImpl.class);
-	private final static Gauge tasksInsertionAverageDuration;
-	private static final Histogram foreignIsEnabledCallDuration;
 
-	private final String RUNTIME_INSTANCE_ID = UUID.randomUUID().toString();
+	private final String RUNTIME_INSTANCE_ID = UUID.randomUUID().toString().replaceAll("-", "");
 	private final CompletableFuture<Boolean> readyPromise = new CompletableFuture<>();
 	private final Map<ClusterTasksDataProviderType, ClusterTasksDataProvider> dataProvidersMap = new LinkedHashMap<>();
 	private final Map<String, ClusterTasksProcessorBase> processorsMap = new LinkedHashMap<>();
@@ -44,18 +44,14 @@ public class ClusterTasksServiceImpl implements ClusterTasksService {
 	private ClusterTasksServiceConfigurerSPI serviceConfigurer;
 	private ClusterTasksServiceSchemaManager schemaManager;
 
-	static {
-		tasksInsertionAverageDuration = Gauge.build()
-				.name("cts_task_insert_average_time")
-				.help("CTS task insert average time (in millis)")
-				.labelNames("runtime_instance_id")
-				.register();
-		foreignIsEnabledCallDuration = Histogram.build()
-				.name("cts_foreign_is_enabled_duration")
-				.help("CTS foreign 'isEnabled' call duration")
-				.labelNames("runtime_instance_id")
-				.register();
-	}
+	private final Gauge tasksInsertionAverageDuration;
+	private final Histogram foreignIsEnabledCallDuration;
+	final Counter ctsOwnErrorsCounter;
+	final Summary tasksPerProcessorDuration;
+	final Counter errorsPerProcessorCounter;
+	final Gauge threadsUtilizationGauge;
+	final Histogram foreignIsReadyToHandleTasksCallDuration;
+	final Histogram foreignIsTaskAbleToRunCallDuration;
 
 	@Autowired
 	private ClusterTasksServiceImpl(ClusterTasksServiceConfigurerSPI serviceConfigurer, ClusterTasksServiceSchemaManager schemaManager) {
@@ -64,6 +60,42 @@ public class ClusterTasksServiceImpl implements ClusterTasksService {
 		logger.info("------------------------------------------------");
 		logger.info("------------- Cluster Tasks Service ------------");
 
+		tasksInsertionAverageDuration = Gauge.build()
+				.name("cts_task_insert_average_time_" + RUNTIME_INSTANCE_ID)
+				.help("CTS task insert average time (in millis)")
+				.register();
+		foreignIsEnabledCallDuration = Histogram.build()
+				.name("cts_foreign_is_enabled_duration_" + RUNTIME_INSTANCE_ID)
+				.help("CTS foreign 'isEnabled' call duration")
+				.register();
+		ctsOwnErrorsCounter = Counter.build()
+				.name("cts_own_errors_total_" + RUNTIME_INSTANCE_ID)
+				.help("CTS own errors counter")
+				.labelNames("phase", "error_type")
+				.register();
+		tasksPerProcessorDuration = Summary.build()
+				.name("cts_per_processor_task_duration_seconds_" + RUNTIME_INSTANCE_ID)
+				.help("CTS task duration summary (per processor type)")
+				.labelNames("processor_type")
+				.register();
+		errorsPerProcessorCounter = Counter.build()
+				.name("cts_per_processor_errors_total_" + RUNTIME_INSTANCE_ID)
+				.help("Tasks errors caught by CTS (per processor type)")
+				.labelNames("processor_type", "error_type")
+				.register();
+		threadsUtilizationGauge = Gauge.build()
+				.name("cts_per_processor_threads_utilization_percents_" + RUNTIME_INSTANCE_ID)
+				.help("CTS per-processor threads utilization")
+				.labelNames("processor_type")
+				.register();
+		foreignIsReadyToHandleTasksCallDuration = Histogram.build()
+				.name("cts_foreign_is_ready_to_handle_tasks_duration_" + RUNTIME_INSTANCE_ID)
+				.help("CTS foreign 'isReadyToHandleTasks' call duration")
+				.register();
+		foreignIsTaskAbleToRunCallDuration = Histogram.build()
+				.name("cts_foreign_is_task_able_to_run_duration_" + RUNTIME_INSTANCE_ID)
+				.help("CTS foreign 'isTaskAbleToRun' call duration")
+				.register();
 
 		if (serviceConfigurer.getConfigReadyLatch() == null) {
 			initService();
@@ -159,7 +191,7 @@ public class ClusterTasksServiceImpl implements ClusterTasksService {
 			ClusterTaskImpl[] taskInternals = convertTasks(tasks, processorType);
 			ClusterTaskPersistenceResult[] result = dataProvidersMap.get(dataProviderType).storeTasks(taskInternals);
 			long timeForAll = System.currentTimeMillis() - startStore;
-			tasksInsertionAverageDuration.labels(RUNTIME_INSTANCE_ID).set((double) timeForAll / tasks.length);
+			tasksInsertionAverageDuration.set((double) timeForAll / tasks.length);
 			return result;
 		} else {
 			throw new IllegalArgumentException("unknown data provider of type '" + processorType + "'");
@@ -415,7 +447,7 @@ public class ClusterTasksServiceImpl implements ClusterTasksService {
 		}
 
 		boolean isServiceEnabled() {
-			Histogram.Timer foreignCallTimer = foreignIsEnabledCallDuration.labels(RUNTIME_INSTANCE_ID).startTimer();
+			Histogram.Timer foreignCallTimer = foreignIsEnabledCallDuration.startTimer();
 			boolean isEnabled = true;
 			try {
 				isEnabled = serviceConfigurer.isEnabled();
