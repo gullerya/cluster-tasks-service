@@ -4,7 +4,9 @@ import com.gullerya.cluster.tasks.api.ClusterTasksProcessorScheduled;
 import com.gullerya.cluster.tasks.api.dto.ClusterTask;
 import com.gullerya.cluster.tasks.api.enums.ClusterTasksDataProviderType;
 
-import java.util.concurrent.atomic.AtomicInteger;
+import java.util.Collections;
+import java.util.LinkedList;
+import java.util.List;
 
 /**
  * Created by gullery on 03/03/2019
@@ -13,9 +15,8 @@ import java.util.concurrent.atomic.AtomicInteger;
  */
 
 public class ClusterTasksSchedProcMultiNodesB_test extends ClusterTasksProcessorScheduled {
-	public static volatile boolean suspended = true;
 	public static ClusterTasksSchedProcMultiNodesB_test instance;
-	public static final AtomicInteger executionsCounter = new AtomicInteger(0);
+	public static final List<Long> timestamps = Collections.synchronizedList(new LinkedList<>());
 
 	protected ClusterTasksSchedProcMultiNodesB_test() {
 		super(ClusterTasksDataProviderType.DB);
@@ -24,8 +25,6 @@ public class ClusterTasksSchedProcMultiNodesB_test extends ClusterTasksProcessor
 
 	@Override
 	public void processTask(ClusterTask task) {
-		if (!suspended) {
-			executionsCounter.incrementAndGet();
-		}
+		timestamps.add(System.currentTimeMillis());
 	}
 }

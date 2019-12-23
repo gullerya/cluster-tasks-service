@@ -16,7 +16,7 @@ import com.gullerya.cluster.tasks.api.enums.ClusterTasksDataProviderType;
 public abstract class ClusterTasksProcessorScheduled extends ClusterTasksProcessorSimple {
 
 	protected ClusterTasksProcessorScheduled(ClusterTasksDataProviderType dataProviderType) {
-		this(dataProviderType, 0);
+		this(dataProviderType, 1000);
 	}
 
 	protected ClusterTasksProcessorScheduled(ClusterTasksDataProviderType dataProviderType, long taskRunIntervalMillis) {

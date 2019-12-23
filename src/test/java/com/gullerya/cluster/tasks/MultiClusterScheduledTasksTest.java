@@ -16,8 +16,7 @@ import java.util.LinkedList;
 import java.util.List;
 import java.util.concurrent.CountDownLatch;
 
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertTrue;
+import static org.junit.Assert.*;
 
 /**
  * Created by gullery on 02/06/2016.
@@ -96,21 +95,28 @@ public class MultiClusterScheduledTasksTest {
 		waitForAllInit.await();
 		logger.info(numberOfNodes + " nodes initialized successfully - all scheduled tasks installed");
 
+		CTSTestsUtils.waitSafely(7000);
+
 		// make sure that the execution of the scheduled tasks is at correct 'speed'
 		// regardless of the number of nodes
 		assertTrue(clusterTasksService.getReadyPromise().get());
 		ClusterTasksSchedProcMultiNodesB_test.instance.reschedule(5000);
-		// let last task to finish
-		CTSTestsUtils.waitSafely(1200);
-
-		// zeroize the counter
-		ClusterTasksSchedProcMultiNodesB_test.executionsCounter.getAndSet(0);
-		assertEquals(0, ClusterTasksSchedProcMultiNodesB_test.executionsCounter.get());
-		ClusterTasksSchedProcMultiNodesB_test.suspended = false;
+		long rescheduleMoment = System.currentTimeMillis();
 		CTSTestsUtils.waitSafely(7000);
-		assertTrue("unexpected number of executions " + ClusterTasksSchedProcMultiNodesB_test.executionsCounter.get(),
-				ClusterTasksSchedProcMultiNodesB_test.executionsCounter.get() == 1
-						|| ClusterTasksSchedProcMultiNodesB_test.executionsCounter.get() == 2);
+
+		assertFalse(ClusterTasksSchedProcMultiNodesB_test.timestamps.isEmpty());
+		for (int i = 1; i < ClusterTasksSchedProcMultiNodesB_test.timestamps.size(); i++) {
+			long prev = ClusterTasksSchedProcMultiNodesB_test.timestamps.get(i - 1);
+			long next = ClusterTasksSchedProcMultiNodesB_test.timestamps.get(i);
+			long diff = next - prev;
+			if (next < rescheduleMoment) {
+				//  before reschedule speed is about 1 sec - assert that
+				assertTrue("unexpected diff " + diff + ", expected range is [750,1250]", diff > 750 && diff < 1250);
+			} else {
+				//  after reschedule speed is about 5 secs - assert that
+				assertTrue("unexpected diff " + diff + ", expected range is [5000,6250]", diff >= 5000 && diff < 6250);
+			}
+		}
 
 		// stop all CTS instances
 		contexts.forEach(c -> {
