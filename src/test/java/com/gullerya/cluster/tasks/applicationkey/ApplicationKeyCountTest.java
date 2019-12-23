@@ -41,11 +41,11 @@ public class ApplicationKeyCountTest extends CTSTestsBase {
 
 	@Test
 	public void testASimpleAppKeyCount() {
-		AppKeyProcessorCount_test.any = true;
+		AppKeyProcessorCountTest.any = true;
 		CTSTestsUtils.waitSafely(3000);
-		AppKeyProcessorCount_test.any = false;
-		AppKeyProcessorCount_test.conditionToRun = null;
-		AppKeyProcessorCount_test.tasksProcessed.clear();
+		AppKeyProcessorCountTest.any = false;
+		AppKeyProcessorCountTest.conditionToRun = null;
+		AppKeyProcessorCountTest.tasksProcessed.clear();
 
 		String appKey = UUID.randomUUID().toString();
 		ClusterTask[] tasks = new ClusterTask[3];
@@ -59,7 +59,7 @@ public class ApplicationKeyCountTest extends CTSTestsBase {
 				.setApplicationKey(appKey)
 				.build();
 
-		ClusterTaskPersistenceResult[] pr = clusterTasksService.enqueueTasks(ClusterTasksDataProviderType.DB, "AppKeyProcessorCount_test", tasks);
+		ClusterTaskPersistenceResult[] pr = clusterTasksService.enqueueTasks(ClusterTasksDataProviderType.DB, "AppKeyProcessorCountTest", tasks);
 		for (ClusterTaskPersistenceResult r : pr) {
 			Assert.assertEquals(ClusterTaskInsertStatus.SUCCESS, r.getStatus());
 		}
@@ -69,13 +69,13 @@ public class ApplicationKeyCountTest extends CTSTestsBase {
 		Assert.assertEquals(tasks.length, count);
 
 		//  release tasks to run and assert running count is correct
-		AppKeyProcessorCount_test.holdRunning = true;
-		AppKeyProcessorCount_test.conditionToRun = appKey;
+		AppKeyProcessorCountTest.holdRunning = true;
+		AppKeyProcessorCountTest.conditionToRun = appKey;
 		CTSTestsUtils.waitSafely(2500);
 		count = clusterTasksService.countTasksByApplicationKey(ClusterTasksDataProviderType.DB, appKey, ClusterTaskStatus.RUNNING);
 		Assert.assertEquals(tasks.length, count);
 
-		AppKeyProcessorCount_test.holdRunning = false;
+		AppKeyProcessorCountTest.holdRunning = false;
 
 		//  wait to finalize run and assert no tasks anymore
 		CTSTestsUtils.waitSafely(1000);
@@ -84,7 +84,7 @@ public class ApplicationKeyCountTest extends CTSTestsBase {
 		count = clusterTasksService.countTasksByApplicationKey(ClusterTasksDataProviderType.DB, appKey, ClusterTaskStatus.RUNNING);
 		Assert.assertEquals(0, count);
 
-		Assert.assertEquals(tasks.length, AppKeyProcessorCount_test.tasksProcessed.size());
+		Assert.assertEquals(tasks.length, AppKeyProcessorCountTest.tasksProcessed.size());
 	}
 }
 

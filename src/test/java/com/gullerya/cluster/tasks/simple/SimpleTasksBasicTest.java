@@ -29,7 +29,7 @@ public class SimpleTasksBasicTest extends CTSTestsBase {
 	public void testASimpleTasksBurst() {
 		int numberOfTasks = 20;
 		CTSTestsUtils.waitSafely(4000);
-		SimpleProcessorA_test.tasksProcessed.clear();
+		SimpleProcessorATest.tasksProcessed.clear();
 
 		ClusterTask[] tasks = new ClusterTask[numberOfTasks];
 
@@ -40,20 +40,20 @@ public class SimpleTasksBasicTest extends CTSTestsBase {
 			tasks[i] = tmp;
 		}
 
-		Assert.assertTrue(SimpleProcessorA_test.tasksProcessed.isEmpty());
-		clusterTasksService.enqueueTasks(ClusterTasksDataProviderType.DB, "SimpleProcessorA_test", tasks);
-		CTSTestsUtils.waitUntil(30000, () -> SimpleProcessorA_test.tasksProcessed.size() == numberOfTasks ? true : null);
+		Assert.assertTrue(SimpleProcessorATest.tasksProcessed.isEmpty());
+		clusterTasksService.enqueueTasks(ClusterTasksDataProviderType.DB, "SimpleProcessorATest", tasks);
+		CTSTestsUtils.waitUntil(30000, () -> SimpleProcessorATest.tasksProcessed.size() == numberOfTasks ? true : null);
 
 		//  verify that all were processed
 		for (int i = 0; i < numberOfTasks; i++) {
-			Assert.assertTrue(SimpleProcessorA_test.tasksProcessed.containsKey(String.valueOf(i)));
+			Assert.assertTrue(SimpleProcessorATest.tasksProcessed.containsKey(String.valueOf(i)));
 		}
 
 		//  verify an expected order of execution
 		for (int i = 0; i < numberOfTasks - 1; i++) {
 			Assert.assertTrue(
-					"expected positive diff, but got: " + (SimpleProcessorA_test.tasksProcessed.get(String.valueOf(i + 1)) - SimpleProcessorA_test.tasksProcessed.get(String.valueOf(i)) + " between (later) " + (i + 1) + " and " + i),
-					SimpleProcessorA_test.tasksProcessed.get(String.valueOf(i + 1)) > SimpleProcessorA_test.tasksProcessed.get(String.valueOf(i)));
+					"expected positive diff, but got: " + (SimpleProcessorATest.tasksProcessed.get(String.valueOf(i + 1)) - SimpleProcessorATest.tasksProcessed.get(String.valueOf(i)) + " between (later) " + (i + 1) + " and " + i),
+					SimpleProcessorATest.tasksProcessed.get(String.valueOf(i + 1)) > SimpleProcessorATest.tasksProcessed.get(String.valueOf(i)));
 		}
 	}
 }

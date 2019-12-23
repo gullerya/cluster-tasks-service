@@ -8,14 +8,14 @@ import com.gullerya.cluster.tasks.api.enums.ClusterTasksDataProviderType;
  * Created by gullery on 21/11/2018
  */
 
-public class ClusterTasksStaledTest_A extends ClusterTasksProcessorSimple {
+public class ClusterTasksStaledTestA extends ClusterTasksProcessorSimple {
 	public boolean drainMode = true;
 	public boolean suspended = false;
 	public boolean isStaleRole = true;
 	public final Object MONITOR = new Object();
 	public int takenTasksCounter = 0;
 
-	protected ClusterTasksStaledTest_A() {
+	protected ClusterTasksStaledTestA() {
 		super(ClusterTasksDataProviderType.DB, 2);
 	}
 

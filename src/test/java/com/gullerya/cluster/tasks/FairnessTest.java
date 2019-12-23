@@ -5,8 +5,8 @@ import com.gullerya.cluster.tasks.api.dto.ClusterTaskPersistenceResult;
 import com.gullerya.cluster.tasks.api.enums.ClusterTaskInsertStatus;
 import com.gullerya.cluster.tasks.api.enums.ClusterTasksDataProviderType;
 import com.gullerya.cluster.tasks.api.dto.ClusterTask;
-import com.gullerya.cluster.tasks.processors.ClusterTasksProcessorFairness_test_mt;
-import com.gullerya.cluster.tasks.processors.ClusterTasksProcessorFairness_test_st;
+import com.gullerya.cluster.tasks.processors.ClusterTasksProcessorFairnessTestMT;
+import com.gullerya.cluster.tasks.processors.ClusterTasksProcessorFairnessTestST;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.springframework.test.context.ContextConfiguration;
@@ -68,12 +68,12 @@ public class FairnessTest extends CTSTestsBase {
 		tasks[11] = task;
 
 		ClusterTaskPersistenceResult[] enqueueResults = clusterTasksService.enqueueTasks(
-				ClusterTasksDataProviderType.DB, ClusterTasksProcessorFairness_test_st.class.getSimpleName(), tasks);
+				ClusterTasksDataProviderType.DB, ClusterTasksProcessorFairnessTestST.class.getSimpleName(), tasks);
 		for (ClusterTaskPersistenceResult result : enqueueResults) {
 			assertEquals(ClusterTaskInsertStatus.SUCCESS, result.getStatus());
 		}
 
-		List<String> eventsLog = ClusterTasksProcessorFairness_test_st.keysProcessingEventsLog;
+		List<String> eventsLog = ClusterTasksProcessorFairnessTestST.keysProcessingEventsLog;
 		CTSTestsUtils.waitUntil(tasks.length * 2000, () -> eventsLog.size() == tasks.length ? true : null);
 
 		assertEquals(tasks.length, eventsLog.size());
@@ -90,7 +90,7 @@ public class FairnessTest extends CTSTestsBase {
 		assertEquals("null", eventsLog.get(10));
 		assertEquals("1", eventsLog.get(11));
 
-		List<Long> nonConcurrentEventsLog = ClusterTasksProcessorFairness_test_st.nonConcurrentEventsLog;
+		List<Long> nonConcurrentEventsLog = ClusterTasksProcessorFairnessTestST.nonConcurrentEventsLog;
 		for (int i = 0; i < nonConcurrentEventsLog.size() - 1; i++) {
 			assertTrue(nonConcurrentEventsLog.get(i) <= nonConcurrentEventsLog.get(i + 1));
 		}
@@ -120,14 +120,14 @@ public class FairnessTest extends CTSTestsBase {
 		tasks.add(task);
 
 		ClusterTaskPersistenceResult[] enqueueResults = clusterTasksService.enqueueTasks(
-				ClusterTasksDataProviderType.DB, ClusterTasksProcessorFairness_test_mt.class.getSimpleName(),
+				ClusterTasksDataProviderType.DB, ClusterTasksProcessorFairnessTestMT.class.getSimpleName(),
 				tasks.toArray(new ClusterTask[0]));
 		for (ClusterTaskPersistenceResult result : enqueueResults) {
 			assertEquals(ClusterTaskInsertStatus.SUCCESS, result.getStatus());
 		}
 
 		CTSTestsUtils.waitUntil(3000,
-				() -> ClusterTasksProcessorFairness_test_mt.keysProcessingEventsLog.size() == tasks.size() ? true
+				() -> ClusterTasksProcessorFairnessTestMT.keysProcessingEventsLog.size() == tasks.size() ? true
 						: null);
 	}
 }

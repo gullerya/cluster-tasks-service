@@ -1,9 +1,9 @@
 package com.gullerya.cluster.tasks;
 
-import com.gullerya.cluster.tasks.processors.scheduled.ClusterTasksSchedProcA_test;
-import com.gullerya.cluster.tasks.processors.scheduled.ClusterTasksSchedProcB_test;
-import com.gullerya.cluster.tasks.processors.scheduled.ClusterTasksSchedProcC_test;
-import com.gullerya.cluster.tasks.processors.scheduled.ClusterTasksSchedProcD_test;
+import com.gullerya.cluster.tasks.processors.scheduled.ClusterTasksSchedProcATest;
+import com.gullerya.cluster.tasks.processors.scheduled.ClusterTasksSchedProcBTest;
+import com.gullerya.cluster.tasks.processors.scheduled.ClusterTasksSchedProcCTest;
+import com.gullerya.cluster.tasks.processors.scheduled.ClusterTasksSchedProcDTest;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.slf4j.Logger;
@@ -29,49 +29,49 @@ public class ScheduledProcessorTest extends CTSTestsBase {
 	private static final Logger logger = LoggerFactory.getLogger(ScheduledProcessorTest.class);
 
 	@Autowired
-	private ClusterTasksSchedProcD_test clusterTasksSchedProcD_test;
+	private ClusterTasksSchedProcDTest clusterTasksSchedProcD_test;
 
 	@Test
 	public void testAScheduledTasks() {
 		//  resume processors
-		ClusterTasksSchedProcA_test.suspended = false;      // this CTP's self duration is ~1000 ms
-		ClusterTasksSchedProcB_test.suspended = false;      // this CTP's self duration is ~2000 ms
-		ClusterTasksSchedProcC_test.suspended = false;      // this CTP's self duration is ~3000 ms
+		ClusterTasksSchedProcATest.suspended = false;      // this CTP's self duration is ~1000 ms
+		ClusterTasksSchedProcBTest.suspended = false;      // this CTP's self duration is ~2000 ms
+		ClusterTasksSchedProcCTest.suspended = false;      // this CTP's self duration is ~3000 ms
 
 		CTSTestsUtils.waitSafely(7000);
 
 		//  suspend processors
-		ClusterTasksSchedProcA_test.suspended = true;
-		ClusterTasksSchedProcB_test.suspended = true;
-		ClusterTasksSchedProcC_test.suspended = true;
+		ClusterTasksSchedProcATest.suspended = true;
+		ClusterTasksSchedProcBTest.suspended = true;
+		ClusterTasksSchedProcCTest.suspended = true;
 
 		//  verify executions
-		logger.info("A - " + ClusterTasksSchedProcA_test.executionsCounter + ", B - " + ClusterTasksSchedProcB_test.executionsCounter + ", C - " + ClusterTasksSchedProcC_test.executionsCounter);
-		assertTrue(ClusterTasksSchedProcA_test.executionsCounter >= 3 && ClusterTasksSchedProcA_test.executionsCounter <= 6);
-		assertTrue(ClusterTasksSchedProcB_test.executionsCounter >= 2 && ClusterTasksSchedProcB_test.executionsCounter <= 3);
-		assertTrue(ClusterTasksSchedProcC_test.executionsCounter >= 1 && ClusterTasksSchedProcC_test.executionsCounter <= 2);
+		logger.info("A - " + ClusterTasksSchedProcATest.executionsCounter + ", B - " + ClusterTasksSchedProcBTest.executionsCounter + ", C - " + ClusterTasksSchedProcCTest.executionsCounter);
+		assertTrue(ClusterTasksSchedProcATest.executionsCounter >= 3 && ClusterTasksSchedProcATest.executionsCounter <= 6);
+		assertTrue(ClusterTasksSchedProcBTest.executionsCounter >= 2 && ClusterTasksSchedProcBTest.executionsCounter <= 3);
+		assertTrue(ClusterTasksSchedProcCTest.executionsCounter >= 1 && ClusterTasksSchedProcCTest.executionsCounter <= 2);
 	}
 
 	@Test
 	public void testBReschedulingScheduledTaskWhenPending() {
-		ClusterTasksSchedProcD_test.runAndHold = false;
-		ClusterTasksSchedProcD_test.suspended = true;
+		ClusterTasksSchedProcDTest.runAndHold = false;
+		ClusterTasksSchedProcDTest.suspended = true;
 		clusterTasksSchedProcD_test.reschedule(5000);
-		ClusterTasksSchedProcD_test.executionsCounter = 0;
-		ClusterTasksSchedProcD_test.suspended = false;
+		ClusterTasksSchedProcDTest.executionsCounter = 0;
+		ClusterTasksSchedProcDTest.suspended = false;
 		CTSTestsUtils.waitSafely(7000);
-		assertEquals(1, ClusterTasksSchedProcD_test.executionsCounter);
+		assertEquals(1, ClusterTasksSchedProcDTest.executionsCounter);
 
 		clusterTasksSchedProcD_test.reschedule(0);
 	}
 
 	@Test
 	public void testBReschedulingScheduledTaskWhenRunning() {
-		ClusterTasksSchedProcD_test.executionsCounter = 0;
-		ClusterTasksSchedProcD_test.suspended = false;
-		ClusterTasksSchedProcD_test.runAndHold = true;
+		ClusterTasksSchedProcDTest.executionsCounter = 0;
+		ClusterTasksSchedProcDTest.suspended = false;
+		ClusterTasksSchedProcDTest.runAndHold = true;
 		CTSTestsUtils.waitUntil(3000, () -> {
-			if (ClusterTasksSchedProcD_test.executionsCounter > 0) {
+			if (ClusterTasksSchedProcDTest.executionsCounter > 0) {
 				return true;
 			} else {
 				return null;
@@ -79,10 +79,10 @@ public class ScheduledProcessorTest extends CTSTestsBase {
 		});
 
 		clusterTasksSchedProcD_test.reschedule(5000);
-		ClusterTasksSchedProcD_test.executionsCounter = 0;
-		ClusterTasksSchedProcD_test.runAndHold = false;
+		ClusterTasksSchedProcDTest.executionsCounter = 0;
+		ClusterTasksSchedProcDTest.runAndHold = false;
 		CTSTestsUtils.waitSafely(7000);
-		assertEquals(1, ClusterTasksSchedProcD_test.executionsCounter);
+		assertEquals(1, ClusterTasksSchedProcDTest.executionsCounter);
 
 		clusterTasksSchedProcD_test.reschedule(0);
 	}

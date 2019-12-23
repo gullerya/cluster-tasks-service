@@ -8,7 +8,7 @@
 
 	<bean class="com.gullerya.cluster.tasks.CTSConfigurerForTestsSPI"/>
 
-	<bean class="com.gullerya.cluster.tasks.applicationkey.AppKeyProcessorA_test"/>
-	<bean class="com.gullerya.cluster.tasks.applicationkey.AppKeyProcessorB_test"/>
+	<bean class="com.gullerya.cluster.tasks.applicationkey.AppKeyProcessorATest"/>
+	<bean class="com.gullerya.cluster.tasks.applicationkey.AppKeyProcessorBTest"/>
 
 </beans>

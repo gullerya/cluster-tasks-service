@@ -9,11 +9,11 @@ import com.gullerya.cluster.tasks.CTSTestsUtils;
  * Created by gullery on 02/06/2016
  */
 
-public class ClusterTasksProcessorCount_test extends ClusterTasksProcessorSimple {
+public class ClusterTasksProcessorCountTest extends ClusterTasksProcessorSimple {
 	public boolean readyToTakeTasks = false;
 	public long holdTaskForMillis = 0;
 
-	protected ClusterTasksProcessorCount_test() {
+	protected ClusterTasksProcessorCountTest() {
 		super(ClusterTasksDataProviderType.DB, 2);
 	}
 

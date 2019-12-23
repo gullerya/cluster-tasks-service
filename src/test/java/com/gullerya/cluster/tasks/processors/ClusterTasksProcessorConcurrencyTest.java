@@ -9,10 +9,10 @@ import com.gullerya.cluster.tasks.CTSTestsUtils;
  * Created by gullery on 02/06/2016
  */
 
-public class ClusterTasksProcessorConcurrency_test extends ClusterTasksProcessorSimple {
+public class ClusterTasksProcessorConcurrencyTest extends ClusterTasksProcessorSimple {
 	public int tasksProcessed = 0;
 
-	protected ClusterTasksProcessorConcurrency_test() {
+	protected ClusterTasksProcessorConcurrencyTest() {
 		super(ClusterTasksDataProviderType.DB, 5);
 	}
 

@@ -8,9 +8,9 @@
 
 	<bean class="com.gullerya.cluster.tasks.CTSConfigurerForTestsSPI"/>
 
-	<bean class="com.gullerya.cluster.tasks.processors.scheduled.ClusterTasksSchedProcA_test"/>
-	<bean class="com.gullerya.cluster.tasks.processors.scheduled.ClusterTasksSchedProcB_test"/>
-	<bean class="com.gullerya.cluster.tasks.processors.scheduled.ClusterTasksSchedProcC_test"/>
-	<bean class="com.gullerya.cluster.tasks.processors.scheduled.ClusterTasksSchedProcD_test"/>
+	<bean class="com.gullerya.cluster.tasks.processors.scheduled.ClusterTasksSchedProcATest"/>
+	<bean class="com.gullerya.cluster.tasks.processors.scheduled.ClusterTasksSchedProcBTest"/>
+	<bean class="com.gullerya.cluster.tasks.processors.scheduled.ClusterTasksSchedProcCTest"/>
+	<bean class="com.gullerya.cluster.tasks.processors.scheduled.ClusterTasksSchedProcDTest"/>
 
 </beans>

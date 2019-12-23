@@ -9,24 +9,19 @@ import com.gullerya.cluster.tasks.CTSTestsUtils;
  * Created by gullery on 02/06/2016
  */
 
-public class ClusterTasksSchedProcD_test extends ClusterTasksProcessorScheduled {
+public class ClusterTasksSchedProcCTest extends ClusterTasksProcessorScheduled {
 	public static volatile boolean suspended = true;
-	public static volatile boolean runAndHold = false;
-	public static volatile int executionsCounter = 0;
+	public static int executionsCounter = 0;
 
-	protected ClusterTasksSchedProcD_test() {
+	protected ClusterTasksSchedProcCTest() {
 		super(ClusterTasksDataProviderType.DB);
 	}
 
 	@Override
 	public void processTask(ClusterTask task) {
 		if (!suspended) {
-			synchronized (this) {
-				executionsCounter++;
-			}
-		}
-		while (runAndHold) {
-			CTSTestsUtils.waitSafely(1000);
+			CTSTestsUtils.waitSafely(3000);
+			executionsCounter++;
 		}
 	}
 }

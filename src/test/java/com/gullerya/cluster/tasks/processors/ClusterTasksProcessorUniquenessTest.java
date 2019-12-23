@@ -12,11 +12,11 @@ import java.util.List;
  * Created by gullery on 02/06/2016
  */
 
-public class ClusterTasksProcessorUniqueness_test extends ClusterTasksProcessorSimple {
+public class ClusterTasksProcessorUniquenessTest extends ClusterTasksProcessorSimple {
 	public static boolean draining = true;
 	public static List<String> bodies = new LinkedList<>();
 
-	protected ClusterTasksProcessorUniqueness_test() {
+	protected ClusterTasksProcessorUniquenessTest() {
 		super(ClusterTasksDataProviderType.DB, 2);
 	}
 

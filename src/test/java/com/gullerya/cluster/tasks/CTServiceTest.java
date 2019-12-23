@@ -5,12 +5,8 @@ import com.gullerya.cluster.tasks.api.dto.ClusterTask;
 import com.gullerya.cluster.tasks.api.dto.ClusterTaskPersistenceResult;
 import com.gullerya.cluster.tasks.api.enums.ClusterTaskInsertStatus;
 import com.gullerya.cluster.tasks.api.enums.ClusterTasksDataProviderType;
-import com.gullerya.cluster.tasks.processors.ClusterTasksProcessorB_test;
-import com.gullerya.cluster.tasks.processors.ClusterTasksProcessorC_test;
-import com.gullerya.cluster.tasks.processors.ClusterTasksProcessorD_test;
-import com.gullerya.cluster.tasks.processors.ClusterTasksProcessorE_test_na;
-import com.gullerya.cluster.tasks.processors.ClusterTasksProcessorF_test_cna;
-import com.gullerya.cluster.tasks.processors.ClusterTasksProcessorA_test;
+import com.gullerya.cluster.tasks.processors.*;
+import com.gullerya.cluster.tasks.processors.ClusterTasksProcessorFTestCNA;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.slf4j.Logger;
@@ -44,17 +40,17 @@ public class CTServiceTest extends CTSTestsBase {
 	private final Logger logger = LoggerFactory.getLogger(CTServiceTest.class);
 
 	@Autowired
-	private ClusterTasksProcessorA_test clusterTasksProcessorA_test;
+	private ClusterTasksProcessorATest clusterTasksProcessorA_test;
 	@Autowired
-	private ClusterTasksProcessorB_test clusterTasksProcessorB_test;
+	private ClusterTasksProcessorBTest clusterTasksProcessorB_test;
 	@Autowired
-	private ClusterTasksProcessorC_test clusterTasksProcessorC_test;
+	private ClusterTasksProcessorCTest clusterTasksProcessorC_test;
 	@Autowired
-	private ClusterTasksProcessorD_test clusterTasksProcessorD_test;
+	private ClusterTasksProcessorDTest clusterTasksProcessorD_test;
 	@Autowired
-	private ClusterTasksProcessorE_test_na clusterTasksProcessorE_test_na;
+	private ClusterTasksProcessorETestNA clusterTasksProcessorE_testNA;
 	@Autowired
-	private ClusterTasksProcessorF_test_cna clusterTasksProcessorF_test_cna;
+	private ClusterTasksProcessorFTestCNA clusterTasksProcessorF_testCna;
 
 	@Test
 	public void testASingleProcessor() {
@@ -73,7 +69,7 @@ public class CTServiceTest extends CTSTestsBase {
 			tasks.add(tmp);
 		}
 
-		ClusterTaskPersistenceResult[] result = clusterTasksService.enqueueTasks(ClusterTasksDataProviderType.DB, "ClusterTasksProcessorA_test", tasks.toArray(new ClusterTask[0]));
+		ClusterTaskPersistenceResult[] result = clusterTasksService.enqueueTasks(ClusterTasksDataProviderType.DB, "ClusterTasksProcessorATest", tasks.toArray(new ClusterTask[0]));
 		for (ClusterTaskPersistenceResult r : result) {
 			assertEquals(ClusterTaskInsertStatus.SUCCESS, r.getStatus());
 		}
@@ -108,11 +104,11 @@ public class CTServiceTest extends CTSTestsBase {
 			tasks.add(tmp);
 		}
 
-		results.add(clusterTasksService.enqueueTasks(ClusterTasksDataProviderType.DB, "ClusterTasksProcessorB_test", tasks.get(0))[0]);
-		results.add(clusterTasksService.enqueueTasks(ClusterTasksDataProviderType.DB, "ClusterTasksProcessorC_test", tasks.get(1))[0]);
-		results.add(clusterTasksService.enqueueTasks(ClusterTasksDataProviderType.DB, "ClusterTasksProcessorB_test", tasks.get(2))[0]);
-		results.add(clusterTasksService.enqueueTasks(ClusterTasksDataProviderType.DB, "ClusterTasksProcessorC_test", tasks.get(3))[0]);
-		results.add(clusterTasksService.enqueueTasks(ClusterTasksDataProviderType.DB, "ClusterTasksProcessorB_test", tasks.get(4))[0]);
+		results.add(clusterTasksService.enqueueTasks(ClusterTasksDataProviderType.DB, "ClusterTasksProcessorBTest", tasks.get(0))[0]);
+		results.add(clusterTasksService.enqueueTasks(ClusterTasksDataProviderType.DB, "ClusterTasksProcessorCTest", tasks.get(1))[0]);
+		results.add(clusterTasksService.enqueueTasks(ClusterTasksDataProviderType.DB, "ClusterTasksProcessorBTest", tasks.get(2))[0]);
+		results.add(clusterTasksService.enqueueTasks(ClusterTasksDataProviderType.DB, "ClusterTasksProcessorCTest", tasks.get(3))[0]);
+		results.add(clusterTasksService.enqueueTasks(ClusterTasksDataProviderType.DB, "ClusterTasksProcessorBTest", tasks.get(4))[0]);
 		for (ClusterTaskPersistenceResult r : results) {
 			assertEquals(ClusterTaskInsertStatus.SUCCESS, r.getStatus());
 		}
@@ -154,7 +150,7 @@ public class CTServiceTest extends CTSTestsBase {
 				.setBody("nonsense2")
 				.build();
 		tasks.add(tmp);
-		results = clusterTasksService.enqueueTasks(ClusterTasksDataProviderType.DB, "ClusterTasksProcessorD_test", tasks.toArray(new ClusterTask[0]));
+		results = clusterTasksService.enqueueTasks(ClusterTasksDataProviderType.DB, "ClusterTasksProcessorDTest", tasks.toArray(new ClusterTask[0]));
 		for (ClusterTaskPersistenceResult r : results) {
 			assertEquals(ClusterTaskInsertStatus.SUCCESS, r.getStatus());
 		}
@@ -198,7 +194,7 @@ public class CTServiceTest extends CTSTestsBase {
 				.setDelayByMillis(delay)
 				.setBody("delayed")
 				.build();
-		results = clusterTasksService.enqueueTasks(ClusterTasksDataProviderType.DB, "ClusterTasksProcessorA_test", tmp);
+		results = clusterTasksService.enqueueTasks(ClusterTasksDataProviderType.DB, "ClusterTasksProcessorATest", tmp);
 		assertEquals(ClusterTaskInsertStatus.SUCCESS, results[0].getStatus());
 
 		//  task 2 with the same concurrency key
@@ -206,7 +202,7 @@ public class CTServiceTest extends CTSTestsBase {
 				.setConcurrencyKey(concurrencyKey)
 				.setBody("first_to_run")
 				.build();
-		results = clusterTasksService.enqueueTasks(ClusterTasksDataProviderType.DB, "ClusterTasksProcessorA_test", tmp);
+		results = clusterTasksService.enqueueTasks(ClusterTasksDataProviderType.DB, "ClusterTasksProcessorATest", tmp);
 		assertEquals(ClusterTaskInsertStatus.SUCCESS, results[0].getStatus());
 
 		long startWait = System.currentTimeMillis();
@@ -237,7 +233,7 @@ public class CTServiceTest extends CTSTestsBase {
 
 		//  enqueue first task to an ever-non-available processor
 		tmp = TaskBuilders.channeledTask().setConcurrencyKey(concurrencyKey).build();
-		results = clusterTasksService.enqueueTasks(ClusterTasksDataProviderType.DB, "ClusterTasksProcessorE_test_na", tmp);
+		results = clusterTasksService.enqueueTasks(ClusterTasksDataProviderType.DB, "ClusterTasksProcessorETestNA", tmp);
 		assertEquals(ClusterTaskInsertStatus.SUCCESS, results[0].getStatus());
 
 		//  enqueue second task to an available processor with the same concurrency key
@@ -245,12 +241,12 @@ public class CTServiceTest extends CTSTestsBase {
 				.setConcurrencyKey(concurrencyKey)
 				.setBody(taskBodyToCheck)
 				.build();
-		results = clusterTasksService.enqueueTasks(ClusterTasksDataProviderType.DB, "ClusterTasksProcessorF_test_cna", tmp);
+		results = clusterTasksService.enqueueTasks(ClusterTasksDataProviderType.DB, "ClusterTasksProcessorFTestCNA", tmp);
 		assertEquals(ClusterTaskInsertStatus.SUCCESS, results[0].getStatus());
 
 		//  ensure that the 'staled' non-available processor's task in NOT holding the whole concurrent queue
-		waitResultsContainerComplete(clusterTasksProcessorF_test_cna.tasksProcessed, 1, 3000);
-		assertEquals(taskBodyToCheck, clusterTasksProcessorF_test_cna.tasksProcessed.get(taskBodyToCheck));
+		waitResultsContainerComplete(clusterTasksProcessorF_testCna.tasksProcessed, 1, 3000);
+		assertEquals(taskBodyToCheck, clusterTasksProcessorF_testCna.tasksProcessed.get(taskBodyToCheck));
 	}
 
 	private <K, V> long waitResultsContainerComplete(Map<K, V> container, int expectedSize, long maxTimeToWait) {

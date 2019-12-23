@@ -8,8 +8,8 @@ import com.gullerya.cluster.tasks.api.enums.ClusterTasksDataProviderType;
  * Created by gullery on 02/06/2016
  */
 
-public class ClusterTasksProcessorE_test_na extends ClusterTasksProcessorSimple {
-	protected ClusterTasksProcessorE_test_na() {
+public class ClusterTasksProcessorETestNA extends ClusterTasksProcessorSimple {
+	protected ClusterTasksProcessorETestNA() {
 		super(ClusterTasksDataProviderType.DB, 1);
 	}
 

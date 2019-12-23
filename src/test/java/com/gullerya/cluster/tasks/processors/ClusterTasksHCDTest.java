@@ -12,13 +12,13 @@ import java.util.UUID;
  * Created by gullery on 02/06/2016
  */
 
-public class ClusterTasksHC_E_test extends ClusterTasksProcessorSimple {
+public class ClusterTasksHCDTest extends ClusterTasksProcessorSimple {
 	private static final Object COUNT_LOCK = new Object();
 	public static final String CONTENT = UUID.randomUUID().toString();
 	public static final Map<Long, Long> taskIDs = new LinkedHashMap<>();
 	public static volatile boolean count = false;
 
-	protected ClusterTasksHC_E_test() {
+	protected ClusterTasksHCDTest() {
 		super(ClusterTasksDataProviderType.DB, 5);
 	}
 

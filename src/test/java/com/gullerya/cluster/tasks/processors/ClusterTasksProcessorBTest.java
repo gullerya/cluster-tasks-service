@@ -12,10 +12,10 @@ import java.util.Map;
  * Created by gullery on 02/06/2016
  */
 
-public class ClusterTasksProcessorC_test extends ClusterTasksProcessorSimple {
+public class ClusterTasksProcessorBTest extends ClusterTasksProcessorSimple {
 	public final Map<String, Timestamp> tasksProcessed = new LinkedHashMap<>();
 
-	protected ClusterTasksProcessorC_test() {
+	protected ClusterTasksProcessorBTest() {
 		super(ClusterTasksDataProviderType.DB, 3);
 	}
 

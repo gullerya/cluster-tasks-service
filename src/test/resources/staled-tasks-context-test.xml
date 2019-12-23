@@ -7,6 +7,6 @@
 
 	<bean class="com.gullerya.cluster.tasks.CTSConfigurerForTestsSPI"/>
 
-	<bean class="com.gullerya.cluster.tasks.processors.ClusterTasksStaledTest_A"/>
+	<bean class="com.gullerya.cluster.tasks.processors.ClusterTasksStaledTestA"/>
 
 </beans>

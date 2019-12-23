@@ -8,6 +8,6 @@
 
 	<bean class="com.gullerya.cluster.tasks.CTSConfigurerForTestsSPI"/>
 
-	<bean class="com.gullerya.cluster.tasks.simple.SimpleProcessorA_test"/>
+	<bean class="com.gullerya.cluster.tasks.simple.SimpleProcessorATest"/>
 
 </beans>

@@ -60,26 +60,26 @@ public class HeavyClusterMixedToChanneledTasksTest {
 		waitForAllInit.await();
 		logger.info(numberOfNodes + " nodes initialized successfully");
 
-		ClusterTasksHC_A_test.taskIDs.clear();
-		ClusterTasksHC_B_test.taskIDs.clear();
-		ClusterTasksHC_C_test.taskIDs.clear();
-		ClusterTasksHC_D_test.taskIDs.clear();
-		ClusterTasksHC_E_test.taskIDs.clear();
+		ClusterTasksHATest.taskIDs.clear();
+		ClusterTasksHCBTest.taskIDs.clear();
+		ClusterTasksHCCTest.taskIDs.clear();
+		ClusterTasksHCDTest.taskIDs.clear();
+		ClusterTasksHCETest.taskIDs.clear();
 
 		//  [YG] TODO: do better drain out
 		//  let's drain out any old tasks if present
 		CTSTestsUtils.waitSafely(2000);
 
-		assertEquals(0, ClusterTasksHC_A_test.taskIDs.size());
-		assertEquals(0, ClusterTasksHC_B_test.taskIDs.size());
-		assertEquals(0, ClusterTasksHC_C_test.taskIDs.size());
-		assertEquals(0, ClusterTasksHC_D_test.taskIDs.size());
-		assertEquals(0, ClusterTasksHC_E_test.taskIDs.size());
-		ClusterTasksHC_A_test.count = true;
-		ClusterTasksHC_B_test.count = true;
-		ClusterTasksHC_C_test.count = true;
-		ClusterTasksHC_D_test.count = true;
-		ClusterTasksHC_E_test.count = true;
+		assertEquals(0, ClusterTasksHATest.taskIDs.size());
+		assertEquals(0, ClusterTasksHCBTest.taskIDs.size());
+		assertEquals(0, ClusterTasksHCCTest.taskIDs.size());
+		assertEquals(0, ClusterTasksHCDTest.taskIDs.size());
+		assertEquals(0, ClusterTasksHCETest.taskIDs.size());
+		ClusterTasksHATest.count = true;
+		ClusterTasksHCBTest.count = true;
+		ClusterTasksHCCTest.count = true;
+		ClusterTasksHCDTest.count = true;
+		ClusterTasksHCETest.count = true;
 		long startTime = System.currentTimeMillis();
 
 		//  enqueue tasks for all of the contexts
@@ -97,36 +97,36 @@ public class HeavyClusterMixedToChanneledTasksTest {
 						ClusterTask task = TaskBuilders
 								.simpleTask()
 								.setApplicationKey(UUID.randomUUID().toString())
-								.setBody(ClusterTasksHC_A_test.CONTENT).build();
-						clusterTasksService.enqueueTasks(ClusterTasksDataProviderType.DB, ClusterTasksHC_A_test.class.getSimpleName(), task);
+								.setBody(ClusterTasksHATest.CONTENT).build();
+						clusterTasksService.enqueueTasks(ClusterTasksDataProviderType.DB, ClusterTasksHATest.class.getSimpleName(), task);
 
 						task = TaskBuilders
 								.channeledTask()
-								.setConcurrencyKey(ClusterTasksHC_B_test.class.getSimpleName() + cnt)
+								.setConcurrencyKey(ClusterTasksHCBTest.class.getSimpleName() + cnt)
 								.setApplicationKey(UUID.randomUUID().toString())
-								.setBody(ClusterTasksHC_B_test.CONTENT).build();
-						clusterTasksService.enqueueTasks(ClusterTasksDataProviderType.DB, ClusterTasksHC_B_test.class.getSimpleName(), task);
+								.setBody(ClusterTasksHCBTest.CONTENT).build();
+						clusterTasksService.enqueueTasks(ClusterTasksDataProviderType.DB, ClusterTasksHCBTest.class.getSimpleName(), task);
 
 						task = TaskBuilders
 								.channeledTask()
-								.setConcurrencyKey(ClusterTasksHC_C_test.class.getSimpleName() + cnt)
+								.setConcurrencyKey(ClusterTasksHCCTest.class.getSimpleName() + cnt)
 								.setApplicationKey(UUID.randomUUID().toString())
-								.setBody(ClusterTasksHC_C_test.CONTENT).build();
-						clusterTasksService.enqueueTasks(ClusterTasksDataProviderType.DB, ClusterTasksHC_C_test.class.getSimpleName(), task);
+								.setBody(ClusterTasksHCCTest.CONTENT).build();
+						clusterTasksService.enqueueTasks(ClusterTasksDataProviderType.DB, ClusterTasksHCCTest.class.getSimpleName(), task);
 
 						task = TaskBuilders
 								.channeledTask()
-								.setConcurrencyKey(ClusterTasksHC_D_test.class.getSimpleName() + cnt)
+								.setConcurrencyKey(ClusterTasksHCDTest.class.getSimpleName() + cnt)
 								.setApplicationKey(UUID.randomUUID().toString())
-								.setBody(ClusterTasksHC_D_test.CONTENT).build();
-						clusterTasksService.enqueueTasks(ClusterTasksDataProviderType.DB, ClusterTasksHC_D_test.class.getSimpleName(), task);
+								.setBody(ClusterTasksHCDTest.CONTENT).build();
+						clusterTasksService.enqueueTasks(ClusterTasksDataProviderType.DB, ClusterTasksHCDTest.class.getSimpleName(), task);
 
 						task = TaskBuilders
 								.channeledTask()
-								.setConcurrencyKey(ClusterTasksHC_E_test.class.getSimpleName() + cnt)
+								.setConcurrencyKey(ClusterTasksHCETest.class.getSimpleName() + cnt)
 								.setApplicationKey(UUID.randomUUID().toString())
-								.setBody(ClusterTasksHC_E_test.CONTENT).build();
-						clusterTasksService.enqueueTasks(ClusterTasksDataProviderType.DB, ClusterTasksHC_E_test.class.getSimpleName(), task);
+								.setBody(ClusterTasksHCETest.CONTENT).build();
+						clusterTasksService.enqueueTasks(ClusterTasksDataProviderType.DB, ClusterTasksHCETest.class.getSimpleName(), task);
 					}
 				} catch (Exception e) {
 					logger.error("one of the nodes' task push failed", e);
@@ -145,52 +145,52 @@ public class HeavyClusterMixedToChanneledTasksTest {
 		ExecutorService tasksDonePool = Executors.newFixedThreadPool(5);
 		tasksDonePool.execute(() -> {
 			int cnt = 0;
-			while (ClusterTasksHC_A_test.taskIDs.size() != numberOfNodes * numberOfTasks) {
+			while (ClusterTasksHATest.taskIDs.size() != numberOfNodes * numberOfTasks) {
 				cnt++;
 				CTSTestsUtils.waitSafely(100);
 				if (cnt % 1000 == 0) {
-					logger.info(cnt / 10 + " secs passed, processed " + ClusterTasksHC_A_test.taskIDs.size() + " of " + numberOfNodes * numberOfTasks + " per processor");
+					logger.info(cnt / 10 + " secs passed, processed " + ClusterTasksHATest.taskIDs.size() + " of " + numberOfNodes * numberOfTasks + " per processor");
 				}
 			}
 			CTSTestsUtils.waitSafely(1000);   //  verify no more interactions
-			assertEquals(numberOfNodes * numberOfTasks, ClusterTasksHC_A_test.taskIDs.size());
-			logger.info("ClusterTasksHC_A_test DONE with " + numberOfNodes * numberOfTasks + " (for all " + numberOfNodes + " nodes)");
+			assertEquals(numberOfNodes * numberOfTasks, ClusterTasksHATest.taskIDs.size());
+			logger.info("ClusterTasksHATest DONE with " + numberOfNodes * numberOfTasks + " (for all " + numberOfNodes + " nodes)");
 			waitForAllTasksDone.countDown();
 		});
 		tasksDonePool.execute(() -> {
-			while (ClusterTasksHC_B_test.taskIDs.size() != numberOfNodes * numberOfTasks) {
+			while (ClusterTasksHCBTest.taskIDs.size() != numberOfNodes * numberOfTasks) {
 				CTSTestsUtils.waitSafely(100);
 			}
 			CTSTestsUtils.waitSafely(1000);   //  verify no more interactions
-			assertEquals(numberOfNodes * numberOfTasks, ClusterTasksHC_B_test.taskIDs.size());
-			logger.info("ClusterTasksHC_B_test DONE with " + numberOfNodes * numberOfTasks + " (for all " + numberOfNodes + " nodes)");
+			assertEquals(numberOfNodes * numberOfTasks, ClusterTasksHCBTest.taskIDs.size());
+			logger.info("ClusterTasksHCBTest DONE with " + numberOfNodes * numberOfTasks + " (for all " + numberOfNodes + " nodes)");
 			waitForAllTasksDone.countDown();
 		});
 		tasksDonePool.execute(() -> {
-			while (ClusterTasksHC_C_test.taskIDs.size() != numberOfNodes * numberOfTasks) {
+			while (ClusterTasksHCCTest.taskIDs.size() != numberOfNodes * numberOfTasks) {
 				CTSTestsUtils.waitSafely(100);
 			}
 			CTSTestsUtils.waitSafely(1000);   //  verify no more interactions
-			assertEquals(numberOfNodes * numberOfTasks, ClusterTasksHC_C_test.taskIDs.size());
-			logger.info("ClusterTasksHC_C_test DONE with " + numberOfNodes * numberOfTasks + " (for all " + numberOfNodes + " nodes)");
+			assertEquals(numberOfNodes * numberOfTasks, ClusterTasksHCCTest.taskIDs.size());
+			logger.info("ClusterTasksHCCTest DONE with " + numberOfNodes * numberOfTasks + " (for all " + numberOfNodes + " nodes)");
 			waitForAllTasksDone.countDown();
 		});
 		tasksDonePool.execute(() -> {
-			while (ClusterTasksHC_D_test.taskIDs.size() != numberOfNodes * numberOfTasks) {
+			while (ClusterTasksHCDTest.taskIDs.size() != numberOfNodes * numberOfTasks) {
 				CTSTestsUtils.waitSafely(100);
 			}
 			CTSTestsUtils.waitSafely(1000);   //  verify no more interactions
-			assertEquals(numberOfNodes * numberOfTasks, ClusterTasksHC_D_test.taskIDs.size());
-			logger.info("ClusterTasksHC_D_test DONE with " + numberOfNodes * numberOfTasks + " (for all " + numberOfNodes + " nodes)");
+			assertEquals(numberOfNodes * numberOfTasks, ClusterTasksHCDTest.taskIDs.size());
+			logger.info("ClusterTasksHCDTest DONE with " + numberOfNodes * numberOfTasks + " (for all " + numberOfNodes + " nodes)");
 			waitForAllTasksDone.countDown();
 		});
 		tasksDonePool.execute(() -> {
-			while (ClusterTasksHC_E_test.taskIDs.size() != numberOfNodes * numberOfTasks) {
+			while (ClusterTasksHCETest.taskIDs.size() != numberOfNodes * numberOfTasks) {
 				CTSTestsUtils.waitSafely(100);
 			}
 			CTSTestsUtils.waitSafely(1000);   //  verify no more interactions
-			assertEquals(numberOfNodes * numberOfTasks, ClusterTasksHC_E_test.taskIDs.size());
-			logger.info("ClusterTasksHC_E_test DONE with " + numberOfNodes * numberOfTasks + " (for all " + numberOfNodes + " nodes)");
+			assertEquals(numberOfNodes * numberOfTasks, ClusterTasksHCETest.taskIDs.size());
+			logger.info("ClusterTasksHCETest DONE with " + numberOfNodes * numberOfTasks + " (for all " + numberOfNodes + " nodes)");
 			waitForAllTasksDone.countDown();
 		});
 		waitForAllTasksDone.await();

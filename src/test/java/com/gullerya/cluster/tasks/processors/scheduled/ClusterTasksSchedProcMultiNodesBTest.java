@@ -14,11 +14,11 @@ import java.util.List;
  * This scheduled tasks processor will serve the test where original interval is 0 and it is redefined with reschedule API
  */
 
-public class ClusterTasksSchedProcMultiNodesB_test extends ClusterTasksProcessorScheduled {
-	public static ClusterTasksSchedProcMultiNodesB_test instance;
+public class ClusterTasksSchedProcMultiNodesBTest extends ClusterTasksProcessorScheduled {
+	public static ClusterTasksSchedProcMultiNodesBTest instance;
 	public static final List<Long> timestamps = Collections.synchronizedList(new LinkedList<>());
 
-	protected ClusterTasksSchedProcMultiNodesB_test() {
+	protected ClusterTasksSchedProcMultiNodesBTest() {
 		super(ClusterTasksDataProviderType.DB);
 		instance = this;
 	}

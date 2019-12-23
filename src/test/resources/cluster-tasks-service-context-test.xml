@@ -8,25 +8,25 @@
 
 	<bean class="com.gullerya.cluster.tasks.CTSConfigurerForTestsSPI"/>
 
-	<bean class="com.gullerya.cluster.tasks.processors.ClusterTasksProcessorA_test"/>
+	<bean class="com.gullerya.cluster.tasks.processors.ClusterTasksProcessorATest"/>
 
-	<bean class="com.gullerya.cluster.tasks.processors.ClusterTasksProcessorB_test"/>
+	<bean class="com.gullerya.cluster.tasks.processors.ClusterTasksProcessorBTest"/>
 
-	<bean class="com.gullerya.cluster.tasks.processors.ClusterTasksProcessorC_test"/>
+	<bean class="com.gullerya.cluster.tasks.processors.ClusterTasksProcessorCTest"/>
 
-	<bean class="com.gullerya.cluster.tasks.processors.ClusterTasksProcessorD_test"/>
+	<bean class="com.gullerya.cluster.tasks.processors.ClusterTasksProcessorDTest"/>
 
-	<bean class="com.gullerya.cluster.tasks.processors.ClusterTasksProcessorE_test_na"/>
+	<bean class="com.gullerya.cluster.tasks.processors.ClusterTasksProcessorETestNA"/>
 
-	<bean class="com.gullerya.cluster.tasks.processors.ClusterTasksProcessorF_test_cna"/>
+	<bean class="com.gullerya.cluster.tasks.processors.ClusterTasksProcessorFTestCNA"/>
 
-	<bean class="com.gullerya.cluster.tasks.processors.ClusterTasksProcessorCount_test"/>
+	<bean class="com.gullerya.cluster.tasks.processors.ClusterTasksProcessorCountTest"/>
 
-	<bean class="com.gullerya.cluster.tasks.processors.ClusterTasksProcessorConcurrency_test"/>
+	<bean class="com.gullerya.cluster.tasks.processors.ClusterTasksProcessorConcurrencyTest"/>
 
-	<bean class="com.gullerya.cluster.tasks.processors.ClusterTasksProcessorFairness_test_st"/>
+	<bean class="com.gullerya.cluster.tasks.processors.ClusterTasksProcessorFairnessTestST"/>
 
-	<bean class="com.gullerya.cluster.tasks.processors.ClusterTasksProcessorFairness_test_mt"/>
+	<bean class="com.gullerya.cluster.tasks.processors.ClusterTasksProcessorFairnessTestMT"/>
 
-	<bean class="com.gullerya.cluster.tasks.processors.ClusterTasksProcessorUniqueness_test"/>
+	<bean class="com.gullerya.cluster.tasks.processors.ClusterTasksProcessorUniquenessTest"/>
 </beans>

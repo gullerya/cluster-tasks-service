@@ -13,13 +13,13 @@ import java.util.Objects;
  * Created by gullery on 22/05/2019
  */
 
-public class AppKeyProcessorCount_test extends ClusterTasksProcessorSimple {
+public class AppKeyProcessorCountTest extends ClusterTasksProcessorSimple {
 	static final Map<Long, Long> tasksProcessed = new LinkedHashMap<>();
 	static volatile boolean any = false;
 	static volatile boolean holdRunning = false;
 	static volatile String conditionToRun = null;
 
-	protected AppKeyProcessorCount_test() {
+	protected AppKeyProcessorCountTest() {
 		super(ClusterTasksDataProviderType.DB, 3);
 	}
 

@@ -5,7 +5,7 @@ import com.gullerya.cluster.tasks.api.dto.ClusterTask;
 import com.gullerya.cluster.tasks.api.enums.ClusterTasksDataProviderType;
 import com.gullerya.cluster.tasks.CTSTestsUtils;
 import com.gullerya.cluster.tasks.api.ClusterTasksService;
-import com.gullerya.cluster.tasks.processors.ClusterTasksStaledTest_A;
+import com.gullerya.cluster.tasks.processors.ClusterTasksStaledTestA;
 import org.junit.Assert;
 import org.junit.Test;
 import org.slf4j.Logger;
@@ -58,12 +58,12 @@ public class StaledTasksTest {
 		//  [YG] TODO: do better drain out
 		//  let's drain out any old tasks if present
 		CTSTestsUtils.waitSafely(4000);
-		staleContext.getBean(ClusterTasksStaledTest_A.class).drainMode = false;
-		pickupContext.getBean(ClusterTasksStaledTest_A.class).drainMode = false;
+		staleContext.getBean(ClusterTasksStaledTestA.class).drainMode = false;
+		pickupContext.getBean(ClusterTasksStaledTestA.class).drainMode = false;
 
 		//  make only stale node to pull tasks - it will take 2 tasks per 2 threads
-		pickupContext.getBean(ClusterTasksStaledTest_A.class).isStaleRole = false;
-		pickupContext.getBean(ClusterTasksStaledTest_A.class).suspended = true;
+		pickupContext.getBean(ClusterTasksStaledTestA.class).isStaleRole = false;
+		pickupContext.getBean(ClusterTasksStaledTestA.class).suspended = true;
 
 		//  push 4 tasks, 2 pairs of 2 concurrency keys
 		String concurrencyKeyA = UUID.randomUUID().toString().replaceAll("-", "");
@@ -72,11 +72,11 @@ public class StaledTasksTest {
 		ClusterTask task2 = TaskBuilders.channeledTask().setConcurrencyKey(concurrencyKeyA).build();
 		ClusterTask task3 = TaskBuilders.channeledTask().setConcurrencyKey(concurrencyKeyB).build();
 		ClusterTask task4 = TaskBuilders.channeledTask().setConcurrencyKey(concurrencyKeyB).build();
-		staleContext.getBean(ClusterTasksService.class).enqueueTasks(ClusterTasksDataProviderType.DB, "ClusterTasksStaledTest_A", task1, task2, task3, task4);
+		staleContext.getBean(ClusterTasksService.class).enqueueTasks(ClusterTasksDataProviderType.DB, "ClusterTasksStaledTestA", task1, task2, task3, task4);
 
 		//  wait until the staled node will take 2 tasks (it won't release them until notified)
 		CTSTestsUtils.waitUntil(5000, () -> {
-			if (staleContext.getBean(ClusterTasksStaledTest_A.class).takenTasksCounter < 2) {
+			if (staleContext.getBean(ClusterTasksStaledTestA.class).takenTasksCounter < 2) {
 				return null;
 			} else {
 				return true;
@@ -94,9 +94,9 @@ public class StaledTasksTest {
 
 		//  wait until the pickup node will remove
 		pickupContext.getBean(ClusterTasksServiceImpl.class).getMaintainer().setMaintenanceInterval(2000);
-		pickupContext.getBean(ClusterTasksStaledTest_A.class).suspended = false;
+		pickupContext.getBean(ClusterTasksStaledTestA.class).suspended = false;
 		Boolean result = CTSTestsUtils.waitUntil(20000, () -> {
-			if (pickupContext.getBean(ClusterTasksStaledTest_A.class).takenTasksCounter < 2) {
+			if (pickupContext.getBean(ClusterTasksStaledTestA.class).takenTasksCounter < 2) {
 				return null;
 			} else {
 				return true;

@@ -12,12 +12,12 @@ import java.util.Objects;
  * Created by gullery on 22/05/2019
  */
 
-public class AppKeyProcessorA_test extends ClusterTasksProcessorSimple {
+public class AppKeyProcessorATest extends ClusterTasksProcessorSimple {
 	static final Map<String, Long> tasksProcessed = new LinkedHashMap<>();
 	static volatile boolean any = true;
 	static volatile String conditionToRun = null;
 
-	protected AppKeyProcessorA_test() {
+	protected AppKeyProcessorATest() {
 		super(ClusterTasksDataProviderType.DB, 1);
 	}
 

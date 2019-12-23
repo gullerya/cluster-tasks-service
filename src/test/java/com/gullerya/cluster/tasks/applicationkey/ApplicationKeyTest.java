@@ -27,13 +27,13 @@ public class ApplicationKeyTest extends CTSTestsBase {
 
 	@Test
 	public void testASimpleAppKeyChain() {
-		AppKeyProcessorA_test.any = true;
+		AppKeyProcessorATest.any = true;
 		CTSTestsUtils.waitSafely(5000);
 
-		AppKeyProcessorA_test.any = false;
-		AppKeyProcessorA_test.conditionToRun = null;
-		AppKeyProcessorA_test.tasksProcessed.clear();
-		Assert.assertTrue(AppKeyProcessorA_test.tasksProcessed.isEmpty());
+		AppKeyProcessorATest.any = false;
+		AppKeyProcessorATest.conditionToRun = null;
+		AppKeyProcessorATest.tasksProcessed.clear();
+		Assert.assertTrue(AppKeyProcessorATest.tasksProcessed.isEmpty());
 
 		String appKey = UUID.randomUUID().toString();
 		ClusterTask task1 = TaskBuilders.simpleTask()
@@ -48,26 +48,26 @@ public class ApplicationKeyTest extends CTSTestsBase {
 				.setApplicationKey(appKey)
 				.setBody("3")
 				.build();
-		clusterTasksService.enqueueTasks(ClusterTasksDataProviderType.DB, "AppKeyProcessorA_test", task1, task2, task3);
+		clusterTasksService.enqueueTasks(ClusterTasksDataProviderType.DB, "AppKeyProcessorATest", task1, task2, task3);
 
 		CTSTestsUtils.waitSafely(4000);
-		Assert.assertTrue(AppKeyProcessorA_test.tasksProcessed.isEmpty());
+		Assert.assertTrue(AppKeyProcessorATest.tasksProcessed.isEmpty());
 
-		AppKeyProcessorA_test.conditionToRun = appKey;
-		CTSTestsUtils.waitUntil(4000, () -> AppKeyProcessorA_test.tasksProcessed.size() == 3 ? true : null);
+		AppKeyProcessorATest.conditionToRun = appKey;
+		CTSTestsUtils.waitUntil(4000, () -> AppKeyProcessorATest.tasksProcessed.size() == 3 ? true : null);
 
-		Assert.assertTrue(AppKeyProcessorA_test.tasksProcessed.containsKey("1"));
-		Assert.assertTrue(AppKeyProcessorA_test.tasksProcessed.containsKey("2"));
-		Assert.assertTrue(AppKeyProcessorA_test.tasksProcessed.containsKey("3"));
-		Assert.assertTrue("expected positive diff, but got: " + (AppKeyProcessorA_test.tasksProcessed.get("2") - AppKeyProcessorA_test.tasksProcessed.get("1")), AppKeyProcessorA_test.tasksProcessed.get("2") > AppKeyProcessorA_test.tasksProcessed.get("1"));
-		Assert.assertTrue("expected positive diff, but got: " + (AppKeyProcessorA_test.tasksProcessed.get("3") - AppKeyProcessorA_test.tasksProcessed.get("2")), AppKeyProcessorA_test.tasksProcessed.get("3") > AppKeyProcessorA_test.tasksProcessed.get("2"));
+		Assert.assertTrue(AppKeyProcessorATest.tasksProcessed.containsKey("1"));
+		Assert.assertTrue(AppKeyProcessorATest.tasksProcessed.containsKey("2"));
+		Assert.assertTrue(AppKeyProcessorATest.tasksProcessed.containsKey("3"));
+		Assert.assertTrue("expected positive diff, but got: " + (AppKeyProcessorATest.tasksProcessed.get("2") - AppKeyProcessorATest.tasksProcessed.get("1")), AppKeyProcessorATest.tasksProcessed.get("2") > AppKeyProcessorATest.tasksProcessed.get("1"));
+		Assert.assertTrue("expected positive diff, but got: " + (AppKeyProcessorATest.tasksProcessed.get("3") - AppKeyProcessorATest.tasksProcessed.get("2")), AppKeyProcessorATest.tasksProcessed.get("3") > AppKeyProcessorATest.tasksProcessed.get("2"));
 	}
 
 	@Test
 	public void testBSimpleAppKeyChainWithOtherTasks() {
-		AppKeyProcessorA_test.tasksProcessed.clear();
-		Assert.assertTrue(AppKeyProcessorA_test.tasksProcessed.isEmpty());
-		AppKeyProcessorA_test.conditionToRun = null;
+		AppKeyProcessorATest.tasksProcessed.clear();
+		Assert.assertTrue(AppKeyProcessorATest.tasksProcessed.isEmpty());
+		AppKeyProcessorATest.conditionToRun = null;
 
 		String appKey = UUID.randomUUID().toString();
 		//  tasks first to be inserted, but with application key to hold on
@@ -93,36 +93,36 @@ public class ApplicationKeyTest extends CTSTestsBase {
 		ClusterTask task6 = TaskBuilders.simpleTask()
 				.setBody("6")
 				.build();
-		clusterTasksService.enqueueTasks(ClusterTasksDataProviderType.DB, "AppKeyProcessorA_test", task1, task2, task3, task4, task5, task6);
+		clusterTasksService.enqueueTasks(ClusterTasksDataProviderType.DB, "AppKeyProcessorATest", task1, task2, task3, task4, task5, task6);
 
-		CTSTestsUtils.waitUntil(4000, () -> AppKeyProcessorA_test.tasksProcessed.size() == 3 ? true : null);
+		CTSTestsUtils.waitUntil(4000, () -> AppKeyProcessorATest.tasksProcessed.size() == 3 ? true : null);
 
-		AppKeyProcessorA_test.conditionToRun = appKey;
-		CTSTestsUtils.waitUntil(6000, () -> AppKeyProcessorA_test.tasksProcessed.size() == 6 ? true : null);
+		AppKeyProcessorATest.conditionToRun = appKey;
+		CTSTestsUtils.waitUntil(6000, () -> AppKeyProcessorATest.tasksProcessed.size() == 6 ? true : null);
 
-		Assert.assertTrue(AppKeyProcessorA_test.tasksProcessed.containsKey("1"));
-		Assert.assertTrue(AppKeyProcessorA_test.tasksProcessed.containsKey("2"));
-		Assert.assertTrue(AppKeyProcessorA_test.tasksProcessed.containsKey("3"));
-		Assert.assertTrue(AppKeyProcessorA_test.tasksProcessed.containsKey("4"));
-		Assert.assertTrue(AppKeyProcessorA_test.tasksProcessed.containsKey("5"));
-		Assert.assertTrue(AppKeyProcessorA_test.tasksProcessed.containsKey("6"));
-		Assert.assertTrue("expected positive diff, but got: " + (AppKeyProcessorA_test.tasksProcessed.get("2") - AppKeyProcessorA_test.tasksProcessed.get("1")),AppKeyProcessorA_test.tasksProcessed.get("2") > AppKeyProcessorA_test.tasksProcessed.get("1"));
-		Assert.assertTrue("expected positive diff, but got: " + (AppKeyProcessorA_test.tasksProcessed.get("3") - AppKeyProcessorA_test.tasksProcessed.get("2")),AppKeyProcessorA_test.tasksProcessed.get("3") > AppKeyProcessorA_test.tasksProcessed.get("2"));
+		Assert.assertTrue(AppKeyProcessorATest.tasksProcessed.containsKey("1"));
+		Assert.assertTrue(AppKeyProcessorATest.tasksProcessed.containsKey("2"));
+		Assert.assertTrue(AppKeyProcessorATest.tasksProcessed.containsKey("3"));
+		Assert.assertTrue(AppKeyProcessorATest.tasksProcessed.containsKey("4"));
+		Assert.assertTrue(AppKeyProcessorATest.tasksProcessed.containsKey("5"));
+		Assert.assertTrue(AppKeyProcessorATest.tasksProcessed.containsKey("6"));
+		Assert.assertTrue("expected positive diff, but got: " + (AppKeyProcessorATest.tasksProcessed.get("2") - AppKeyProcessorATest.tasksProcessed.get("1")), AppKeyProcessorATest.tasksProcessed.get("2") > AppKeyProcessorATest.tasksProcessed.get("1"));
+		Assert.assertTrue("expected positive diff, but got: " + (AppKeyProcessorATest.tasksProcessed.get("3") - AppKeyProcessorATest.tasksProcessed.get("2")), AppKeyProcessorATest.tasksProcessed.get("3") > AppKeyProcessorATest.tasksProcessed.get("2"));
 		//  ensure that held tasks ran after the non-held
-		Assert.assertTrue("expected positive diff, but got: " + (AppKeyProcessorA_test.tasksProcessed.get("1") - AppKeyProcessorA_test.tasksProcessed.get("4")),AppKeyProcessorA_test.tasksProcessed.get("1") > AppKeyProcessorA_test.tasksProcessed.get("4"));
-		Assert.assertTrue("expected positive diff, but got: " + (AppKeyProcessorA_test.tasksProcessed.get("1") - AppKeyProcessorA_test.tasksProcessed.get("5")),AppKeyProcessorA_test.tasksProcessed.get("1") > AppKeyProcessorA_test.tasksProcessed.get("5"));
-		Assert.assertTrue("expected positive diff, but got: " + (AppKeyProcessorA_test.tasksProcessed.get("1") - AppKeyProcessorA_test.tasksProcessed.get("6")),AppKeyProcessorA_test.tasksProcessed.get("1") > AppKeyProcessorA_test.tasksProcessed.get("6"));
+		Assert.assertTrue("expected positive diff, but got: " + (AppKeyProcessorATest.tasksProcessed.get("1") - AppKeyProcessorATest.tasksProcessed.get("4")), AppKeyProcessorATest.tasksProcessed.get("1") > AppKeyProcessorATest.tasksProcessed.get("4"));
+		Assert.assertTrue("expected positive diff, but got: " + (AppKeyProcessorATest.tasksProcessed.get("1") - AppKeyProcessorATest.tasksProcessed.get("5")), AppKeyProcessorATest.tasksProcessed.get("1") > AppKeyProcessorATest.tasksProcessed.get("5"));
+		Assert.assertTrue("expected positive diff, but got: " + (AppKeyProcessorATest.tasksProcessed.get("1") - AppKeyProcessorATest.tasksProcessed.get("6")), AppKeyProcessorATest.tasksProcessed.get("1") > AppKeyProcessorATest.tasksProcessed.get("6"));
 	}
 
 	@Test
 	public void testCChanneledAppKeyChain() {
-		AppKeyProcessorB_test.any = true;
+		AppKeyProcessorBTest.any = true;
 		CTSTestsUtils.waitSafely(5000);
 
-		AppKeyProcessorB_test.any = false;
-		AppKeyProcessorB_test.tasksProcessed.clear();
-		Assert.assertTrue(AppKeyProcessorB_test.tasksProcessed.isEmpty());
-		AppKeyProcessorB_test.conditionToRun = null;
+		AppKeyProcessorBTest.any = false;
+		AppKeyProcessorBTest.tasksProcessed.clear();
+		Assert.assertTrue(AppKeyProcessorBTest.tasksProcessed.isEmpty());
+		AppKeyProcessorBTest.conditionToRun = null;
 
 		String concurrencyKey = UUID.randomUUID().toString().replaceAll("-", "");
 		String appKey = UUID.randomUUID().toString();
@@ -142,30 +142,30 @@ public class ApplicationKeyTest extends CTSTestsBase {
 				.setApplicationKey(appKey)
 				.setBody("3")
 				.build();
-		clusterTasksService.enqueueTasks(ClusterTasksDataProviderType.DB, "AppKeyProcessorB_test", task1, task2, task3);
+		clusterTasksService.enqueueTasks(ClusterTasksDataProviderType.DB, "AppKeyProcessorBTest", task1, task2, task3);
 
 		CTSTestsUtils.waitSafely(4000);
-		Assert.assertTrue(AppKeyProcessorB_test.tasksProcessed.isEmpty());
+		Assert.assertTrue(AppKeyProcessorBTest.tasksProcessed.isEmpty());
 
-		AppKeyProcessorB_test.conditionToRun = appKey;
-		CTSTestsUtils.waitUntil(4000, () -> AppKeyProcessorB_test.tasksProcessed.size() == 3 ? true : null);
+		AppKeyProcessorBTest.conditionToRun = appKey;
+		CTSTestsUtils.waitUntil(4000, () -> AppKeyProcessorBTest.tasksProcessed.size() == 3 ? true : null);
 
-		Assert.assertTrue(AppKeyProcessorB_test.tasksProcessed.containsKey("1"));
-		Assert.assertTrue(AppKeyProcessorB_test.tasksProcessed.containsKey("2"));
-		Assert.assertTrue(AppKeyProcessorB_test.tasksProcessed.containsKey("3"));
-		Assert.assertTrue(AppKeyProcessorB_test.tasksProcessed.get("2") > AppKeyProcessorB_test.tasksProcessed.get("1"));
-		Assert.assertTrue(AppKeyProcessorB_test.tasksProcessed.get("3") > AppKeyProcessorB_test.tasksProcessed.get("2"));
+		Assert.assertTrue(AppKeyProcessorBTest.tasksProcessed.containsKey("1"));
+		Assert.assertTrue(AppKeyProcessorBTest.tasksProcessed.containsKey("2"));
+		Assert.assertTrue(AppKeyProcessorBTest.tasksProcessed.containsKey("3"));
+		Assert.assertTrue(AppKeyProcessorBTest.tasksProcessed.get("2") > AppKeyProcessorBTest.tasksProcessed.get("1"));
+		Assert.assertTrue(AppKeyProcessorBTest.tasksProcessed.get("3") > AppKeyProcessorBTest.tasksProcessed.get("2"));
 	}
 
 	@Test
 	public void testDChanneledAppKeyChainWithOtherTasks() {
-		AppKeyProcessorB_test.any = true;
+		AppKeyProcessorBTest.any = true;
 		CTSTestsUtils.waitSafely(5000);
 
-		AppKeyProcessorB_test.any = false;
-		AppKeyProcessorB_test.tasksProcessed.clear();
-		Assert.assertTrue(AppKeyProcessorB_test.tasksProcessed.isEmpty());
-		AppKeyProcessorB_test.conditionToRun = null;
+		AppKeyProcessorBTest.any = false;
+		AppKeyProcessorBTest.tasksProcessed.clear();
+		Assert.assertTrue(AppKeyProcessorBTest.tasksProcessed.isEmpty());
+		AppKeyProcessorBTest.conditionToRun = null;
 
 		String concurrencyKey = UUID.randomUUID().toString().replaceAll("-", "");
 		String appKey = UUID.randomUUID().toString();
@@ -195,25 +195,25 @@ public class ApplicationKeyTest extends CTSTestsBase {
 		ClusterTask task6 = TaskBuilders.simpleTask()
 				.setBody("6")
 				.build();
-		clusterTasksService.enqueueTasks(ClusterTasksDataProviderType.DB, "AppKeyProcessorB_test", task1, task2, task3, task4, task5, task6);
+		clusterTasksService.enqueueTasks(ClusterTasksDataProviderType.DB, "AppKeyProcessorBTest", task1, task2, task3, task4, task5, task6);
 
-		CTSTestsUtils.waitUntil(5000, () -> AppKeyProcessorB_test.tasksProcessed.size() == 3 ? true : null);
+		CTSTestsUtils.waitUntil(5000, () -> AppKeyProcessorBTest.tasksProcessed.size() == 3 ? true : null);
 
-		AppKeyProcessorB_test.conditionToRun = appKey;
-		CTSTestsUtils.waitUntil(6000, () -> AppKeyProcessorB_test.tasksProcessed.size() == 6 ? true : null);
+		AppKeyProcessorBTest.conditionToRun = appKey;
+		CTSTestsUtils.waitUntil(6000, () -> AppKeyProcessorBTest.tasksProcessed.size() == 6 ? true : null);
 
-		Assert.assertTrue(AppKeyProcessorB_test.tasksProcessed.containsKey("1"));
-		Assert.assertTrue(AppKeyProcessorB_test.tasksProcessed.containsKey("2"));
-		Assert.assertTrue(AppKeyProcessorB_test.tasksProcessed.containsKey("3"));
-		Assert.assertTrue(AppKeyProcessorB_test.tasksProcessed.containsKey("4"));
-		Assert.assertTrue(AppKeyProcessorB_test.tasksProcessed.containsKey("5"));
-		Assert.assertTrue(AppKeyProcessorB_test.tasksProcessed.containsKey("6"));
-		Assert.assertTrue(AppKeyProcessorB_test.tasksProcessed.get("2") > AppKeyProcessorB_test.tasksProcessed.get("1"));
-		Assert.assertTrue(AppKeyProcessorB_test.tasksProcessed.get("3") > AppKeyProcessorB_test.tasksProcessed.get("2"));
+		Assert.assertTrue(AppKeyProcessorBTest.tasksProcessed.containsKey("1"));
+		Assert.assertTrue(AppKeyProcessorBTest.tasksProcessed.containsKey("2"));
+		Assert.assertTrue(AppKeyProcessorBTest.tasksProcessed.containsKey("3"));
+		Assert.assertTrue(AppKeyProcessorBTest.tasksProcessed.containsKey("4"));
+		Assert.assertTrue(AppKeyProcessorBTest.tasksProcessed.containsKey("5"));
+		Assert.assertTrue(AppKeyProcessorBTest.tasksProcessed.containsKey("6"));
+		Assert.assertTrue(AppKeyProcessorBTest.tasksProcessed.get("2") > AppKeyProcessorBTest.tasksProcessed.get("1"));
+		Assert.assertTrue(AppKeyProcessorBTest.tasksProcessed.get("3") > AppKeyProcessorBTest.tasksProcessed.get("2"));
 		//  ensure that held tasks ran after the non-held
-		Assert.assertTrue(AppKeyProcessorB_test.tasksProcessed.get("1") > AppKeyProcessorB_test.tasksProcessed.get("4"));
-		Assert.assertTrue(AppKeyProcessorB_test.tasksProcessed.get("1") > AppKeyProcessorB_test.tasksProcessed.get("5"));
-		Assert.assertTrue(AppKeyProcessorB_test.tasksProcessed.get("1") > AppKeyProcessorB_test.tasksProcessed.get("6"));
+		Assert.assertTrue(AppKeyProcessorBTest.tasksProcessed.get("1") > AppKeyProcessorBTest.tasksProcessed.get("4"));
+		Assert.assertTrue(AppKeyProcessorBTest.tasksProcessed.get("1") > AppKeyProcessorBTest.tasksProcessed.get("5"));
+		Assert.assertTrue(AppKeyProcessorBTest.tasksProcessed.get("1") > AppKeyProcessorBTest.tasksProcessed.get("6"));
 	}
 }
 

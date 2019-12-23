@@ -3,7 +3,7 @@ package com.gullerya.cluster.tasks;
 import com.gullerya.cluster.tasks.api.builders.TaskBuilders;
 import com.gullerya.cluster.tasks.api.dto.ClusterTask;
 import com.gullerya.cluster.tasks.api.enums.ClusterTasksDataProviderType;
-import com.gullerya.cluster.tasks.processors.ClusterTasksProcessorConcurrency_test;
+import com.gullerya.cluster.tasks.processors.ClusterTasksProcessorConcurrencyTest;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.slf4j.Logger;
@@ -30,7 +30,7 @@ public class ConcurrencyTest extends CTSTestsBase {
 	private static final Logger logger = LoggerFactory.getLogger(ConcurrencyTest.class);
 
 	@Autowired
-	private ClusterTasksProcessorConcurrency_test clusterTasksProcessorConcurrency_test;
+	private ClusterTasksProcessorConcurrencyTest clusterTasksProcessorConcurrency_test;
 
 	@Test
 	public void testAConcurrencyValueAllNull() {
@@ -43,7 +43,7 @@ public class ConcurrencyTest extends CTSTestsBase {
 				.build();
 
 		clusterTasksProcessorConcurrency_test.tasksProcessed = 0;
-		clusterTasksService.enqueueTasks(ClusterTasksDataProviderType.DB, "ClusterTasksProcessorConcurrency_test", tasks);
+		clusterTasksService.enqueueTasks(ClusterTasksDataProviderType.DB, "ClusterTasksProcessorConcurrencyTest", tasks);
 		waitForEndCondition(2, 7000);
 
 		assertEquals(2, clusterTasksProcessorConcurrency_test.tasksProcessed);
@@ -78,7 +78,7 @@ public class ConcurrencyTest extends CTSTestsBase {
 				.build();
 
 		clusterTasksProcessorConcurrency_test.tasksProcessed = 0;
-		clusterTasksService.enqueueTasks(ClusterTasksDataProviderType.DB, "ClusterTasksProcessorConcurrency_test", tasks);
+		clusterTasksService.enqueueTasks(ClusterTasksDataProviderType.DB, "ClusterTasksProcessorConcurrencyTest", tasks);
 		waitForEndCondition(6, 14000);
 
 		assertEquals(6, clusterTasksProcessorConcurrency_test.tasksProcessed);

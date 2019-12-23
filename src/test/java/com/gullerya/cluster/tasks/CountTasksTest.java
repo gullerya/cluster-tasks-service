@@ -5,7 +5,7 @@ import com.gullerya.cluster.tasks.api.dto.ClusterTask;
 import com.gullerya.cluster.tasks.api.dto.ClusterTaskPersistenceResult;
 import com.gullerya.cluster.tasks.api.enums.ClusterTaskInsertStatus;
 import com.gullerya.cluster.tasks.api.enums.ClusterTasksDataProviderType;
-import com.gullerya.cluster.tasks.processors.ClusterTasksProcessorCount_test;
+import com.gullerya.cluster.tasks.processors.ClusterTasksProcessorCountTest;
 import org.junit.Assert;
 import org.junit.Test;
 import org.junit.runner.RunWith;
@@ -13,7 +13,6 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.test.context.ContextConfiguration;
 import org.springframework.test.context.junit4.SpringJUnit4ClassRunner;
 
-import java.util.Arrays;
 import java.util.UUID;
 
 /**
@@ -29,7 +28,7 @@ import java.util.UUID;
 public class CountTasksTest extends CTSTestsBase {
 
 	@Autowired
-	private ClusterTasksProcessorCount_test clusterTasksProcessorCount_test;
+	private ClusterTasksProcessorCountTest clusterTasksProcessorCount_test;
 
 	@Test
 	public void testEWithTasks() {
@@ -53,7 +52,7 @@ public class CountTasksTest extends CTSTestsBase {
 		tasks[4] = TaskBuilders.channeledTask().setConcurrencyKey(concurrencyKeyB).build();
 		tasks[5] = TaskBuilders.channeledTask().setConcurrencyKey(concurrencyKeyB).build();
 
-		ClusterTaskPersistenceResult[] results = clusterTasksService.enqueueTasks(ClusterTasksDataProviderType.DB, "ClusterTasksProcessorCount_test", tasks);
+		ClusterTaskPersistenceResult[] results = clusterTasksService.enqueueTasks(ClusterTasksDataProviderType.DB, "ClusterTasksProcessorCountTest", tasks);
 		for (ClusterTaskPersistenceResult result : results) {
 			Assert.assertEquals(ClusterTaskInsertStatus.SUCCESS, result.getStatus());
 		}
@@ -87,7 +86,7 @@ public class CountTasksTest extends CTSTestsBase {
 		tasks[1] = TaskBuilders.channeledTask().setConcurrencyKey(concurrencyKey).build();
 		tasks[2] = TaskBuilders.channeledTask().setConcurrencyKey(concurrencyKey).build();
 
-		ClusterTaskPersistenceResult[] results = clusterTasksService.enqueueTasks(ClusterTasksDataProviderType.DB, "ClusterTasksProcessorCount_test", tasks);
+		ClusterTaskPersistenceResult[] results = clusterTasksService.enqueueTasks(ClusterTasksDataProviderType.DB, "ClusterTasksProcessorCountTest", tasks);
 		for (ClusterTaskPersistenceResult result : results) {
 			Assert.assertEquals(ClusterTaskInsertStatus.SUCCESS, result.getStatus());
 		}
@@ -126,7 +125,7 @@ public class CountTasksTest extends CTSTestsBase {
 		tasks[1] = TaskBuilders.simpleTask().build();
 		tasks[2] = TaskBuilders.simpleTask().build();
 
-		ClusterTaskPersistenceResult[] results = clusterTasksService.enqueueTasks(ClusterTasksDataProviderType.DB, "ClusterTasksProcessorCount_test", tasks);
+		ClusterTaskPersistenceResult[] results = clusterTasksService.enqueueTasks(ClusterTasksDataProviderType.DB, "ClusterTasksProcessorCountTest", tasks);
 		for (ClusterTaskPersistenceResult result : results) {
 			Assert.assertEquals(ClusterTaskInsertStatus.SUCCESS, result.getStatus());
 		}

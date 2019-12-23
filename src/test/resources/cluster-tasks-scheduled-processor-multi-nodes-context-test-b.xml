@@ -7,6 +7,6 @@
 	<import resource="cluster-tasks-service-context.xml"/>
 
 	<bean class="com.gullerya.cluster.tasks.CTSConfigurerForTestsSPI"/>
-	<bean class="com.gullerya.cluster.tasks.processors.scheduled.ClusterTasksSchedProcMultiNodesB_test"/>
+	<bean class="com.gullerya.cluster.tasks.processors.scheduled.ClusterTasksSchedProcMultiNodesBTest"/>
 
 </beans>

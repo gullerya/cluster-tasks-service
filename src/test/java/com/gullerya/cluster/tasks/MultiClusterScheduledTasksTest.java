@@ -1,8 +1,8 @@
 package com.gullerya.cluster.tasks;
 
 import com.gullerya.cluster.tasks.api.ClusterTasksService;
-import com.gullerya.cluster.tasks.processors.scheduled.ClusterTasksSchedProcMultiNodesA_test;
-import com.gullerya.cluster.tasks.processors.scheduled.ClusterTasksSchedProcMultiNodesB_test;
+import com.gullerya.cluster.tasks.processors.scheduled.ClusterTasksSchedProcMultiNodesATest;
+import com.gullerya.cluster.tasks.processors.scheduled.ClusterTasksSchedProcMultiNodesBTest;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.slf4j.Logger;
@@ -57,11 +57,11 @@ public class MultiClusterScheduledTasksTest {
 
 		// make sure that the execution of the scheduled tasks is at correct 'speed'
 		// regardless of the number of nodes
-		assertEquals(0, ClusterTasksSchedProcMultiNodesA_test.executionsCounter);
-		ClusterTasksSchedProcMultiNodesA_test.suspended = false;
+		assertEquals(0, ClusterTasksSchedProcMultiNodesATest.executionsCounter);
+		ClusterTasksSchedProcMultiNodesATest.suspended = false;
 		CTSTestsUtils.waitSafely(7000);
-		assertTrue(ClusterTasksSchedProcMultiNodesA_test.executionsCounter == 1
-				|| ClusterTasksSchedProcMultiNodesA_test.executionsCounter == 2);
+		assertTrue(ClusterTasksSchedProcMultiNodesATest.executionsCounter == 1
+				|| ClusterTasksSchedProcMultiNodesATest.executionsCounter == 2);
 
 		// stop all CTS instances
 		contexts.forEach(c -> {
@@ -100,14 +100,14 @@ public class MultiClusterScheduledTasksTest {
 		// make sure that the execution of the scheduled tasks is at correct 'speed'
 		// regardless of the number of nodes
 		assertTrue(clusterTasksService.getReadyPromise().get());
-		ClusterTasksSchedProcMultiNodesB_test.instance.reschedule(5000);
+		ClusterTasksSchedProcMultiNodesBTest.instance.reschedule(5000);
 		long rescheduleMoment = System.currentTimeMillis();
 		CTSTestsUtils.waitSafely(7000);
 
-		assertFalse(ClusterTasksSchedProcMultiNodesB_test.timestamps.isEmpty());
-		for (int i = 1; i < ClusterTasksSchedProcMultiNodesB_test.timestamps.size(); i++) {
-			long prev = ClusterTasksSchedProcMultiNodesB_test.timestamps.get(i - 1);
-			long next = ClusterTasksSchedProcMultiNodesB_test.timestamps.get(i);
+		assertFalse(ClusterTasksSchedProcMultiNodesBTest.timestamps.isEmpty());
+		for (int i = 1; i < ClusterTasksSchedProcMultiNodesBTest.timestamps.size(); i++) {
+			long prev = ClusterTasksSchedProcMultiNodesBTest.timestamps.get(i - 1);
+			long next = ClusterTasksSchedProcMultiNodesBTest.timestamps.get(i);
 			long diff = next - prev;
 			if (next < rescheduleMoment) {
 				//  before reschedule speed is about 1 sec - assert that

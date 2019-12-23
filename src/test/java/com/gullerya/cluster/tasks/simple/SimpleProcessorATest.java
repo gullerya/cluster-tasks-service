@@ -11,10 +11,10 @@ import java.util.Map;
  * Created by gullery on 22/05/2019
  */
 
-public class SimpleProcessorA_test extends ClusterTasksProcessorSimple {
+public class SimpleProcessorATest extends ClusterTasksProcessorSimple {
 	static final Map<String, Long> tasksProcessed = new LinkedHashMap<>();
 
-	protected SimpleProcessorA_test() {
+	protected SimpleProcessorATest() {
 		super(ClusterTasksDataProviderType.DB, 1);
 	}
 

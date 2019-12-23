@@ -13,13 +13,13 @@ import java.util.List;
  * This scheduled tasks processor will serve the test where originally defined interval is tested
  */
 
-public class ClusterTasksSchedProcMultiNodesA_test extends ClusterTasksProcessorScheduled {
+public class ClusterTasksSchedProcMultiNodesATest extends ClusterTasksProcessorScheduled {
 	public static volatile boolean suspended = true;
 	public static int executionsCounter = 0;
 	public static List<Long> executionsIntervals = new LinkedList<>();
 	private long lastExecutionTime = 0;
 
-	protected ClusterTasksSchedProcMultiNodesA_test() {
+	protected ClusterTasksSchedProcMultiNodesATest() {
 		super(ClusterTasksDataProviderType.DB, 5000, true);
 	}
 

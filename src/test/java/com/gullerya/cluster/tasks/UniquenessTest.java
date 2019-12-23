@@ -6,7 +6,7 @@ import com.gullerya.cluster.tasks.api.enums.ClusterTaskStatus;
 import com.gullerya.cluster.tasks.api.dto.ClusterTaskPersistenceResult;
 import com.gullerya.cluster.tasks.api.enums.ClusterTaskInsertStatus;
 import com.gullerya.cluster.tasks.api.enums.ClusterTasksDataProviderType;
-import com.gullerya.cluster.tasks.processors.ClusterTasksProcessorUniqueness_test;
+import com.gullerya.cluster.tasks.processors.ClusterTasksProcessorUniquenessTest;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.slf4j.Logger;
@@ -44,7 +44,7 @@ public class UniquenessTest extends CTSTestsBase {
 				.setDelayByMillis(500)
 				.setBody("4000")
 				.build();
-		results = clusterTasksService.enqueueTasks(ClusterTasksDataProviderType.DB, ClusterTasksProcessorUniqueness_test.class.getSimpleName(), task);
+		results = clusterTasksService.enqueueTasks(ClusterTasksDataProviderType.DB, ClusterTasksProcessorUniquenessTest.class.getSimpleName(), task);
 		assertEquals(1, results.length);
 		assertNotNull(results[0]);
 		assertEquals(ClusterTaskInsertStatus.SUCCESS, results[0].getStatus());
@@ -54,7 +54,7 @@ public class UniquenessTest extends CTSTestsBase {
 				.setUniquenessKey("task")
 				.setBody("second")
 				.build();
-		results = clusterTasksService.enqueueTasks(ClusterTasksDataProviderType.DB, ClusterTasksProcessorUniqueness_test.class.getSimpleName(), task);
+		results = clusterTasksService.enqueueTasks(ClusterTasksDataProviderType.DB, ClusterTasksProcessorUniquenessTest.class.getSimpleName(), task);
 		assertEquals(1, results.length);
 		assertNotNull(results[0]);
 		assertEquals(ClusterTaskInsertStatus.UNIQUE_CONSTRAINT_FAILURE, results[0].getStatus());
@@ -67,7 +67,7 @@ public class UniquenessTest extends CTSTestsBase {
 				.setUniquenessKey("task")
 				.setBody("0")
 				.build();
-		results = clusterTasksService.enqueueTasks(ClusterTasksDataProviderType.DB, ClusterTasksProcessorUniqueness_test.class.getSimpleName(), task);
+		results = clusterTasksService.enqueueTasks(ClusterTasksDataProviderType.DB, ClusterTasksProcessorUniquenessTest.class.getSimpleName(), task);
 		assertEquals(1, results.length);
 		assertNotNull(results[0]);
 		assertEquals(ClusterTaskInsertStatus.SUCCESS, results[0].getStatus());
@@ -77,14 +77,14 @@ public class UniquenessTest extends CTSTestsBase {
 				.setUniquenessKey("task")
 				.setBody("forth")
 				.build();
-		results = clusterTasksService.enqueueTasks(ClusterTasksDataProviderType.DB, ClusterTasksProcessorUniqueness_test.class.getSimpleName(), task);
+		results = clusterTasksService.enqueueTasks(ClusterTasksDataProviderType.DB, ClusterTasksProcessorUniquenessTest.class.getSimpleName(), task);
 		assertEquals(1, results.length);
 		assertNotNull(results[0]);
 		assertEquals(ClusterTaskInsertStatus.UNIQUE_CONSTRAINT_FAILURE, results[0].getStatus());
 
 		waitForEndCondition(2, 5000L);
-		assertEquals("4000", ClusterTasksProcessorUniqueness_test.bodies.get(0));
-		assertEquals("0", ClusterTasksProcessorUniqueness_test.bodies.get(1));
+		assertEquals("4000", ClusterTasksProcessorUniquenessTest.bodies.get(0));
+		assertEquals("0", ClusterTasksProcessorUniquenessTest.bodies.get(1));
 
 		CTSTestsUtils.waitSafely(1500);
 	}
@@ -93,15 +93,15 @@ public class UniquenessTest extends CTSTestsBase {
 		int tasksLeft;
 		long maxTimeToWait = 25000L;
 		long startTime = System.currentTimeMillis();
-		ClusterTasksProcessorUniqueness_test.draining = true;
+		ClusterTasksProcessorUniquenessTest.draining = true;
 		while ((tasksLeft = clusterTasksService.countTasks(
-				ClusterTasksDataProviderType.DB, ClusterTasksProcessorUniqueness_test.class.getSimpleName(),
+				ClusterTasksDataProviderType.DB, ClusterTasksProcessorUniquenessTest.class.getSimpleName(),
 				ClusterTaskStatus.PENDING, ClusterTaskStatus.RUNNING)) > 0 &&
 				System.currentTimeMillis() - startTime < maxTimeToWait) {
 			CTSTestsUtils.waitSafely(300);
 		}
-		ClusterTasksProcessorUniqueness_test.bodies.clear();
-		ClusterTasksProcessorUniqueness_test.draining = false;
+		ClusterTasksProcessorUniquenessTest.bodies.clear();
+		ClusterTasksProcessorUniquenessTest.draining = false;
 		assertEquals(0, tasksLeft);
 		System.out.println("tasks drained in " + (System.currentTimeMillis() - startTime));
 	}
@@ -109,14 +109,14 @@ public class UniquenessTest extends CTSTestsBase {
 	private void waitForEndCondition(int expectedSize, long maxTimeToWait) {
 		long timePassed = 0;
 		long pauseInterval = 100;
-		while (ClusterTasksProcessorUniqueness_test.bodies.size() != expectedSize && timePassed < maxTimeToWait) {
+		while (ClusterTasksProcessorUniquenessTest.bodies.size() != expectedSize && timePassed < maxTimeToWait) {
 			CTSTestsUtils.waitSafely(pauseInterval);
 			timePassed += pauseInterval;
 		}
-		if (ClusterTasksProcessorUniqueness_test.bodies.size() == expectedSize) {
+		if (ClusterTasksProcessorUniquenessTest.bodies.size() == expectedSize) {
 			logger.info("expectation fulfilled in " + timePassed + "ms");
 		} else {
-			fail("expected to have " + expectedSize + " results, but found " + ClusterTasksProcessorUniqueness_test.bodies.size());
+			fail("expected to have " + expectedSize + " results, but found " + ClusterTasksProcessorUniquenessTest.bodies.size());
 		}
 	}
 }
