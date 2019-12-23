@@ -5,7 +5,10 @@ import com.gullerya.cluster.tasks.api.dto.ClusterTask;
 import com.gullerya.cluster.tasks.api.dto.ClusterTaskPersistenceResult;
 import com.gullerya.cluster.tasks.api.enums.ClusterTaskInsertStatus;
 import com.gullerya.cluster.tasks.api.enums.ClusterTasksDataProviderType;
-import com.gullerya.cluster.tasks.processors.*;
+import com.gullerya.cluster.tasks.processors.ClusterTasksProcessorATest;
+import com.gullerya.cluster.tasks.processors.ClusterTasksProcessorBTest;
+import com.gullerya.cluster.tasks.processors.ClusterTasksProcessorCTest;
+import com.gullerya.cluster.tasks.processors.ClusterTasksProcessorDTest;
 import com.gullerya.cluster.tasks.processors.ClusterTasksProcessorFTestCNA;
 import org.junit.Test;
 import org.junit.runner.RunWith;
@@ -47,8 +50,6 @@ public class CTServiceTest extends CTSTestsBase {
 	private ClusterTasksProcessorCTest clusterTasksProcessorC_test;
 	@Autowired
 	private ClusterTasksProcessorDTest clusterTasksProcessorD_test;
-	@Autowired
-	private ClusterTasksProcessorETestNA clusterTasksProcessorE_testNA;
 	@Autowired
 	private ClusterTasksProcessorFTestCNA clusterTasksProcessorF_testCna;
 
