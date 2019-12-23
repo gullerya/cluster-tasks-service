@@ -1,5 +1,8 @@
 ## Changelog
 
+##### 3.5
+- fixed [Issue #11](https://github.com/gullerya/cluster-tasks-service/issues/11) - getting rid of static counters of Prometheus, making problems in multi class loaders environments
+
 ##### 3.4
 - updating dependencies to the latest versions
 
