@@ -18,51 +18,45 @@ final class ClusterTasksMaintainer extends ClusterTasksInternalWorker {
 	private final Logger logger = LoggerFactory.getLogger(ClusterTasksMaintainer.class);
 	private final static Integer DEFAULT_MAINTENANCE_INTERVAL = 17039;
 	private final static Integer DEFAULT_TASKS_COUNT_INTERVAL = 32204;
-	private final static Counter maintenanceErrors;
-	private final static Summary maintenanceDurationSummary;
-	private final static Gauge pendingTasksCounter;
-	private final static Gauge taskBodiesCounter;
-
-	private final String RUNTIME_INSTANCE_ID;
 
 	private final Set<String> everKnownTaskProcessors = new HashSet<>();
 	private final Map<ClusterTasksDataProvider, Map<Long, List<Long>>> taskBodiesToRemove = new HashMap<>();
+
+	private final Counter maintenanceErrors;
+	private final Summary maintenanceDurationSummary;
+	private final Gauge pendingTasksCounter;
+	private final Gauge taskBodiesCounter;
 
 	private long lastTasksCountTime = 0;
 	private long lastTimeRemovedNonActiveNodes = 0;
 	private int customMaintenanceInterval = 0;
 
-	static {
+	ClusterTasksMaintainer(ClusterTasksServiceImpl.SystemWorkersConfigurer configurer) {
+		super(configurer);
+		String RUNTIME_INSTANCE_ID = configurer.getInstanceID();
 		maintenanceErrors = Counter.build()
-				.name("cts_maintenance_errors_total")
+				.name("cts_maintenance_errors_total_" + RUNTIME_INSTANCE_ID)
 				.help("CTS maintenance errors counter")
-				.labelNames("runtime_instance_id")
 				.register();
 		maintenanceDurationSummary = Summary.build()
-				.name("cts_maintenance_duration_seconds")
+				.name("cts_maintenance_duration_seconds_" + RUNTIME_INSTANCE_ID)
 				.help("CTS maintenance duration summary")
-				.labelNames("runtime_instance_id")
 				.register();
 		pendingTasksCounter = Gauge.build()
-				.name("cts_pending_tasks_counter")
+				.name("cts_pending_tasks_counter_" + RUNTIME_INSTANCE_ID)
 				.help("CTS pending tasks counter (by CTP type)")
 				.labelNames("processor_type")
 				.register();
 		taskBodiesCounter = Gauge.build()
-				.name("cts_task_bodies_counter")
+				.name("cts_task_bodies_counter_" + RUNTIME_INSTANCE_ID)
 				.help("CTS task bodies counter (per partition)")
 				.labelNames("partition")
 				.register();
 	}
 
-	ClusterTasksMaintainer(ClusterTasksServiceImpl.SystemWorkersConfigurer configurer) {
-		super(configurer);
-		RUNTIME_INSTANCE_ID = configurer.getInstanceID();
-	}
-
 	@Override
 	void performWorkCycle() {
-		Summary.Timer maintenanceTimer = maintenanceDurationSummary.labels(RUNTIME_INSTANCE_ID).startTimer();
+		Summary.Timer maintenanceTimer = maintenanceDurationSummary.startTimer();
 		try {
 			for (ClusterTasksDataProvider provider : configurer.getDataProvidersMap().values()) {
 				if (provider.isReady()) {
@@ -74,8 +68,8 @@ final class ClusterTasksMaintainer extends ClusterTasksInternalWorker {
 			//  maintain storage - handles all providers itself
 			maintainStorage(false);
 		} catch (Throwable t) {
-			maintenanceErrors.labels(RUNTIME_INSTANCE_ID).inc();
-			logger.error("failed to perform maintenance round; total failures: " + maintenanceErrors.labels(RUNTIME_INSTANCE_ID).get(), t);
+			maintenanceErrors.inc();
+			logger.error("failed to perform maintenance round; total failures: " + maintenanceErrors.get(), t);
 		} finally {
 			maintenanceTimer.observeDuration();
 		}
