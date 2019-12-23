@@ -38,10 +38,10 @@
 	</scm>
 
 	<properties>
-		<slf4j.version>1.7.28</slf4j.version>
-		<spring.version>5.2.0.RELEASE</spring.version>
-		<flyway.version>6.0.6</flyway.version>
-		<prometheus.version>0.7.0</prometheus.version>
+		<slf4j.version>1.7.29</slf4j.version>
+		<spring.version>5.2.2.RELEASE</spring.version>
+		<flyway.version>6.1.0</flyway.version>
+		<prometheus.version>0.8.0</prometheus.version>
 
 		<!--BUILD-->
 		<jdk.version>1.8</jdk.version>
@@ -78,47 +78,31 @@
 		<tests.db.create.script>TO_BE_REPLACED_DYNAMICALLY_BY_PROFILE</tests.db.create.script>
 	</properties>
 
-	<dependencyManagement>
-		<dependencies>
-			<dependency>
-				<artifactId>slf4j-api</artifactId>
-				<groupId>org.slf4j</groupId>
-				<version>${slf4j.version}</version>
-			</dependency>
-			<dependency>
-				<artifactId>spring-jdbc</artifactId>
-				<groupId>org.springframework</groupId>
-				<version>${spring.version}</version>
-			</dependency>
-			<dependency>
-				<artifactId>flyway-core</artifactId>
-				<groupId>org.flywaydb</groupId>
-				<version>${flyway.version}</version>
-			</dependency>
-			<dependency>
-				<artifactId>simpleclient</artifactId>
-				<groupId>io.prometheus</groupId>
-				<version>${prometheus.version}</version>
-			</dependency>
-		</dependencies>
-	</dependencyManagement>
-
 	<dependencies>
 		<dependency>
 			<artifactId>slf4j-api</artifactId>
 			<groupId>org.slf4j</groupId>
+			<version>${slf4j.version}</version>
+		</dependency>
+		<dependency>
+			<artifactId>spring-context</artifactId>
+			<groupId>org.springframework</groupId>
+			<version>${spring.version}</version>
 		</dependency>
 		<dependency>
 			<artifactId>spring-jdbc</artifactId>
 			<groupId>org.springframework</groupId>
+			<version>${spring.version}</version>
 		</dependency>
 		<dependency>
 			<artifactId>flyway-core</artifactId>
 			<groupId>org.flywaydb</groupId>
+			<version>${flyway.version}</version>
 		</dependency>
 		<dependency>
 			<artifactId>simpleclient</artifactId>
 			<groupId>io.prometheus</groupId>
+			<version>${prometheus.version}</version>
 		</dependency>
 
 		<!--TESTS-->
@@ -152,12 +136,6 @@
 		<!--<version>${ojdbc.version}</version>-->
 		<!--<scope>test</scope>-->
 		<!--</dependency>-->
-		<dependency>
-			<artifactId>spring-context</artifactId>
-			<groupId>org.springframework</groupId>
-			<version>${spring.version}</version>
-			<scope>test</scope>
-		</dependency>
 		<dependency>
 			<artifactId>spring-test</artifactId>
 			<groupId>org.springframework</groupId>

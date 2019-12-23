@@ -4,9 +4,11 @@ import com.gullerya.cluster.tasks.api.ClusterTasksServiceConfigurerSPI;
 import org.flywaydb.core.Flyway;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.stereotype.Component;
 
 import javax.sql.DataSource;
 
+@Component
 class ClusterTasksServiceSchemaManager {
 	private final Logger logger = LoggerFactory.getLogger(ClusterTasksServiceSchemaManager.class);
 

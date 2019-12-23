@@ -17,6 +17,7 @@ import io.prometheus.client.Summary;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.stereotype.Service;
 
 import java.util.*;
 import java.util.concurrent.*;
@@ -28,6 +29,7 @@ import java.util.stream.Collectors;
  * Default implementation of ClusterTasksService
  */
 
+@Service
 public class ClusterTasksServiceImpl implements ClusterTasksService {
 	private final Logger logger = LoggerFactory.getLogger(ClusterTasksServiceImpl.class);
 
