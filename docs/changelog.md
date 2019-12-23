@@ -1,5 +1,10 @@
 ## Changelog
 
+##### 3.6
+- fixed [Issue #12](https://github.com/gullerya/cluster-tasks-service/issues/12) - fixed a behavior of scheduled tasks when submitted without interval (run too often)
+- updated dependencies versions
+- moves Spring's bean to component-scan flavor - allows to import the XML now without duplicate singletons' creation
+
 ##### 3.5
 - fixed [Issue #11](https://github.com/gullerya/cluster-tasks-service/issues/11) - getting rid of static counters of Prometheus, making problems in multi class loaders environments
 
